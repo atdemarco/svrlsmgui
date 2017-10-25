@@ -1,2 +1,3 @@
-# svrlsmgui
-A multivariate (support vector regression) lesion-symptom mapping toolbox 
+# SVR-LSM GUI
+A graphic multivariate lesion-symptom mapping toolbox.
+
