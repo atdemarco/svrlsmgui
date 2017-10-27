@@ -59,12 +59,20 @@ if ~isempty(sub_idx)
             variables.covariates(ni,:) = []; % remove whole rows.
         end
        variables.scorefiledata(ni,:) = [];
-        variables.SubjectID(sub_idx(ni)) = [];
+       variables.SubjectID(sub_idx(ni)) = [];
     end
     %fprintf('\n')
 end
 
 variables.neg_idx = [];
 variables.pos_idx = [];
+
+%% Write lesion volumes to text file
+fid = fopen(fullfile(variables.output_folder.base,'Lesion Volumes.txt'),'w');
+fprintf(fid,'Image Name\tLesion Volume (vox)');
+for s = 1 : numel(variables.SubjectID) % one row at a time...
+    fprintf(fid,'\n%s\t%d',variables.SubjectID{s},variables.lesion_vol(s));
+end
+fclose(fid);
 
 end

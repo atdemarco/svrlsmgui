@@ -1,4 +1,13 @@
 function htmloutpath = SummarizeAnalysis(parmsfile)
+
+% Turn off this warning "Warning: Image is too big to fit on screen; displaying at 33% "
+% To set the warning state, you must first know the message identifier for the one warning you want to enable. 
+% Query the last warning to acquire the identifier.  For example: 
+% warnStruct = warning('query', 'last');
+% messageID = warnStruct.identifier
+% messageID = MATLAB:concatenation:integerInteraction
+warning('off', 'Images:initSize:adjustingMag');
+
 htmloutpath = [];
 parms=load(parmsfile);
 parms=parms.tosave;
@@ -129,8 +138,10 @@ lesionoverlapfile = fullfile(lesionoverlapfile(1).folder,lesionoverlapfile(1).na
 spm_template_path = fullfile(fileparts(which('spm')),'canonical','single_subj_T1.nii');
 origtemplate_localpath = fullfile(fileparts(lesionoverlapfile),'template.nii');
 copyfile(spm_template_path,origtemplate_localpath); % copy the spm template to output directory.
+
 spm('defaults','fmri');
 spm_jobman('initcfg');
+
 matlabbatch{1}.spm.spatial.coreg.write.ref = {[lesionoverlapfile ',1']}; % lesion file is the target image space
 matlabbatch{1}.spm.spatial.coreg.write.source = {[origtemplate_localpath ',1']}; % SPM's single subject t1 template...
 matlabbatch{1}.spm.spatial.coreg.write.roptions.interp = 4;
@@ -217,7 +228,7 @@ imwrite(imdata,fullfile(picturedir,'lesion_overlap.png'));
 
 %% Label our output  in the html file and put in the html tags to make it show up.
 
-fprintf(parms.fileID,'<hr>'); %horizonal line
+fprintf(parms.fileID,'<hr>'); % horizonal line
 fprintf(parms.fileID,'<h2>Lesion overlaps</h2>');
 
 nvox_meeting_lesion_minimum = nnz(minlesionmask.img(:)); % number of nonzero voxels in the mask...
@@ -230,7 +241,6 @@ image_widths = '100%'; %num2str(round(1.5*size(imdata,2)));
 image_heights = '100%'; % num2str(round(1.5*size(imdata,1)));
 imtxt = ['<img src="images/lesion_overlap.png" alt="' cur_alttext '" width="' image_widths '" height="' image_heights '">'];
 fprintf(parms.fileID,'%s',imtxt);
-
 fprintf(parms.fileID,'<br><br>\n');
 
 %% Now make slices for uncorrected beta threshold map
@@ -263,6 +273,7 @@ for sl = 1 : numel(slices_to_show)
         G(relevant_pixels) = cmap(uncorrbetamap(relevant_pixels),2);
         B(relevant_pixels) = cmap(uncorrbetamap(relevant_pixels),3);
     end
+    
     % Edge outline min lesion mask overlap slice in green now.
     doOutline = false;
     
@@ -280,9 +291,6 @@ for sl = 1 : numel(slices_to_show)
 end
 imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-10,10,'svr-\beta (unthresh)');
 imwrite(imdata,fullfile(picturedir,'uncorr_beta_map.png'));
-
-% Label our output  in the html file and put in the html tags to make it show up.
-%fprintf(parms.fileID,'<br><br>\n');
 
 fprintf(parms.fileID,'<hr>'); % break
 
@@ -303,7 +311,7 @@ voxelwisedir = dir(fullfile(parms.outdir,'Voxelwise*'));
 fprintf(parms.fileID,'<hr>');
 fprintf(parms.fileID,'<h2>Voxelwise thresholded SVR-&beta; map</h2>');
 
-if ~parms.DoPerformPermutationTesting % isempty(voxelwisedir) % permutation testing wasn't conducted
+if ~parms.DoPerformPermutationTesting % (voxelwisedir) % permutation testing wasn't conducted
     imstr = 'Permutation testing was not conducted so there is no threshold to apply to the uncorrected SVR-&beta; map.';
     fprintf(parms.fileID,'%s<br>',imstr);
 else
@@ -355,9 +363,6 @@ else
 
     imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-10,10,['svr-\beta (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)']);
     imwrite(imdata,fullfile(picturedir,'corr_beta_map.png'));
-
-%     fprintf(parms.fileID,'<hr>');
-%     fprintf(parms.fileID,'<h2>Voxelwise thresholded SVR-&beta; map</h2>');
 
     imstr = ['Thresholded SVR-&beta; map, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations.'];
     fprintf(parms.fileID,'%s<br>',imstr);
@@ -471,6 +476,8 @@ else
 end
 
 fprintf(parms.fileID,'<br><br>');
+
+parms.behavioralmodeldata
 
 %% Variable correlation diagnostics from behavioral nuisance model - added v0.08 
 if isfield(parms,'behavioralmodeldata') % earlier versions don't have this (added 0.08, 9/25/17)
@@ -595,7 +602,7 @@ function im = PaintBarOnFrame(im,bar_xywh_percent,cmapname,colorminval,colormaxv
     f = figure('visible','off');
     imshow(im);
     
-    truesize; % one pixel per row/col
+    truesize(f); % one pixel per row/col % added f...?
     
     % Draw the bar annotations
     text(label_x_offset,label_y_offset,units,'Color','k','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off');

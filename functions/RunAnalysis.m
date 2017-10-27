@@ -1,4 +1,4 @@
-function success = RunAnalysis(hObject,eventdata,handles)
+function [success,handles] = RunAnalysis(hObject,eventdata,handles)
 if ~isempty(gcbo)
     handles.parameters.runfromgui = 1;
 else
@@ -205,7 +205,13 @@ variables.one_score = variables.one_score*100/max(abs(variables.one_score));
 if parameters.DoPerformPermutationTesting
     handles = UpdateProgress(handles,'Creating output directories...',1);
     success = CreateDirectory(variables.output_folder.voxelwise); %#ok<NASGU>
+    
+    variables.output_folder.voxelwise
+    
     success = CreateDirectory(variables.output_folder.clusterwise); %#ok<NASGU>
+    
+    variables.output_folder.clusterwise
+    
     [variables] = run_beta_PMU(parameters, variables, cmd, beta_map,handles);
 
     % Read in real beta map
