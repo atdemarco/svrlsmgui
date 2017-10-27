@@ -541,7 +541,8 @@ end
 
 % ok
 function onlinehelpmenu_Callback(hObject, eventdata, handles)
-web('https://docs.google.com/a/email.arizona.edu/document/d/1McqkxVTmhzkE2tesAk_d4zp_qS_xt8WWGQlZ1lUONmY/edit?usp=sharing','-browser')
+%web('https://docs.google.com/a/email.arizona.edu/document/d/1McqkxVTmhzkE2tesAk_d4zp_qS_xt8WWGQlZ1lUONmY/edit?usp=sharing','-browser')
+web('https://github.com/atdemarco/svrlsmgui/wiki')
 
 function figure1_CreateFcn(hObject, eventdata, handles)
 
@@ -603,15 +604,17 @@ function runanalysisbutton_Callback(hObject, eventdata, handles)
     handles.parameters.datetime_run = date; % when the analysis was run.
     handles.parameters.PermNumClusterwise = handles.parameters.PermNumVoxelwise; % override the user so that these two values are the same.
     
-    success = RunAnalysis(hObject,eventdata,handles);
+    [success,handles] = RunAnalysis(hObject,eventdata,handles); % now returns handles 10/26/17
     
     if success
-        handles.parameters.analysis_is_completed = 1; % Completed...
+       handles.parameters.analysis_is_completed = 1; % Completed...
        handles = UpdateProgress(handles,'Analysis has completed successfully.',1);
     else
         handles.parameters.analysis_is_completed = 2; % Error...
         handles = UpdateProgress(handles,'Analysis encountered an error and did not complete...',1);
     end
+    
+    guidata(hObject, handles); % Update handles structure
     handles = PopulateGUIFromParameters(handles); % refresh gui so we can enable/disable control variable as necessary.
 
 function permutationtestingcheckbox_Callback(hObject, eventdata, handles)
@@ -646,6 +649,13 @@ function LaunchResultsDirectory(hObject,eventdata,handles)
         winopen(fulloutdir)
     else
         warndlg('Cannot open output directory because I cannot determine the OS you are using.')
+    end
+    
+    % Open overview file... %dev1
+    fpath = fileparts(handles.parameters.parmsfile);
+    overviewhtmlfile = fullfile(fpath,'overview.html');
+    if exist(overviewhtmlfile,'file')
+        web(overviewhtmlfile) % Launch in MATLAB's "web browser"
     end
     
 function npermutationsclustereditbox_Callback(hObject, eventdata, handles)
