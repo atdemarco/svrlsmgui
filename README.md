@@ -11,7 +11,7 @@ If it's not installed, first [download it from MATLAB's website](https://www.mat
 
 3. You'll need these toolboxes
 
-Install SPM
+4. Add SPM to the path. if spm is in the toolbox directory for matlab, add it to the path, e.g.: addpath(toolboxdir('spm12'))
 
 Add the subdirectories to the path.
 
