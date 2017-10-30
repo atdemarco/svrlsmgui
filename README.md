@@ -3,21 +3,17 @@ This section is a non-technical description that will describe how to get the so
 
 1. Click the bright green button at the top right of this website that says "Clone or Download" and choose Download ZIP to download the master zip file. [This link](https://github.com/atdemarco/svrlsmgui/archive/master.zip) jumps right to the file.
 
-2. Now that the master zip is downloaded, make sure MATLAB is installed. Now open it.
+2. Now that the master zip is downloaded, make sure MATLAB is installed. If it's not installed, first [download it from MATLAB's website](https://www.mathworks.com/login?uri=https%3A%2F%2Fwww.mathworks.com%2Fdownloads%2Flatest_release) (may have to create a login). Your University may have a campus-wide "Total Academic Headcount" license, you can check on your University's website/IT services or use  MATLAB's [lookup tool](https://www.mathworks.com/academia/tah-support-program/eligibility/index.html).
 
-If it's not installed, first [download it from MATLAB's website](https://www.mathworks.com/login?uri=https%3A%2F%2Fwww.mathworks.com%2Fdownloads%2Flatest_release) (may have to create a login). Your University may have a campus-wide "Total Academic Headcount" license, you can check on your University's website/IT services or use  MATLAB's [lookup tool](https://www.mathworks.com/academia/tah-support-program/eligibility/index.html).
+3. Open MATLAB.
 
-2. Unzip the master zip file and place the resulting files....
+4. Add the svrlsmgui subdirectory onto your MATLAB path.
 
-3. You'll need these toolboxes
+5. Add SPM to the path if it is not added. if spm is in the toolbox directory for matlab, add it to the path, e.g.: addpath(toolboxdir('spm12'))
 
-4. Add SPM to the path. if spm is in the toolbox directory for matlab, add it to the path, e.g.: addpath(toolboxdir('spm12'))
+6. Make sure you either have the MATLAB Machine Learning toolbox or libSVM installed and visible to MATLAB.
 
-Add the subdirectories to the path.
-
-4. Pop up white window
-
-5. Run the svrlsmgui command OR click the svrlsmgui.fig icon.
+7. Run the svrlsmgui command OR click the svrlsmgui.fig icon.
 
 
 ## This section incomplete
