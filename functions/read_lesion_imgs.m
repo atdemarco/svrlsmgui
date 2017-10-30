@@ -34,7 +34,7 @@ variables.vo.fname = fullfile(variables.output_folder.base,['All lesion overlap 
 spm_write_vol(variables.vo, mask_map);
 
 % write out a mask of voxels that exceed the minimum lesion threshold requested
-variables.vo.fname = fullfile(variables.output_folder.base,['Minimum lesion mask n>=' num2str(parameters.lesion_thresh) '.nii']);
+variables.vo.fname = fullfile(variables.output_folder.base,['Minimum lesion mask n=' num2str(parameters.lesion_thresh) '.nii']);
 min_lesion_mask = mask_map >= parameters.lesion_thresh;
 spm_write_vol(variables.vo, min_lesion_mask);
 
