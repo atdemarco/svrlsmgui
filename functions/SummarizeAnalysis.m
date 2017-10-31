@@ -161,7 +161,7 @@ resliced_template_path = fullfile(fpath,['r' fname ext]);
 [lesionoverlapimg.hdr,lesionoverlapimg.img]=read_nifti(lesionoverlapfile);
 nvoxels_any_lesion_val = nnz(lesionoverlapimg.img); % number of voxels with >0 lesions...
 
-minlesionmask = dir(fullfile(parms.outdir,'Minimum lesion mask n>=*.nii'));
+minlesionmask = dir(fullfile(parms.outdir,'Minimum lesion mask n=*.nii')); % angle bracket removed 10/31/17 cause it creates bad filenames in Windows environment
 [minlesionmask.hdr,minlesionmask.img]=read_nifti(fullfile(minlesionmask(1).folder,minlesionmask(1).name));
 
 %% Config what we'll show in our images
