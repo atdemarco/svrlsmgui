@@ -10,22 +10,35 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
         sparseLesionData = sparse(variables.lesion_dat);
         lidx = variables.l_idx;
         midx = variables.m_idx;
-        betascale = variables.beta_scale;
+        betascale = variables.beta_scale; % we use this for all the permutations.
         
         % create permutations beforehand.
         permdata = nan(numel(variables.one_score),parameters.PermNumVoxelwise); % each COL will be a permutation.
         npermels = size(permdata,1);
+        
         for r = 1 : size(permdata,2) % each col...
             permdata(:,r) = variables.one_score(randperm(npermels));
         end
         
         outpath = variables.output_folder.clusterwise;
         totalperms = parameters.PermNumVoxelwise;
+        useLibSVM = parameters.useLibSVM;
+        sigma = sqrt((1/parameters.gamma)/2); % sigma derived from gamma for matlab's svr
+        cost = parameters.cost;
+        lesion_dat = variables.lesion_dat; % in case using matlab's svr, data can't be sparse.
         parfor PermIdx=1:parameters.PermNumVoxelwise
             trial_score = permdata(:,PermIdx); % extract the row of permuted data.
-            m = svmtrain(trial_score,sparseLesionData,cmd); %#ok<SVMTRAIN>
-            alpha = m.sv_coef.';
-            SVs = m.SVs;
+            if useLibSVM 
+                m = svmtrain(trial_score,sparseLesionData,cmd); %#ok<SVMTRAIN>
+                alpha = m.sv_coef';
+                SVs = m.SVs;
+            else % added on 10/31/17 - directly call fitrsvm - which cannot take sparse input
+                m = fitrsvm(lesion_dat,trial_score,'ObservationsIn','rows', 'KernelFunction','rbf', 'KernelScale',sigma,'BoxConstraint',cost,'Standardize',false);
+                alpha = m.Alpha';
+                SVs = m.SupportVectors;
+            end
+            
+            % compute beta map
             pmu_beta_map = betascale * alpha*SVs;
             tmp_map = zerostemplate; % zeros(nx, ny, nz);
             tmp_map(lidx) = pmu_beta_map;
@@ -89,7 +102,6 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
                 SVs = m.SupportVectors;
                 pmu_beta_map = variables.beta_scale * alpha*SVs;
             end
-            
             
             tmp_map = zerostemplate;
             tmp_map(variables.l_idx) = pmu_beta_map;
@@ -156,7 +168,7 @@ if parameters.parallelize % try to parfor it...
                 twotails_alphas(col) = sum(abs(observed_beta) > abs(curcol_sorted))/numel(curcol_sorted); % percent of values observed_beta is greater than.
         end
     end
-else        
+else % Do not parallelize beta sorting procedure
     handles = UpdateProgress(handles,'Sorting null betas for each lesioned voxel in the dataset (not parallelized).',1);
     h = waitbar(0,sprintf('Sorting null betas for each lesioned voxel in the dataset (N = %d).\n',length(variables.m_idx)),'Tag','WB');
     dataRef = all_perm_data.Data; % will this eliminate some overhead  
