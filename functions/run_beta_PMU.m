@@ -281,8 +281,6 @@ end
         templatevol = zerostemplate; % zeros(nx,ny,nz); % reserve space
         templatevol(variables.m_idx) = relevant_data_frame; % put the beta values back in indices.
         
-        parameters.SavePreThresholdedPermutations = true % remove me.
-        
          if parameters.SavePreThresholdedPermutations % then write out raw voxel NON-thresholded images for this permutation.
             variables.vo.fname = fullfile(variables.output_folder.clusterwise,['UNthreshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
             spm_write_vol(variables.vo, templatevol);
