@@ -134,7 +134,7 @@ mkdir(picturedir); % where we'll put our pictures.
 
 %% First, let's reslice an anatomical image from spm to the lesion space
 lesionoverlapfile = dir(fullfile(parms.outdir,'All lesion overlap n=*.nii'));
-lesionoverlapfile = fullfile(lesionoverlapfile(1).folder,lesionoverlapfile(1).name);
+lesionoverlapfile = fullfile(parms.outdir,lesionoverlapfile(1).name);
 spm_template_path = fullfile(fileparts(which('spm')),'canonical','single_subj_T1.nii');
 origtemplate_localpath = fullfile(fileparts(lesionoverlapfile),'template.nii');
 copyfile(spm_template_path,origtemplate_localpath); % copy the spm template to output directory.
@@ -162,7 +162,7 @@ resliced_template_path = fullfile(fpath,['r' fname ext]);
 nvoxels_any_lesion_val = nnz(lesionoverlapimg.img); % number of voxels with >0 lesions...
 
 minlesionmask = dir(fullfile(parms.outdir,'Minimum lesion mask n=*.nii')); % angle bracket removed 10/31/17 cause it creates bad filenames in Windows environment
-[minlesionmask.hdr,minlesionmask.img]=read_nifti(fullfile(minlesionmask(1).folder,minlesionmask(1).name));
+[minlesionmask.hdr,minlesionmask.img]=read_nifti(fullfile(parms.outdir,minlesionmask(1).name));
 
 %% Config what we'll show in our images
 slice_bounds_percent = [.30 .80]; % highest and lowest percent over which to draw slices.
@@ -315,7 +315,7 @@ if ~parms.DoPerformPermutationTesting % (voxelwisedir) % permutation testing was
     imstr = 'Permutation testing was not conducted so there is no threshold to apply to the uncorrected SVR-&beta; map.';
     fprintf(parms.fileID,'%s<br>',imstr);
 else
-    voxelwisedir = fullfile(voxelwisedir(1).folder,voxelwisedir(1).name);
+    voxelwisedir = fullfile(parms.outdir,voxelwisedir(1).name);
 
     fullfile(parms.outdir,voxelwisedir,'Voxelwise thresholded beta map.nii')
 
@@ -388,7 +388,7 @@ else
     [clusteridx.hdr,clusteridx.img]=read_nifti(clusttablefile);
 
     clusterwisedir = dir(fullfile(voxelwisedir,'Clusterwise*'));
-    clusterwisedir = fullfile(clusterwisedir(1).folder,clusterwisedir(1).name);
+    clusterwisedir = fullfile(voxelwisedir,clusterwisedir(1).name);
     cluster_table = readtable(fullfile(clusterwisedir,'Table of clusters.txt'));
 
     % [threshbetamap.hdr,threshbetamap.img]=read_nifti(fullfile(clusterwisedir,'Voxelwise thresholded beta map.nii'));
