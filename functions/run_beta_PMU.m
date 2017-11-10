@@ -10,35 +10,28 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
         sparseLesionData = sparse(variables.lesion_dat);
         lidx = variables.l_idx;
         midx = variables.m_idx;
-        betascale = variables.beta_scale; % we use this for all the permutations.
+        betascale = variables.beta_scale;
         
         % create permutations beforehand.
         permdata = nan(numel(variables.one_score),parameters.PermNumVoxelwise); % each COL will be a permutation.
         npermels = size(permdata,1);
-        
         for r = 1 : size(permdata,2) % each col...
             permdata(:,r) = variables.one_score(randperm(npermels));
         end
         
         outpath = variables.output_folder.clusterwise;
         totalperms = parameters.PermNumVoxelwise;
-        useLibSVM = parameters.useLibSVM;
-        sigma = sqrt((1/parameters.gamma)/2); % sigma derived from gamma for matlab's svr
-        cost = parameters.cost;
-        lesion_dat = variables.lesion_dat; % in case using matlab's svr, data can't be sparse.
+        uselibsvm = parameters.useLibSVM;
         parfor PermIdx=1:parameters.PermNumVoxelwise
             trial_score = permdata(:,PermIdx); % extract the row of permuted data.
-            if useLibSVM 
+            if uselibsvm
                 m = svmtrain(trial_score,sparseLesionData,cmd); %#ok<SVMTRAIN>
-                alpha = m.sv_coef';
-                SVs = m.SVs;
-            else % added on 10/31/17 - directly call fitrsvm - which cannot take sparse input
-                m = fitrsvm(lesion_dat,trial_score,'ObservationsIn','rows', 'KernelFunction','rbf', 'KernelScale',sigma,'BoxConstraint',cost,'Standardize',false);
-                alpha = m.Alpha';
-                SVs = m.SupportVectors;
+            else
+                [m,~,~] = ComputeMatlabSVRLSM(parameters,variables);
             end
             
-            % compute beta map
+            alpha = m.sv_coef.';
+            SVs = m.SVs;
             pmu_beta_map = betascale * alpha*SVs;
             tmp_map = zerostemplate; % zeros(nx, ny, nz);
             tmp_map(lidx) = pmu_beta_map;
@@ -79,7 +72,7 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
             if parameters.useLibSVM
                 m = svmtrain(trial_score,sparse(variables.lesion_dat),cmd); %#ok<SVMTRAIN>
             else
-                if PermIdx == 1 %warning('MATLAB not supported yet. Change the configuration of your analyses to utilize libsvm.')
+                if PermIdx == 1 
                     variables.orig_one_score = variables.one_score;
                 end
                 
@@ -102,6 +95,7 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
                 SVs = m.SupportVectors;
                 pmu_beta_map = variables.beta_scale * alpha*SVs;
             end
+            
             
             tmp_map = zerostemplate;
             tmp_map(variables.l_idx) = pmu_beta_map;
@@ -168,7 +162,7 @@ if parameters.parallelize % try to parfor it...
                 twotails_alphas(col) = sum(abs(observed_beta) > abs(curcol_sorted))/numel(curcol_sorted); % percent of values observed_beta is greater than.
         end
     end
-else % Do not parallelize beta sorting procedure
+else        
     handles = UpdateProgress(handles,'Sorting null betas for each lesioned voxel in the dataset (not parallelized).',1);
     h = waitbar(0,sprintf('Sorting null betas for each lesioned voxel in the dataset (N = %d).\n',length(variables.m_idx)),'Tag','WB');
     dataRef = all_perm_data.Data; % will this eliminate some overhead  
@@ -177,6 +171,16 @@ else % Do not parallelize beta sorting procedure
         curcol = dataRef(col:L:end); % index out each column using skips the length of the data...
         observed_beta = ori_beta_val(col); % original observed beta value.
         curcol_sorted = sort(curcol); % smallest values at the top..
+        
+        p_vec=nan(size(curcol_sorted)); % allocate space
+        all_ind = 1:numel(curcol_sorted); % we'll reuse this vector
+        for i = all_ind % for each svr beta value in the vector
+            ind_to_compare = setdiff(all_ind,i);
+            p_vec(i) = 1 - mean(curcol_sorted(i) < curcol_sorted(ind_to_compare));
+        end
+        disp([num2str(i) ' of ' num2str(numel(p_vec)) ' - observed svrB = ' num2str(observed_beta)])
+        [numel(unique(curcol_sorted)) numel(unique(p_vec))]
+        
         % Compute beta cutoff values and a pvalue map for the observed betas.
         switch parameters.tails
             case options.hypodirection{1} % 'one_positive'
@@ -193,8 +197,8 @@ else % Do not parallelize beta sorting procedure
         waitbar(col/L,h) % show progress.
     end
     close(h)
+    error('compare svrBs to pvals')
 end
-
     %% Construct volumes of the solved alpha values and write them out - and write out beta cutoff maps, too
     switch parameters.tails
         case options.hypodirection{1} % 'one_positive' % One-tailed positive tail...
