@@ -18,9 +18,9 @@ This section is a non-technical description that will describe how to get the so
 # What is SVR-LSM GUI?
 A graphic multivariate lesion-symptom mapping toolbox.
 
-Requirements:
-*[The SPM12 toolbox](http://www.fil.ion.ucl.ac.uk/spm/software/spm12/)
-*MATLAB (note to self: add min version)
-*MATLAB Parallel computing toolbox (for parallelization functionality)
-*MATLAB Machine Learning Toolbox (for MATLAB's SVR functionality)
-*libSVM (for libSVM SVR functionality, as in original Zhang et al., 2014)
+# Requirements:
+* [The SPM12 toolbox](http://www.fil.ion.ucl.ac.uk/spm/software/spm12/)
+* MATLAB (recommended, 2017a)
+* MATLAB Parallel computing toolbox (for parallelization functionality)
+* MATLAB Machine Learning Toolbox (for MATLAB's SVR functionality)
+* libSVM (for libSVM SVR functionality, as in original Zhang et al., 2014)
