@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 29-Sep-2017 09:52:46
+% Last Modified by GUIDE v2.5 10-Nov-2017 11:21:27
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -54,7 +54,7 @@ function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     handles.output = hObject; % Choose default command line output for svrlsmgui
     
     % Hide some debugging controls...
-    tohide = [handles.permutation_unthresholded_checkbox handles.permutation_voxelwise_checkbox handles.permutation_largest_cluster handles.save_raw_permutation_data handles.text17 handles.text21 handles.npermutationsclustereditbox];
+    tohide = [handles.permutation_unthresholded_checkbox handles.permutation_voxelwise_checkbox handles.permutation_largest_cluster handles.save_raw_permutation_data handles.text17];
     set(tohide,'visible','off')
     
     handles = ConfigureSVRLSMGUIOptions(handles);
@@ -161,6 +161,8 @@ function parameters = GetDefaultParameters(handles)
     parameters.analysis_out_path = parameters.analysis_root; % is this a good default?
     parameters.is_saved = 0;
     
+    parameters.do_make_summary = 1; % default to make summary...
+    
     parameters.SavePreThresholdedPermutations = 0;
     parameters.SavePostVoxelwiseThresholdedPermutations = 0;
     parameters.SavePostClusterwiseThresholdedPermutations = 0;
@@ -171,6 +173,16 @@ function parameters = GetDefaultParameters(handles)
 function handles = UpdateCurrentAnalysis(handles,hObject)
 changemade = true; % default
 switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what field it goes to -- and to validate
+    case 'output_summary_menu'
+        handles.parameters.do_make_summary = ~handles.parameters.do_make_summary;
+    case 'save_pre_thresh'
+        handles.parameters.SavePreThresholdedPermutations = ~handles.parameters.SavePreThresholdedPermutations;
+    case 'retain_big_binary_file'
+        handles.parameters.SavePermutationData = ~handles.parameters.SavePermutationData;
+    case 'save_post_vox_thresh'
+        handles.parameters.SavePostVoxelwiseThresholdedPermutations = ~handles.parameters.SavePostVoxelwiseThresholdedPermutations;
+    case 'save_post_clusterwise_thresholded'
+        handles.parameters.SavePostClusterwiseThresholdedPermutations= ~handles.parameters.SavePostClusterwiseThresholdedPermutations;
     case 'parallelizemenu'
         handles.parameters.parallelize = ~handles.parameters.parallelize;
     case 'applycovariatestobehaviorcheckbox'
@@ -715,6 +727,12 @@ function applycovariatestolesioncheckbox_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
 
 function optionsmenu_Callback(hObject, eventdata, handles)
+if handles.parameters.do_make_summary
+    set(handles.output_summary_menu,'Checked','on')
+else
+    set(handles.output_summary_menu,'Checked','off')
+end
+
 if handles.parameters.parallelize
     set(handles.parallelizemenu,'Checked','on')
 else
@@ -747,4 +765,34 @@ handles = UpdateCurrentAnalysis(handles,hObject);
 
 % --------------------------------------------------------------------
 function sv_scaling_95th_percentile_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+
+% --------------------------------------------------------------------
+function debug_menu_Callback(hObject, eventdata, handles)
+
+% --------------------------------------------------------------------
+function save_perm_data_Callback(hObject, eventdata, handles) % update the subitems with checkboxes
+yn = {'off','on'};
+set(handles.save_post_clusterwise_thresholded,'Checked',yn{1+handles.parameters.SavePostClusterwiseThresholdedPermutations})
+set(handles.save_post_vox_thresh,'Checked',yn{1+handles.parameters.SavePostVoxelwiseThresholdedPermutations})
+set(handles.retain_big_binary_file,'Checked',yn{1+handles.parameters.SavePermutationData})
+set(handles.save_pre_thresh,'Checked',yn{1+handles.parameters.SavePreThresholdedPermutations})
+
+% --------------------------------------------------------------------
+function output_summary_menu_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+
+% --------------------------------------------------------------------
+function save_pre_thresh_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+
+% --------------------------------------------------------------------
+function save_post_vox_thresh_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+
+% --------------------------------------------------------------------
+function save_post_clusterwise_thresholded_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+% --------------------------------------------------------------------
+function retain_big_binary_file_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
