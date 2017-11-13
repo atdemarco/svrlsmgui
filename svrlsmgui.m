@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 10-Nov-2017 11:21:27
+% Last Modified by GUIDE v2.5 13-Nov-2017 13:40:01
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -172,7 +172,12 @@ function parameters = GetDefaultParameters(handles)
 
 function handles = UpdateCurrentAnalysis(handles,hObject)
 changemade = true; % default
+
 switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what field it goes to -- and to validate
+    case 'use_lib_svm'
+        handles.parameters.useLibSVM = 1;
+    case 'use_matlab_svr'
+        handles.parameters.useLibSVM = 0;        
     case 'output_summary_menu'
         handles.parameters.do_make_summary = ~handles.parameters.do_make_summary;
     case 'save_pre_thresh'
@@ -474,16 +479,16 @@ function handles = SaveSVRLSMGUIFile(handles,hObject)
     handles = UpdateProgress(handles,['Saved ' handles.parameters.parameter_file_name],1);
     handles = LoadParametersFromSVRLSMFile(handles,hObject,handles.parameters.parameter_file_name);
 
-function preferencesmenu_Callback(hObject, eventdata, handles)
-    prefs_to_update = preferences(handles.parameters,handles.details);
-    if ~isempty(prefs_to_update) % then prefs window "cancel" button was not clicked - update vals.
-        handles.parameters.gamma = prefs_to_update.gamma;
-        handles.parameters.cost = prefs_to_update.cost;
-        handles.parameters.useLibSVM = prefs_to_update.useLibSVM;
-        handles.parameters.is_saved = 0;
-        handles = PopulateGUIFromParameters(handles);
-    end
-    guidata(hObject, handles); % Update handles structure
+% function preferencesmenu_Callback(hObject, eventdata, handles)
+%     prefs_to_update = preferences(handles.parameters,handles.details);
+%     if ~isempty(prefs_to_update) % then prefs window "cancel" button was not clicked - update vals.
+%         handles.parameters.gamma = prefs_to_update.gamma;
+%         handles.parameters.cost = prefs_to_update.cost;
+%         handles.parameters.useLibSVM = prefs_to_update.useLibSVM;
+%         handles.parameters.is_saved = 0;
+%         handles = PopulateGUIFromParameters(handles);
+%     end
+%     guidata(hObject, handles); % Update handles structure
 
 function quitmenu_Callback(hObject, eventdata, handles)
     if IgnoreUnsavedChanges(handles), close(gcf); end
@@ -796,3 +801,85 @@ handles = UpdateCurrentAnalysis(handles,hObject);
 % --------------------------------------------------------------------
 function retain_big_binary_file_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
+
+% --------------------------------------------------------------------
+function svrmenu_Callback(hObject, eventdata, handles)
+if handles.parameters.useLibSVM
+    set(handles.use_lib_svm,'checked','on')
+    set(handles.use_matlab_svr,'checked','off')
+else
+    set(handles.use_lib_svm,'checked','off')
+    set(handles.use_matlab_svr,'checked','on')
+end
+
+if handles.details.stats_toolbox
+    set(handles.use_matlab_svr,'enable','on')
+else
+    set(handles.use_matlab_svr,'enable','off')
+end
+
+if handles.details.libsvm
+    set(handles.use_lib_svm,'enable','on')
+else
+    set(handles.use_lib_svm,'enable','off')
+end
+
+% --------------------------------------------------------------------
+function use_lib_svm_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+%handles.parameters.useLibSVM
+
+% --------------------------------------------------------------------
+function use_matlab_svr_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+
+% --------------------------------------------------------------------
+function parameters_menu_Callback(hObject, eventdata, handles)
+set(handles.cost_menu,'label',['Cost: ' num2str(handles.parameters.cost)]);
+set(handles.gamma_menu,'label',['Gamma: ' num2str(handles.parameters.gamma)]);
+
+% --------------------------------------------------------------------
+function cost_menu_Callback(hObject, eventdata, handles)
+    answer = inputdlg('Enter new parameter value for cost:','Cost Parameter',1,{num2str(handles.parameters.cost)});
+    if ~isempty(answer)
+        numval = str2num(answer{1}); %#ok<*ST2NM>
+        if isnumeric(numval) && ~isempty(numval)
+            handles.parameters.cost = numval;
+            handles.parameters.is_saved = 0;
+            guidata(hObject, handles);
+            handles = PopulateGUIFromParameters(handles);
+        end
+    end
+   
+% --------------------------------------------------------------------
+function gamma_menu_Callback(hObject, eventdata, handles)
+    answer = inputdlg('Enter new parameter value for gamma:','Gamma Parameter',1,{num2str(handles.parameters.gamma)});
+    if ~isempty(answer)
+        numval = str2num(answer{1});
+        if isnumeric(numval) && ~isempty(numval)
+            handles.parameters.gamma = numval;
+            handles.parameters.is_saved = 0;
+            guidata(hObject, handles);
+            handles = PopulateGUIFromParameters(handles);
+        end
+    end
+    
+% --------------------------------------------------------------------
+function optimize_menu_Callback(hObject, eventdata, handles)
+% add me with Mirman code
+
+% --------------------------------------------------------------------
+function open_batch_job_Callback(hObject, eventdata, handles)
+    folder_name = uigetdir(pwd,'Choose a folder containing .mat config files of your analyses.');
+    if ~folder_name, return; end % if folder_name == 0 then cancel was clicked.
+    files = dir(fullfile(folder_name,'*.mat'));
+    fname = {files.name};
+    [s,v] = listdlg('PromptString','Choose the analyse to run:','SelectionMode','multi','ListString',fname);
+    if ~v, return; end % cancelled..
+    for f = s
+        curfile = fullfile(folder_name,fname{s});
+        try % so one or more can fail without stopping them all.
+            success = RunAnalysisNoGUI(curfile);
+        end
+    end
+
