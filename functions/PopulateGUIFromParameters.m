@@ -97,8 +97,8 @@ function handles = PopulateGUIFromParameters(handles)
     set(handles.lesionthresholdeditbox,'String',num2str(handles.parameters.lesion_thresh))
 
 
-    set(handles.computebetamapcheckbox,'value',handles.parameters.beta_map)
-    set(handles.computesensitivitymapcheckbox,'value',handles.parameters.sensitivity_map)
+%    set(handles.computebetamapcheckbox,'value',handles.parameters.beta_map)
+%    set(handles.computesensitivitymapcheckbox,'value',handles.parameters.sensitivity_map)
     set(handles.invertpmapcheckbox,'value',handles.parameters.invert_p_map_flag)
 
     set([handles.applycovariatestobehaviorcheckbox handles.applycovariatestolesioncheckbox],'enable','on'); % so we can modify them
