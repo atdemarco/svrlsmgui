@@ -197,7 +197,7 @@ else
         waitbar(col/L,h) % show progress.
     end
     close(h)
-    error('compare svrBs to pvals')
+%    error('compare svrBs to pvals')
 end
     %% Construct volumes of the solved alpha values and write them out - and write out beta cutoff maps, too
     switch parameters.tails
