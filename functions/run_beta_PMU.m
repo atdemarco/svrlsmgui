@@ -172,14 +172,14 @@ else
         observed_beta = ori_beta_val(col); % original observed beta value.
         curcol_sorted = sort(curcol); % smallest values at the top..
         
-        p_vec=nan(size(curcol_sorted)); % allocate space
-        all_ind = 1:numel(curcol_sorted); % we'll reuse this vector
-        for i = all_ind % for each svr beta value in the vector
-            ind_to_compare = setdiff(all_ind,i);
-            p_vec(i) = 1 - mean(curcol_sorted(i) < curcol_sorted(ind_to_compare));
-        end
-        disp([num2str(i) ' of ' num2str(numel(p_vec)) ' - observed svrB = ' num2str(observed_beta)])
-        [numel(unique(curcol_sorted)) numel(unique(p_vec))]
+%         p_vec=nan(size(curcol_sorted)); % allocate space
+%         all_ind = 1:numel(curcol_sorted); % we'll reuse this vector
+%         for i = all_ind % for each svr beta value in the vector
+%             ind_to_compare = setdiff(all_ind,i);
+%             p_vec(i) = 1 - mean(curcol_sorted(i) < curcol_sorted(ind_to_compare));
+%         end
+%         disp([num2str(i) ' of ' num2str(numel(p_vec)) ' - observed svrB = ' num2str(observed_beta)])
+%         [numel(unique(curcol_sorted)) numel(unique(p_vec))]
         
         % Compute beta cutoff values and a pvalue map for the observed betas.
         switch parameters.tails
