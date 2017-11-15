@@ -5,6 +5,7 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
     ori_beta_val = beta_map(variables.m_idx).'; % Original observed beta values.
     tic;
     
+    %% Generate permutation data
     if parameters.parallelize % try to parfor it...
         handles = UpdateProgress(handles,'Computing beta map permutations (parallelized)...',1);
         sparseLesionData = sparse(variables.lesion_dat);
@@ -56,8 +57,10 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
         end
         fclose(fileID); % close big file
         
-    else
+    else % not parallelized
+        
         handles = UpdateProgress(handles,'Computing beta map permutations (not parallelized)...',1);
+
         % This is where we'll save our GBs of permutation data output...
         outfname_big = fullfile(variables.output_folder.clusterwise,['pmu_beta_maps_N_' num2str(parameters.PermNumVoxelwise) '.bin']);
         fileID = fopen(outfname_big,'w');
@@ -119,7 +122,7 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
         fclose(fileID); % close the pmu data output file.
     end
     
-    % Read in gigantic memory mapped file... no matter whether we parallelized or not.
+    %% Read in gigantic memory mapped file... no matter whether we parallelized or not.
     all_perm_data = memmapfile(outfname_big,'Format','single'); % does the single precision hurt the analysis?
 
     %% FWE cluster correction based on permutation analysis
@@ -162,7 +165,16 @@ if parameters.parallelize % try to parfor it...
                 twotails_alphas(col) = sum(abs(observed_beta) > abs(curcol_sorted))/numel(curcol_sorted); % percent of values observed_beta is greater than.
         end
     end
-else        
+else % otherwise, not parallelized
+    
+    doNewFWE = false; % concept from Mirman
+    
+    if doNewFWE
+        outfname_big_pvals = fullfile(variables.output_folder.clusterwise,['pmu_beta_map_p_vals_N_' num2str(parameters.PermNumVoxelwise) '.bin']);
+        pvalfileID = fopen(outfname_big_pvals,'w');
+    end
+    
+    
     handles = UpdateProgress(handles,'Sorting null betas for each lesioned voxel in the dataset (not parallelized).',1);
     h = waitbar(0,sprintf('Sorting null betas for each lesioned voxel in the dataset (N = %d).\n',length(variables.m_idx)),'Tag','WB');
     dataRef = all_perm_data.Data; % will this eliminate some overhead  
@@ -172,14 +184,25 @@ else
         observed_beta = ori_beta_val(col); % original observed beta value.
         curcol_sorted = sort(curcol); % smallest values at the top..
         
-%         p_vec=nan(size(curcol_sorted)); % allocate space
-%         all_ind = 1:numel(curcol_sorted); % we'll reuse this vector
-%         for i = all_ind % for each svr beta value in the vector
-%             ind_to_compare = setdiff(all_ind,i);
-%             p_vec(i) = 1 - mean(curcol_sorted(i) < curcol_sorted(ind_to_compare));
-%         end
-%         disp([num2str(i) ' of ' num2str(numel(p_vec)) ' - observed svrB = ' num2str(observed_beta)])
-%         [numel(unique(curcol_sorted)) numel(unique(p_vec))]
+        if doNewFWE
+            %             inputs: NNN and ALPHA  = 0.05
+            %             FWER:
+            %             1. generate 10,000 beta maps
+            %             2. at each voxel, use leave-one-out to convert each into a p-value. now we have 10,000 p-maps.
+            %             3. for each of the 10,000 p-maps, take the NNNth highest p-value.
+            %             4. then take the p-value corresponding to the ALPHAth quantile of the histogram of NNNth highest pvalues
+            %             5. this is a map-wide voxelwise threshold that does correction at both levels
+            
+            % in this loop we are going to do step 2, and create e.g. 10,000 p-vals
+            
+            p_vec = nan(size(curcol));
+            all_ind = 1 : numel(curcol); % we'll reuse this vector
+            for i = all_ind % for each svr beta value in the vector
+                ind_to_compare = setdiff(all_ind,i);
+                p_vec(i) = 1 - mean(curcol_sorted(i) < curcol_sorted(ind_to_compare)); % NB: IS THIS IS TAIL DEPENDENT!!!!!! DOES IT NEED TO BE DIFFERENT FOR ONE POS, ONE NEG, and TWOTAIL?
+            end
+            fwrite(pvalfileID, p_vec,'single');
+        end
         
         % Compute beta cutoff values and a pvalue map for the observed betas.
         switch parameters.tails
@@ -197,7 +220,9 @@ else
         waitbar(col/L,h) % show progress.
     end
     close(h)
-%    error('compare svrBs to pvals')
+    if doNewFWE
+        fclose(pvalfileID); % close the pmu pval data output file.
+    end
 end
     %% Construct volumes of the solved alpha values and write them out - and write out beta cutoff maps, too
     switch parameters.tails
@@ -236,7 +261,6 @@ end
             variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (negative tail).nii');
             spm_write_vol(variables.vo, thresholded_neg);
             
-            
         case options.hypodirection{3} %'two'% Both tails..
             
             if parameters.invert_p_map_flag % it's already inverted...
@@ -263,97 +287,180 @@ end
             variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (two tail, lower).nii');
             spm_write_vol(variables.vo, thresholded_twotail_lower);
     end
-     
-    % Now for each permuted beta map, apply the beta mask and determine largest surviving cluster.
     
-    h = waitbar(0,'Applying voxelwise beta mask to null data and noting largest null clusters...','Tag','WB');
-    
-    % Reconstruct the volumes so we can threshold and examine cluster sizes
-    all_max_cluster_sizes = nan(parameters.PermNumClusterwise,1); % reserve space.
-    
-    if parameters.PermNumClusterwise > parameters.PermNumVoxelwise, error('Cannot sample more cluster permutations than have been generated by the voxelwise permutation procedure.'); end
-    
-    handles = UpdateProgress(handles,'Applying voxelwise beta mask to null data and noting largest null clusters...',1);
+    if doNewFWE % then let's traverse the pvalue frames we've created and get the Nth highest (Nth_highest_pval) and construct a a histogram from that.
+        Nth_highest_pval = 100;
+        all_perm_data_pvals = memmapfile(outfname_big_pvals,'Format','single');
+        handles = UpdateProgress(handles,'Traversing null data p-value frames and noting Nth largest p-value...',1);
 
-    for f = 1 : parameters.PermNumVoxelwise % go through each frame of generated betas in the null data...
-        waitbar(f/parameters.PermNumVoxelwise,h) % show progress.
+        for f = 1 : parameters.PermNumVoxelwise % go through each frame of generated betas in the null data...
+            waitbar(f/parameters.PermNumVoxelwise,h) % show progress.
+            %frame_length = length(variables.m_idx);
+            %frame_start_index = 1+((f-1)*frame_length); % +1 since not zero indexing
+            %frame_end_index = (frame_start_index-1)+frame_length; % -1 so we are not 1 too long.
+            %relevant_data_frame = all_perm_data.Data(frame_start_index:frame_end_index); % extract the frame
+            
+            relevant_data_frame = parameters.PermNumVoxelwise(f:parameters.PermNumVoxelwise:end); % need to skip every e.g., 10,000 since this is organized different than the big pmu binary file
+            
+            %templatevol = zerostemplate;
+            %templatevol(variables.m_idx) = relevant_data_frame; % put the beta values back in indices.
 
-        frame_length = length(variables.m_idx);
-        frame_start_index = 1+((f-1)*frame_length); % +1 since not zero indexing
-        frame_end_index = (frame_start_index-1)+frame_length; % -1 so we are not 1 too long.
-        relevant_data_frame = all_perm_data.Data(frame_start_index:frame_end_index); % extract the frame
-        templatevol = zerostemplate; % zeros(nx,ny,nz); % reserve space
-        templatevol(variables.m_idx) = relevant_data_frame; % put the beta values back in indices.
-        
-         if parameters.SavePreThresholdedPermutations % then write out raw voxel NON-thresholded images for this permutation.
-            variables.vo.fname = fullfile(variables.output_folder.clusterwise,['UNthreshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
-            spm_write_vol(variables.vo, templatevol);
-         end
-        
-        switch parameters.tails
-            case options.hypodirection{1} 
-                pos_threshed = templatevol .* (templatevol>=thresholded_pos); % elementwise greater than operator to threshold positive tail of test betas
-            case options.hypodirection{2} 
-                neg_threshed = templatevol .* (templatevol<=thresholded_neg); % elementwise less than operator to threshold negative tail of test betas.
-            case options.hypodirection{3} % Now build a two-tailed thresholded version
-            threshmask = and(templatevol > 0,templatevol >= thresholded_twotail_upper) | and(templatevol < 0,templatevol <= thresholded_twotail_lower);
-            twotail_threshed = templatevol .* threshmask; % mask the two-tailed beta mask for this null data...
-        end
-        
-        if parameters.SavePostVoxelwiseThresholdedPermutations % then write out raw voxel thresholded images for this permutation.
+%              if parameters.SavePreThresholdedPermutations % then write out raw voxel NON-thresholded images for this permutation.
+%                 variables.vo.fname = fullfile(variables.output_folder.clusterwise,['UNthreshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
+%                 spm_write_vol(variables.vo, templatevol);
+%              end
+
             switch parameters.tails
-                case options.hypodirection{1} % 'one_positive'
-                    variables.vo.fname = fullfile(variables.output_folder.clusterwise,['pos_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
-                    spm_write_vol(variables.vo, pos_threshed);
-                case options.hypodirection{2} %'one_negative'
-                    variables.vo.fname = fullfile(variables.output_folder.clusterwise,['neg_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
-                    spm_write_vol(variables.vo, neg_threshed);
-                case options.hypodirection{3} %'two'
-                    variables.vo.fname = fullfile(variables.output_folder.clusterwise,['twotail_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
-                    spm_write_vol(variables.vo, twotail_threshed);
+                case options.hypodirection{1} 
+                    sorted_data_frame = sort(relevant_data_frame);
+                    curmaxpvalue = sorted_data_frame(end-Nth_highest_pval);
+                case options.hypodirection{2} 
+                    sorted_data_frame = sort(relevant_data_frame);
+                    curmaxpvalue = sorted_data_frame(Nth_highest_pval); %NB: NOT END-
+                case options.hypodirection{3} % Now build a two-tailed thresholded version
+                    sorted_data_frame = sort(relevant_data_frame);
+                    curmaxpvalue = sorted_data_frame(end-Nth_highest_pval); % WHAT TO DO HERE???????
             end
+            
+            all_max_pvalue(f) = curmaxpvalue;
+
+%             if parameters.SavePostVoxelwiseThresholdedPermutations % then write out raw voxel thresholded images for this permutation.
+%                 switch parameters.tails
+%                     case options.hypodirection{1} % 'one_positive'
+%                         variables.vo.fname = fullfile(variables.output_folder.clusterwise,['pos_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
+%                         spm_write_vol(variables.vo, pos_threshed);
+%                     case options.hypodirection{2} %'one_negative'
+%                         variables.vo.fname = fullfile(variables.output_folder.clusterwise,['neg_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
+%                         spm_write_vol(variables.vo, neg_threshed);
+%                     case options.hypodirection{3} %'two'
+%                         variables.vo.fname = fullfile(variables.output_folder.clusterwise,['twotail_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
+%                         spm_write_vol(variables.vo, twotail_threshed);
+%                 end
+%             end
+
+%             if f <= parameters.PermNumClusterwise
+%                 switch parameters.tails
+%                     case options.hypodirection{1}
+%                         permtype='pos';
+%                         thresholded_mask=pos_threshed;
+%                     case options.hypodirection{2}
+%                         permtype='neg';
+%                         thresholded_mask=neg_threshed;
+%                     case options.hypodirection{3}
+%                         permtype='twotail';
+%                         thresholded_mask=twotail_threshed;
+%                 end
+% 
+%                 testvol_thresholded = thresholded_mask; % now evaluate the surviving voxels for clusters...
+%                 CC = bwconncomp(testvol_thresholded, 6);
+%                 largest_cluster_size = max(cellfun(@numel,CC.PixelIdxList(1,:))); % max val for numels in each cluster object found
+%                 if isempty(largest_cluster_size)
+%                     largest_cluster_size = 0;
+%                 else % threshold the volume and write it out.
+%                     if parameters.SavePostClusterwiseThresholdedPermutations % then save them...
+%                         out_map = remove_scatter_clusters(testvol_thresholded, largest_cluster_size-1);
+%                         variables.vo.fname = fullfile(variables.output_folder.clusterwise,[permtype '_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumClusterwise) '_largest_cluster.nii']);
+%                         spm_write_vol(variables.vo, out_map);
+%                     end
+%                 end
+%                 all_max_cluster_sizes(f) = largest_cluster_size; % record...
+%             end
         end
+        sorted_all_max_pvalue = sort(all_max_pvalue);
+        disp('final map-wide pvalue:')
+        sorted_all_max_pvalue(pos_thresh_index) % or neg thresh ..... 
         
-        if f <= parameters.PermNumClusterwise
+    else % do regular cluster correction.
+        % Now for each permuted beta map, apply the beta mask and determine largest surviving cluster.
+        h = waitbar(0,'Applying voxelwise beta mask to null data and noting largest null clusters...','Tag','WB');
+
+        % Reconstruct the volumes so we can threshold and examine cluster sizes
+        all_max_cluster_sizes = nan(parameters.PermNumClusterwise,1); % reserve space.
+
+        if parameters.PermNumClusterwise > parameters.PermNumVoxelwise, error('Cannot sample more cluster permutations than have been generated by the voxelwise permutation procedure.'); end
+
+        handles = UpdateProgress(handles,'Applying voxelwise beta mask to null data and noting largest null clusters...',1);
+
+        for f = 1 : parameters.PermNumVoxelwise % go through each frame of generated betas in the null data...
+            waitbar(f/parameters.PermNumVoxelwise,h) % show progress.
+
+            frame_length = length(variables.m_idx);
+            frame_start_index = 1+((f-1)*frame_length); % +1 since not zero indexing
+            frame_end_index = (frame_start_index-1)+frame_length; % -1 so we are not 1 too long.
+            relevant_data_frame = all_perm_data.Data(frame_start_index:frame_end_index); % extract the frame
+            templatevol = zerostemplate;
+            templatevol(variables.m_idx) = relevant_data_frame; % put the beta values back in indices.
+
+             if parameters.SavePreThresholdedPermutations % then write out raw voxel NON-thresholded images for this permutation.
+                variables.vo.fname = fullfile(variables.output_folder.clusterwise,['UNthreshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
+                spm_write_vol(variables.vo, templatevol);
+             end
+
             switch parameters.tails
-                case options.hypodirection{1}
-                    permtype='pos';
-                    thresholded_mask=pos_threshed;
-                case options.hypodirection{2}
-                    permtype='neg';
-                    thresholded_mask=neg_threshed;
-                case options.hypodirection{3}
-                    permtype='twotail';
-                    thresholded_mask=twotail_threshed;
+                case options.hypodirection{1} 
+                    pos_threshed = templatevol .* (templatevol>=thresholded_pos); % elementwise greater than operator to threshold positive tail of test betas
+                case options.hypodirection{2} 
+                    neg_threshed = templatevol .* (templatevol<=thresholded_neg); % elementwise less than operator to threshold negative tail of test betas.
+                case options.hypodirection{3} % Now build a two-tailed thresholded version
+                threshmask = and(templatevol > 0,templatevol >= thresholded_twotail_upper) | and(templatevol < 0,templatevol <= thresholded_twotail_lower);
+                twotail_threshed = templatevol .* threshmask; % mask the two-tailed beta mask for this null data...
             end
 
-            testvol_thresholded = thresholded_mask; % now evaluate the surviving voxels for clusters...
-            CC = bwconncomp(testvol_thresholded, 6);
-            largest_cluster_size = max(cellfun(@numel,CC.PixelIdxList(1,:))); % max val for numels in each cluster object found
-            if isempty(largest_cluster_size)
-                largest_cluster_size = 0;
-            else % threshold the volume and write it out.
-                if parameters.SavePostClusterwiseThresholdedPermutations % then save them...
-                    out_map = remove_scatter_clusters(testvol_thresholded, largest_cluster_size-1);
-                    variables.vo.fname = fullfile(variables.output_folder.clusterwise,[permtype '_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumClusterwise) '_largest_cluster.nii']);
-                    spm_write_vol(variables.vo, out_map);
+            if parameters.SavePostVoxelwiseThresholdedPermutations % then write out raw voxel thresholded images for this permutation.
+                switch parameters.tails
+                    case options.hypodirection{1} % 'one_positive'
+                        variables.vo.fname = fullfile(variables.output_folder.clusterwise,['pos_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
+                        spm_write_vol(variables.vo, pos_threshed);
+                    case options.hypodirection{2} %'one_negative'
+                        variables.vo.fname = fullfile(variables.output_folder.clusterwise,['neg_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
+                        spm_write_vol(variables.vo, neg_threshed);
+                    case options.hypodirection{3} %'two'
+                        variables.vo.fname = fullfile(variables.output_folder.clusterwise,['twotail_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
+                        spm_write_vol(variables.vo, twotail_threshed);
                 end
             end
-            all_max_cluster_sizes(f) = largest_cluster_size; % record...
-        end
-    end
-    close(h)
 
-    % Save the resulting cluster lists
-    fname = 'Largest clusters.mat';
-    save(fullfile(variables.output_folder.clusterwise,fname),'all_max_cluster_sizes')
-    
-    handles = UpdateProgress(handles,'Cleaning up null data...',1);
-    
-    % Clean up as necessary
-    if ~parameters.SavePermutationData
-        delete(outfname_big) % delete the monster bin file with raw permutation data in it.
-    end
+            if f <= parameters.PermNumClusterwise
+                switch parameters.tails
+                    case options.hypodirection{1}
+                        permtype='pos';
+                        thresholded_mask=pos_threshed;
+                    case options.hypodirection{2}
+                        permtype='neg';
+                        thresholded_mask=neg_threshed;
+                    case options.hypodirection{3}
+                        permtype='twotail';
+                        thresholded_mask=twotail_threshed;
+                end
+
+                testvol_thresholded = thresholded_mask; % now evaluate the surviving voxels for clusters...
+                CC = bwconncomp(testvol_thresholded, 6);
+                largest_cluster_size = max(cellfun(@numel,CC.PixelIdxList(1,:))); % max val for numels in each cluster object found
+                if isempty(largest_cluster_size)
+                    largest_cluster_size = 0;
+                else % threshold the volume and write it out.
+                    if parameters.SavePostClusterwiseThresholdedPermutations % then save them...
+                        out_map = remove_scatter_clusters(testvol_thresholded, largest_cluster_size-1);
+                        variables.vo.fname = fullfile(variables.output_folder.clusterwise,[permtype '_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumClusterwise) '_largest_cluster.nii']);
+                        spm_write_vol(variables.vo, out_map);
+                    end
+                end
+                all_max_cluster_sizes(f) = largest_cluster_size; % record...
+            end
+        end
+        close(h)
+
+        % Save the resulting cluster lists
+        fname = 'Largest clusters.mat';
+        save(fullfile(variables.output_folder.clusterwise,fname),'all_max_cluster_sizes')
+
+        handles = UpdateProgress(handles,'Cleaning up null data...',1);
+
+        % Clean up as necessary
+        if ~parameters.SavePermutationData
+            delete(outfname_big) % delete the monster bin file with raw permutation data in it.
+        end
+    end % end doNewFWE
     
 % for parallelization to eliminate large overhead transfering to and from workers
 function sliceData = extractSlice(all_perm_data,col,L)

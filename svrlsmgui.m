@@ -410,6 +410,9 @@ function details = CheckIfNecessaryFilesAreInstalled(handles)
         details.stats_toolbox = 0;
     end
     
+    % Add details for parallelization and the Parallel Computing Toolbox
+    warning('add deets for parallel...')
+    
 function doignore = IgnoreUnsavedChanges(handles)
     if isfield(handles.parameters,'is_saved') && ~handles.parameters.is_saved % then prompt if the user wants to continue or cancel.
         choice = questdlg('If you continue you will lose unsaved changes to this analysis configuration.', 'Unsaved Changes', 'Continue Anyway','Cancel','Cancel');
@@ -621,6 +624,8 @@ function runanalysisbutton_Callback(hObject, eventdata, handles)
     handles.parameters.datetime_run = date; % when the analysis was run.
     handles.parameters.PermNumClusterwise = handles.parameters.PermNumVoxelwise; % override the user so that these two values are the same.
     
+    %set(gcbo,'enable','off')
+    
     [success,handles] = RunAnalysis(hObject,eventdata,handles); % now returns handles 10/26/17
     
     if success
@@ -630,6 +635,7 @@ function runanalysisbutton_Callback(hObject, eventdata, handles)
         handles.parameters.analysis_is_completed = 2; % Error...
         handles = UpdateProgress(handles,'Analysis encountered an error and did not complete...',1);
     end
+    %set(gcbo,'enable','on')
     
     guidata(hObject, handles); % Update handles structure
     handles = PopulateGUIFromParameters(handles); % refresh gui so we can enable/disable control variable as necessary.

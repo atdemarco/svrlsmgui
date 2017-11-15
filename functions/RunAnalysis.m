@@ -199,6 +199,14 @@ if ~isfield(handles,'options')
     handles.options.hypodirection = {'One-tailed (positive)','One-tailed (negative)','Two-tailed'};
 end
 
+%%
+doOptimize = true;
+if doOptimize 
+    svr_cost=1:50;
+    svr_gamma=0.5:10;
+    [cost_best, gamma_best, acc] = optimize_parameters(parameters,variables, svr_cost, svr_gamma)
+end
+
 %% Beta-map
 handles = UpdateProgress(handles,'Computing beta map...',1);
 cmd = ['-s 3 -t 2 -c ', num2str(parameters.cost), ' -g ', num2str(parameters.gamma), ' -q'];
