@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 13-Nov-2017 13:40:01
+% Last Modified by GUIDE v2.5 16-Nov-2017 12:27:00
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -491,7 +491,7 @@ function handles = SaveSVRLSMGUIFile(handles,hObject)
 %     guidata(hObject, handles); % Update handles structure
 
 function quitmenu_Callback(hObject, eventdata, handles)
-    if IgnoreUnsavedChanges(handles), close(gcf); end
+    close(gcf) % to trigger close request fcn which handles unsaved changes...
     
 function scorefileeditbox_Callback(hObject, eventdata, handles)
 % This should never trigger.
@@ -883,3 +883,8 @@ function open_batch_job_Callback(hObject, eventdata, handles)
         end
     end
 
+
+
+% --- Executes when user attempts to close figure1.
+function figure1_CloseRequestFcn(hObject, eventdata, handles)
+    if IgnoreUnsavedChanges(handles), delete(hObject); end
