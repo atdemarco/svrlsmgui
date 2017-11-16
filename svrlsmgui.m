@@ -126,7 +126,7 @@ function parameters = GetDefaultParameters(handles)
 	
     mypath = fileparts(which('svrlsmgui'));
     
-    parameters.analysis_root = fullfile(mypath,'output'); % fullfil(mypath,''/Users/LauraSkipper/Documents/MATLAB/andrew/svrlsm/v01';
+    parameters.analysis_root = fullfile(mypath,'output');
     parameters.score_file = fullfile(mypath,'default','PNT.csv');
     parameters.score_name = 'Sim_ROI_123';
     parameters.lesion_img_folder = fullfile(mypath,'default','lesion_imgs'); %parameters.analysis_root
@@ -231,10 +231,10 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         end
     case 'choosescorefilebutton'
         [FileName,PathName] = uigetfile('*.csv','Select a file with behavioral scores.');
-        if FileName % if FileName == 0 then cancel was clicked.
+        if FileName
             scorefile_name =  fullfile(PathName,FileName);
             handles.parameters.score_file = scorefile_name;
-        else
+        else % cancel was clicked.
             changemade = false;
         end
     case 'chooseoutputfolderbutton'
@@ -276,7 +276,6 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         if isempty(newval) || newval <= 0 || newval >= 1 % then it's not a valid number...
             %set(gcbo,'string','.005');
             warndlg('Input must be a number between 0 and 1.');
-            %handles = PopulateGUIFromParameters(handles);           
             changemade = false;
         else % update the parameter value.
             handles.parameters.voxelwise_p = str2num(str);
@@ -287,10 +286,8 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         if isempty(newval) || newval <= 0 || newval >= 1 % then it's not a valid value...
             %set(gcbo,'string','.05');
             warndlg('Input must be a number between 0 and 1.');
-            %handles = PopulateGUIFromParameters(handles);           
             changemade = false;
         else % update the parameter value.
-            %handles.parameters.is_saved = 0;
             handles.parameters.clusterwisepeditbox = str2num(str);
         end
     case 'sv_scaling_95th_percentile'
@@ -304,47 +301,11 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         if isempty(str2num(str)) % then it's not a valid number...
             set(gcbo,'string','10000');
             warndlg('Input must be numerical');
-%         elseif str2num(str) < handles.parameters.PermNumClusterwise
-%             warndlg('Voxelwise permutations cannot be fewer than clusterwise permutations.');
-%             % handles = PopulateGUIFromParameters(handles);           
-%             changemade = false;
         else % update the parameter value.
-            %handles.parameters.is_saved = 0;
             handles.parameters.PermNumVoxelwise = str2num(str);
-            % ClusterWise is overridden and set at analysis runtime.
         end
-    case 'npermutationsclustereditbox' % This is clusterwise permutations
-        warning('This control is disabled and should not be used.')
-%         str = get(gcbo,'string');
-%         if isempty(str2num(str)) % then it's not a valid number...
-%             warndlg('Input must be numerical');
-%             %handles = PopulateGUIFromParameters(handles);
-%             set(gcbo,'string',num2str(handles.parameters.PermNumClusterwise));
-%             changemade = false;
-%         elseif str2num(str) > handles.parameters.PermNumVoxelwise %#ok<*ST2NM>
-%             warndlg('Cannot have more clusterwise permutations than voxelwise permutations.');
-%             %handles = PopulateGUIFromParameters(handles);
-%             set(gcbo,'string',num2str(handles.parameters.PermNumClusterwise));
-%             changemade = false;
-%         else % update the parameter value.
-%             handles.parameters.PermNumClusterwise = str2num(str);
-%         end
-%         %handles.parameters.is_saved = 0;
-    case 'permutation_unthresholded_checkbox'
-        handles.parameters.SavePreThresholdedPermutations = get(gcbo,'value');
-        %handles.parameters.is_saved = 0;
-    case 'permutation_voxelwise_checkbox'
-        handles.parameters.SavePostVoxelwiseThresholdedPermutations = get(gcbo,'value');
-        %handles.parameters.is_saved = 0;
-    case 'permutation_largest_cluster'
-        handles.parameters.SavePostClusterwiseThresholdedPermutations = get(gcbo,'value');
-        %handles.parameters.is_saved = 0;
-    case 'save_raw_permutation_data'
-        handles.parameters.SavePermutationData = get(gcbo,'value'); % leave the giant bin file?
-        %handles.parameters.is_saved = 0;
     case 'permutationtestingcheckbox' % enable/disable permutation testing.
         handles.parameters.DoPerformPermutationTesting = get(gcbo,'value'); % leave the giant bin file?
-        %handles.parameters.is_saved = 0;
     otherwise
         warndlg('Unknown callback object - has someone modified the code?')
 end
@@ -396,7 +357,6 @@ function details = CheckIfNecessaryFilesAreInstalled(handles)
     end
     
     % Now for the MATLAB statistics svr functions
-    
     matlab_stats_found = license('checkout','statistics_toolbox');
     if matlab_stats_found
         handles = UpdateProgress(handles,'MATLAB Statistics Toolbox license found.',1);
