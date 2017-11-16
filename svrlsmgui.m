@@ -586,9 +586,6 @@ function aboutmenu_Callback(hObject, eventdata, handles)
     helpdlg(helpstr,'About');
 
 function runanalysisbutton_Callback(hObject, eventdata, handles)
-    handles.parameters.datetime_run = date; % when the analysis was run.
-    handles.parameters.PermNumClusterwise = handles.parameters.PermNumVoxelwise; % override the user so that these two values are the same.
-    
     [success,handles] = RunAnalysis(hObject,eventdata,handles); % now returns handles 10/26/17
     
     if success
