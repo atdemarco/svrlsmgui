@@ -53,10 +53,6 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
 function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     handles.output = hObject; % Choose default command line output for svrlsmgui
     
-    % Hide some debugging controls...
-    tohide = [handles.permutation_unthresholded_checkbox handles.permutation_voxelwise_checkbox handles.permutation_largest_cluster handles.save_raw_permutation_data handles.text17];
-    set(tohide,'visible','off')
-    
     handles = ConfigureSVRLSMGUIOptions(handles);
     
     handles.details = CheckIfNecessaryFilesAreInstalled(handles);
