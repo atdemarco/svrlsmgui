@@ -200,11 +200,12 @@ if ~isfield(handles,'options')
 end
 
 %%
-doOptimize = true;
-if doOptimize 
-    svr_cost=1:50;
-    svr_gamma=0.5:10;
-    [cost_best, gamma_best, acc] = optimize_parameters(parameters,variables, svr_cost, svr_gamma)
+if parameters.optimize
+    svr_cost=1:5:50; %1:50;
+    svr_gamma=0.5:2:10;
+    [cost_best, gamma_best, acc] = optimize_parameters(handles,parameters,variables, svr_cost, svr_gamma);
+    parameters.cost = cost_best;
+    parameters.gamma = gamma_best;
 end
 
 %% Beta-map

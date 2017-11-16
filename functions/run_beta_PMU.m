@@ -167,7 +167,7 @@ if parameters.parallelize % try to parfor it...
     end
 else % otherwise, not parallelized
     
-    doNewFWE = false; % concept from Mirman
+    doNewFWE = true; % concept from Mirman
     
     if doNewFWE
         outfname_big_pvals = fullfile(variables.output_folder.clusterwise,['pmu_beta_map_p_vals_N_' num2str(parameters.PermNumVoxelwise) '.bin']);
@@ -199,7 +199,7 @@ else % otherwise, not parallelized
             all_ind = 1 : numel(curcol); % we'll reuse this vector
             for i = all_ind % for each svr beta value in the vector
                 ind_to_compare = setdiff(all_ind,i);
-                p_vec(i) = 1 - mean(curcol_sorted(i) < curcol_sorted(ind_to_compare)); % NB: IS THIS IS TAIL DEPENDENT!!!!!! DOES IT NEED TO BE DIFFERENT FOR ONE POS, ONE NEG, and TWOTAIL?
+                p_vec(i) = 1 - mean(curcol_sorted(i) < curcol_sorted(ind_to_compare)); % NB: this is not tail dependent, I don't think.
             end
             fwrite(pvalfileID, p_vec,'single');
         end
@@ -293,14 +293,14 @@ end
         all_perm_data_pvals = memmapfile(outfname_big_pvals,'Format','single');
         handles = UpdateProgress(handles,'Traversing null data p-value frames and noting Nth largest p-value...',1);
 
+        h = waitbar(0,'Traversing null p-value frames for Nth highest p-value...','Tag','WB');
         for f = 1 : parameters.PermNumVoxelwise % go through each frame of generated betas in the null data...
             waitbar(f/parameters.PermNumVoxelwise,h) % show progress.
             %frame_length = length(variables.m_idx);
             %frame_start_index = 1+((f-1)*frame_length); % +1 since not zero indexing
             %frame_end_index = (frame_start_index-1)+frame_length; % -1 so we are not 1 too long.
             %relevant_data_frame = all_perm_data.Data(frame_start_index:frame_end_index); % extract the frame
-            
-            relevant_data_frame = parameters.PermNumVoxelwise(f:parameters.PermNumVoxelwise:end); % need to skip every e.g., 10,000 since this is organized different than the big pmu binary file
+            relevant_data_frame = all_perm_data_pvals.Data(f:parameters.PermNumVoxelwise:end); % need to skip every e.g., 10,000 since this is organized different than the big pmu binary file
             
             %templatevol = zerostemplate;
             %templatevol(variables.m_idx) = relevant_data_frame; % put the beta values back in indices.
@@ -366,6 +366,7 @@ end
 %                 all_max_cluster_sizes(f) = largest_cluster_size; % record...
 %             end
         end
+        close(h)
         sorted_all_max_pvalue = sort(all_max_pvalue);
         disp('final map-wide pvalue:')
         sorted_all_max_pvalue(pos_thresh_index) % or neg thresh ..... 

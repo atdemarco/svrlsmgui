@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 13-Nov-2017 13:40:01
+% Last Modified by GUIDE v2.5 15-Nov-2017 10:54:41
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -127,7 +127,7 @@ function parameters = GetDefaultParameters(handles)
     parameters.analysis_is_completed = 0;
     parameters.parameter_file_name = ''; % identity of file if parameters were opened from a file.
     parameters.parallelize = false; % do not parallelize...
-	
+	parameters.optimize = false; % utilize optimization for gamma and cost parameters...?
     mypath = fileparts(which('svrlsmgui'));
     
     parameters.analysis_root = fullfile(mypath,'output'); % fullfil(mypath,''/Users/LauraSkipper/Documents/MATLAB/andrew/svrlsm/v01';
@@ -174,6 +174,8 @@ function handles = UpdateCurrentAnalysis(handles,hObject)
 changemade = true; % default
 
 switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what field it goes to -- and to validate
+    case 'optimize_menu'
+        handles.parameters.optimize = ~handles.parameters.optimize;
     case 'use_lib_svm'
         handles.parameters.useLibSVM = 1;
     case 'use_matlab_svr'
@@ -494,7 +496,8 @@ function handles = SaveSVRLSMGUIFile(handles,hObject)
 %     guidata(hObject, handles); % Update handles structure
 
 function quitmenu_Callback(hObject, eventdata, handles)
-    if IgnoreUnsavedChanges(handles), close(gcf); end
+    close(gcf)
+    %if IgnoreUnsavedChanges(handles), close(gcf); end
     
 function scorefileeditbox_Callback(hObject, eventdata, handles)
 % This should never trigger.
@@ -833,7 +836,6 @@ end
 % --------------------------------------------------------------------
 function use_lib_svm_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
-%handles.parameters.useLibSVM
 
 % --------------------------------------------------------------------
 function use_matlab_svr_Callback(hObject, eventdata, handles)
@@ -841,9 +843,18 @@ handles = UpdateCurrentAnalysis(handles,hObject);
 
 % --------------------------------------------------------------------
 function parameters_menu_Callback(hObject, eventdata, handles)
-set(handles.cost_menu,'label',['Cost: ' num2str(handles.parameters.cost)]);
-set(handles.gamma_menu,'label',['Gamma: ' num2str(handles.parameters.gamma)]);
-
+if handles.parameters.optimize
+    set(handles.optimize_menu,'Checked','on');
+    set(handles.cost_menu,'enable','on','label','Cost: AUTO');
+    set(handles.gamma_menu,'enable','on','label','Gamma: AUTO');
+    set(handles.cost_menu,'enable','off');
+    set(handles.gamma_menu,'enable','off');
+else
+    set(handles.optimize_menu,'Checked','off');
+    set(handles.cost_menu,'enable','on','label',['Cost: ' num2str(handles.parameters.cost)]);
+    set(handles.gamma_menu,'enable','on','label',['Gamma: ' num2str(handles.parameters.gamma)]);
+end
+    
 % --------------------------------------------------------------------
 function cost_menu_Callback(hObject, eventdata, handles)
     answer = inputdlg('Enter new parameter value for cost:','Cost Parameter',1,{num2str(handles.parameters.cost)});
@@ -872,7 +883,7 @@ function gamma_menu_Callback(hObject, eventdata, handles)
     
 % --------------------------------------------------------------------
 function optimize_menu_Callback(hObject, eventdata, handles)
-% add me with Mirman code
+    handles = UpdateCurrentAnalysis(handles,hObject);
 
 % --------------------------------------------------------------------
 function open_batch_job_Callback(hObject, eventdata, handles)
@@ -889,3 +900,5 @@ function open_batch_job_Callback(hObject, eventdata, handles)
         end
     end
 
+function figure1_CloseRequestFcn(hObject, eventdata, handles)
+    if IgnoreUnsavedChanges(handles), delete(hObject); end
