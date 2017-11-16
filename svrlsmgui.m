@@ -225,7 +225,13 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'chooselesionfolderbutton'
         folder_name = uigetdir(pwd,'Choose a folder containing lesion files for this analysis.');
         if folder_name % if folder_name == 0 then cancel was clicked.
-            handles.parameters.lesion_img_folder = folder_name;
+            [~,attribs] = fileattrib(folder_name); % we need read access from here.
+            if attribs.UserRead
+                handles.parameters.lesion_img_folder = folder_name;
+            else
+                warndlg('You do not have read access to the directory you selected for the lesion files. Adjust the permissions and try again.')
+                changemade = false;                
+            end
         else
             changemade = false;
         end
@@ -239,8 +245,14 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         end
     case 'chooseoutputfolderbutton'
         folder_name = uigetdir(pwd,'Choose a folder in which to save this analysis.');
-        if folder_name % if folder_name == 0 then cancel was clicked.
-            handles.parameters.analysis_out_path = folder_name;
+        if folder_name
+            [~,attribs] = fileattrib(folder_name); % we need read/write access from here.
+            if attribs.UserRead && attribs.UserWrite
+                handles.parameters.analysis_out_path = folder_name;
+            else
+                warndlg('You do not have read and write access to the directory you selected to save your output. Adjust the permissions and try again.')
+                changemade = false;                                
+            end
         else
             changemade = false;
         end
