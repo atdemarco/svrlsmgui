@@ -14,7 +14,6 @@ handles.parameters.time.starttime = datestr(now);
 
 handles.parameters.datetime_run = date; % when the analysis was run. 
 handles.parameters.PermNumClusterwise = handles.parameters.PermNumVoxelwise; % override the user so that these two values are the same.
-
     
 tic; % this is what we'll use to time the execution of the analysis...
 
@@ -36,6 +35,19 @@ if OutputDirectoryAlreadyExists(handles)
 end
 
 handles = UpdateProgress(handles,'Beginning analysis...',1);
+
+% Expose the Cancel Analysis button...
+if handles.parameters.runfromgui
+    set(handles.runanalysisbutton,'visible','off')
+    set(handles.cancelanalysisbutton,'visible','on')
+    set(handles.cancelanalysisbutton,'string','Cancel Analysis')
+    set(gcf,'userdata',[]); % in case it was set to 'cancel' previously we don't want to re-trigger
+    
+    % disable analysis controls while running.
+    set(get(handles.permutationtestingpanel,'children'),'enable','off')
+    set(get(handles.analysispreferencespanel,'children'),'enable','off')
+    set(get(handles.covariatespanel,'children'),'enable','off')
+end
 
 parameters = handles.parameters; % Make a local copy of parameters struct ... for convenience.
 
@@ -160,6 +172,8 @@ if any(behavioral_nuisance_model_options)
 else
     handles = UpdateProgress(handles,sprintf('No behavior nuisance model will be constructed.'),1);
 end
+
+check_for_interrupt(parameters)
     
 %% Construct and run voxelwise lesion data nuisance model
 brain_nuisance_model_options = [handles.parameters.apply_covariates_to_lesion include_lesionvol_in_brain_nuisance_model];
@@ -199,23 +213,22 @@ if ~isfield(handles,'options')
     handles.options.hypodirection = {'One-tailed (positive)','One-tailed (negative)','Two-tailed'};
 end
 
+check_for_interrupt(parameters)
+
 %% Beta-map
 handles = UpdateProgress(handles,'Computing beta map...',1);
 cmd = ['-s 3 -t 2 -c ', num2str(parameters.cost), ' -g ', num2str(parameters.gamma), ' -q'];
 variables.one_score = variables.one_score*100/max(abs(variables.one_score));
 [beta_map, variables] = get_beta_map(parameters, variables, cmd);
 
+check_for_interrupt(parameters)
+
 %% Permutation test
 if parameters.DoPerformPermutationTesting
     handles = UpdateProgress(handles,'Creating output directories...',1);
     success = CreateDirectory(variables.output_folder.voxelwise); %#ok<NASGU>
-    
-    variables.output_folder.voxelwise
-    
     success = CreateDirectory(variables.output_folder.clusterwise); %#ok<NASGU>
-    
-    variables.output_folder.clusterwise
-    
+
     [variables] = run_beta_PMU(parameters, variables, cmd, beta_map,handles);
 
     % Read in real beta map
@@ -385,11 +398,22 @@ tosave=handles.parameters;
 try delete(parmsfile); end %#ok<TRYNC>
 save(tosave.parmsfile,'tosave') % write the file again so we know the analysis completed
 success = 1;
+
+check_for_interrupt(parameters)
+
 htmloutpath = SummarizeAnalysis(tosave.parmsfile); % if desired...
 
 catch ME % If the analysis encounters an error of some sort...
       success = 0; % failure.
       all_waitbars = findobj(allchild(0), 'flat', 'Tag', 'WB');
       close([all_waitbars]); % clean up.
-      rethrow(ME)
+
+      if strcmp(get(gcf,'userdata'),'cancel') % if the running was canceled, then let's make sure to clean up what happened...
+          set(handles.cancelanalysisbutton,'string','Cancel Analysis')
+          set(gcf,'userdata',[]); % in case it was set to 'cancel' previously we don't want to re-trigger
+          success = 2; % cancelled...
+          % don't rethrow here -- stop gracefully.
+      else
+        rethrow(ME)
+      end
 end

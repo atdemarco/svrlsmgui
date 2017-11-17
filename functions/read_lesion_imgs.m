@@ -1,9 +1,9 @@
 function [variables] = read_lesion_imgs(parameters, variables)
 %% Read the lesion data and get the lesion volume of each subject
 variables.lesion_vol = zeros(size(variables.one_score));
-h = waitbar(0,'Reading lesioned images...');
+h = waitbar(0,'Reading lesioned images...','Tag','WB');
 for ni= 1 : numel(variables.SubjectID)
-    waitbar(ni / length(variables.SubjectID)) % show progress.
+    waitbar(ni / length(variables.SubjectID),h) % show progress.
     fname = fullfile(parameters.lesion_img_folder, [variables.SubjectID{ni}, '.nii']);
     if ~exist(fname,'file')
         error('Cannot find lesion image file: %s\n', fname);
@@ -15,6 +15,7 @@ for ni= 1 : numel(variables.SubjectID)
     tmp = tmp > 0;  % Binarize
     Ldat(:,:,:,ni) = uint8(tmp);
     variables.lesion_vol(ni,1) = sum(tmp(:));
+    check_for_interrupt(parameters)
 end
 
 close(h) % close the waitbar...
@@ -58,8 +59,8 @@ if ~isempty(sub_idx)
         if ~isempty(variables.covariates)
             variables.covariates(ni,:) = []; % remove whole rows.
         end
-       variables.scorefiledata(ni,:) = [];
-       variables.SubjectID(sub_idx(ni)) = [];
+        variables.scorefiledata(ni,:) = [];
+        variables.SubjectID(sub_idx(ni)) = [];
     end
     %fprintf('\n')
 end

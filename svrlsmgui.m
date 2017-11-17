@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 16-Nov-2017 12:27:00
+% Last Modified by GUIDE v2.5 16-Nov-2017 13:15:55
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -88,7 +88,7 @@ function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     %        other than max of the map when backprojecting the analysis
     %        hyperplane
     
-    handles.parameters.gui_version = 0.08; % version of the the gui
+    handles.parameters.gui_version = 0.09; % version of the the gui
 
     guidata(hObject, handles); % Update handles structure
 
@@ -97,6 +97,8 @@ function handles = DisableAll(handles)
     set(get(handles.analysispreferencespanel,'children'),'enable','off')
     set(get(handles.covariatespanel,'children'),'enable','off')
     set(get(handles.permutationtestingpanel,'children'),'enable','off')
+    set([handles.viewresultsbutton handles.cancelanalysisbutton handles.runanalysisbutton],'enable','off')
+    set(handles.optionsmenu,'enable','off') % since viewing this menu references parameters that may not be loaded.  
     msgbox('One or more necessary component is missing from MATLAB''s path. Address the message in the SVRLSMgui window and restart this gui.')
 
 function handles = LoadParametersFromSVRLSMFile(handles,hObject,filepath)
@@ -378,6 +380,15 @@ function details = CheckIfNecessaryFilesAreInstalled(handles)
         details.stats_toolbox = 0;
     end
     
+    % can we parallelize?
+    if ~isempty(ver('distcomp')) && license('test','Distrib_Computing_Toolbox') && feature('numcores') > 1
+        handles = UpdateProgress(handles,'Parallelization available: Distributed Computing Toolbox installed, licensed, and > 1 core.',1);
+        details.can_parallelize = true;
+    else
+        handles = UpdateProgress(handles,'Parallelization unavailable: Distributed Computing Toolbox not installed, or only 1 core.',1);
+        details.can_parallelize = false;
+    end
+    
 function doignore = IgnoreUnsavedChanges(handles)
     if isfield(handles.parameters,'is_saved') && ~handles.parameters.is_saved % then prompt if the user wants to continue or cancel.
         choice = questdlg('If you continue you will lose unsaved changes to this analysis configuration.', 'Unsaved Changes', 'Continue Anyway','Cancel','Cancel');
@@ -586,14 +597,27 @@ function aboutmenu_Callback(hObject, eventdata, handles)
     helpdlg(helpstr,'About');
 
 function runanalysisbutton_Callback(hObject, eventdata, handles)
+
     [success,handles] = RunAnalysis(hObject,eventdata,handles); % now returns handles 10/26/17
+
+    set(handles.runanalysisbutton,'visible','on')
+    set(handles.cancelanalysisbutton,'visible','off')
+
+    % re-enable interface...
+    set(get(handles.permutationtestingpanel,'children'),'enable','on')
+    set(get(handles.analysispreferencespanel,'children'),'enable','on')
+    set(get(handles.covariatespanel,'children'),'enable','on')
     
-    if success
-       handles.parameters.analysis_is_completed = 1; % Completed...
-       handles = UpdateProgress(handles,'Analysis has completed successfully.',1);
-    else
-        handles.parameters.analysis_is_completed = 2; % Error...
-        handles = UpdateProgress(handles,'Analysis encountered an error and did not complete...',1);
+    switch success
+        case 1 % success
+            handles.parameters.analysis_is_completed = 1; % Completed...
+            handles = UpdateProgress(handles,'Analysis has completed successfully.',1);
+        case 0 % failure
+            handles.parameters.analysis_is_completed = 2; % Error...
+            handles = UpdateProgress(handles,'Analysis encountered an error and did not complete...',1);
+        case 2 % interrupted
+            handles.parameters.analysis_is_completed = 2; % Error...
+            handles = UpdateProgress(handles,'Analysis was interrupted by user...',1);            
     end
     
     guidata(hObject, handles); % Update handles structure
@@ -703,10 +727,18 @@ else
     set(handles.output_summary_menu,'Checked','off')
 end
 
+% is parallelization selected by user?
 if handles.parameters.parallelize
     set(handles.parallelizemenu,'Checked','on')
 else
     set(handles.parallelizemenu,'Checked','off')
+end
+
+% can we parallelize on this platform?
+if handles.details.can_parallelize
+    set(handles.parallelizemenu,'Enable','on')
+else
+    set(handles.parallelizemenu,'Enable','off')
 end
 
 function parallelizemenu_Callback(hObject, eventdata, handles)
@@ -848,8 +880,11 @@ function open_batch_job_Callback(hObject, eventdata, handles)
         end
     end
 
-
-
-% --- Executes when user attempts to close figure1.
 function figure1_CloseRequestFcn(hObject, eventdata, handles)
     if IgnoreUnsavedChanges(handles), delete(hObject); end
+
+function cancelanalysisbutton_Callback(hObject, eventdata, handles)
+    % attempt to interrupt an ongoing analysis
+    set(hObject,'string','Cancelling...')
+    set(gcf,'userdata','cancel')
+    guidata(hObject, handles); % Update handles structure so it saves...

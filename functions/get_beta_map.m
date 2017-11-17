@@ -7,15 +7,8 @@ function [beta_map, variables] = get_beta_map(parameters, variables, cmd)
         w = m.sv_coef'*m.SVs;
         
         % as of v0.8 9/29/17 we have customized scaling available in parameters.svscaling
-%         parameters.svscaling
-%         if parameters.svscaling == 100
-%             disp('using old mode')
 %             variables.beta_scale = 10/max(abs(w));    
-%         else
-%             disp('using new mode')
             variables.beta_scale = 10 / prctile(abs(w),parameters.svscaling); % parameters.svscaling is e.g, 100 or 99 or 95
-%         end
-        
     else % using MATLAB
         [m,w,variables] = ComputeMatlabSVRLSM(parameters,variables);
     end

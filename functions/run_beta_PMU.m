@@ -23,6 +23,7 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
         totalperms = parameters.PermNumVoxelwise;
         uselibsvm = parameters.useLibSVM;
         parfor PermIdx=1:parameters.PermNumVoxelwise
+            check_for_interrupt(parameters)
             trial_score = permdata(:,PermIdx); % extract the row of permuted data.
             if uselibsvm
                 m = svmtrain(trial_score,sparseLesionData,cmd); %#ok<SVMTRAIN>
@@ -48,6 +49,7 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
         fileID = fopen(outfname_big,'w');
         
         for PermIdx=1:parameters.PermNumVoxelwise
+            check_for_interrupt(parameters)
             curpermfilepath = fullfile(outpath,['pmu_beta_map_' num2str(PermIdx) '_of_' num2str(totalperms) '.bin']);
             cur_perm_data = memmapfile(curpermfilepath,'Format','single');
             fwrite(fileID, cur_perm_data.Data,'single');
@@ -64,6 +66,8 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
 
         h = waitbar(0,'Computing beta permutations...','Tag','WB');
         for PermIdx=1:parameters.PermNumVoxelwise
+            check_for_interrupt(parameters)
+
             % random permute subjects order
             loc = randperm(length(variables.one_score));
             trial_score = variables.one_score(loc);
@@ -146,6 +150,7 @@ if parameters.parallelize % try to parfor it...
     Opt2 = options.hypodirection{2};
     Opt3 = options.hypodirection{3};
     parfor col = 1 : length(variables.m_idx) 
+        check_for_interrupt(parameters)
         curcol = extractSlice(all_perm_data,col,L); % note this is a function at the bottom of this file..
         observed_beta = ori_beta_val(col); % original observed beta value.
         curcol_sorted = sort(curcol); % smallest values at the top..
@@ -168,6 +173,7 @@ else
     dataRef = all_perm_data.Data; % will this eliminate some overhead  
     L = length(variables.m_idx);
     for col = 1 : length(variables.m_idx) 
+        check_for_interrupt(parameters)
         curcol = dataRef(col:L:end); % index out each column using skips the length of the data...
         observed_beta = ori_beta_val(col); % original observed beta value.
         curcol_sorted = sort(curcol); % smallest values at the top..
@@ -277,6 +283,7 @@ end
 
     for f = 1 : parameters.PermNumVoxelwise % go through each frame of generated betas in the null data...
         waitbar(f/parameters.PermNumVoxelwise,h) % show progress.
+        check_for_interrupt(parameters)
 
         frame_length = length(variables.m_idx);
         frame_start_index = 1+((f-1)*frame_length); % +1 since not zero indexing
