@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 15-Nov-2017 10:54:41
+% Last Modified by GUIDE v2.5 18-Nov-2017 12:32:33
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -902,3 +902,10 @@ function open_batch_job_Callback(hObject, eventdata, handles)
 
 function figure1_CloseRequestFcn(hObject, eventdata, handles)
     if IgnoreUnsavedChanges(handles), delete(hObject); end
+
+
+% --- Executes on button press in startoptimbutton.
+function startoptimbutton_Callback(hObject, eventdata, handles)
+% hObject    handle to startoptimbutton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)

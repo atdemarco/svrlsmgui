@@ -10,13 +10,18 @@ function handles = PopulateGUIFromParameters(handles)
 
     warning('off', 'MATLAB:table:ModifiedVarnames');
     warning('off', 'MATLAB:table:ModifiedAndSavedVarnames') % MATLAB 2017a
-    handles.scorefiledata = readtable(handles.parameters.score_file); % )
+    
+    %% Read in the score file.
+    handles.scorefiledata = readtable(handles.parameters.score_file); 
 
+    %% Find the column for lesion files: 'RegistryCode'
     handles.scorefile.subjectrows = find(~cellfun(@isempty,handles.scorefiledata.RegistryCode));
     handles.scorefile.nsubs_in_scorefile = numel(handles.scorefile.subjectrows);
 
     check_variables = [handles.parameters.score_name handles.parameters.control_variable_names];
 
+    % add - don't show registry code as one_score by default.
+    
     for c = 1 : numel(check_variables)
         if ~any(strcmp(check_variables{c},handles.scorefiledata.Properties.VariableNames)) % then variable doesn't exist in file
             if c == 1
@@ -30,6 +35,7 @@ function handles = PopulateGUIFromParameters(handles)
     check_variables = [handles.parameters.score_name handles.parameters.control_variable_names];
     track_variables = zeros(handles.scorefile.nsubs_in_scorefile,numel(check_variables));
 
+    %% Try to discover who has the currently specified behaviors necessary for the currently specified analysis    
     for c = 1 : numel(check_variables)
         coldata = handles.scorefiledata.(check_variables{c})(handles.scorefile.subjectrows);
         if isa(coldata,'cell')
@@ -39,7 +45,8 @@ function handles = PopulateGUIFromParameters(handles)
         end
     end
     num_subs_that_have_all_variables = sum(all(track_variables,2));
-
+    
+    %% Try to discover the actual lesion files specified in the design file
     handles.scorefile.haslesion_file = zeros(numel(handles.scorefile.subjectrows),1);
     for p = handles.scorefile.subjectrows'
         lesion_found = 0; % default to *not found*
@@ -50,7 +57,7 @@ function handles = PopulateGUIFromParameters(handles)
     end
     handles.scorefile.total_lesions_found = sum(handles.scorefile.haslesion_file);
 
-    %%
+    %% Display who has all the required lesion files and scores for the current configuration...
 
     set(handles.lesionfilepresenttextbox,'String',sprintf('%d/%d subjects have lesion files.',handles.scorefile.total_lesions_found,handles.scorefile.nsubs_in_scorefile))
     set(handles.behavioralscorepresenttextbox,'String',sprintf('%d/%d subjects have required scores.',num_subs_that_have_all_variables,handles.scorefile.nsubs_in_scorefile))
@@ -66,7 +73,9 @@ function handles = PopulateGUIFromParameters(handles)
         handles.parameters.score_name = tmp{1}; % default to 1....
         desired_score_name_index = find(strcmp(handles.parameters.score_name,tmp));
     end
-
+    
+    %% Paint the options to the GUI controls.
+    
     set(handles.scorenamepopupmenu,'Value',desired_score_name_index)
 
     if ~isempty(handles.parameters.control_variable_names)
@@ -81,7 +90,7 @@ function handles = PopulateGUIFromParameters(handles)
         set(handles.removecovariate,'enable','on')
     end
 
-
+    % Configure the run/view analysis button enabled or not
     if handles.parameters.analysis_is_completed == 0 % hasn't been run yet.
         set(handles.runanalysisbutton,'enable','on')
         set(handles.viewresultsbutton,'enable','off')
@@ -95,10 +104,6 @@ function handles = PopulateGUIFromParameters(handles)
 
     set(handles.analysisnameeditbox,'String',handles.parameters.analysis_name)
     set(handles.lesionthresholdeditbox,'String',num2str(handles.parameters.lesion_thresh))
-
-
-%    set(handles.computebetamapcheckbox,'value',handles.parameters.beta_map)
-%    set(handles.computesensitivitymapcheckbox,'value',handles.parameters.sensitivity_map)
     set(handles.invertpmapcheckbox,'value',handles.parameters.invert_p_map_flag)
 
     set([handles.applycovariatestobehaviorcheckbox handles.applycovariatestolesioncheckbox],'enable','on'); % so we can modify them
@@ -111,8 +116,8 @@ function handles = PopulateGUIFromParameters(handles)
 
     set(handles.npermutationseditbox,'string',num2str(handles.parameters.PermNumVoxelwise))
 
-    set(handles.cluster_voxelwise_p_editbox,'string',strrep(num2str(handles.parameters.voxelwise_p),'0.','.')) % remove leading zero - at PT request 5/2/17
-    set(handles.clusterwisepeditbox,'string',strrep(num2str(handles.parameters.clusterwise_p),'0.','.')) % remove leading zero - at PT request 5/2/17
+    set(handles.cluster_voxelwise_p_editbox,'string',strrep(num2str(handles.parameters.voxelwise_p),'0.','.')) % remove leading zero at PT request 5/2/17
+    set(handles.clusterwisepeditbox,'string',strrep(num2str(handles.parameters.clusterwise_p),'0.','.')) % remove leading zero at PT request 5/2/17
 
     set(handles.permutationtestingcheckbox,'value',handles.parameters.DoPerformPermutationTesting)
 
@@ -122,7 +127,7 @@ function handles = PopulateGUIFromParameters(handles)
     else
         set(get(handles.permutationtestingpanel,'children'),'enable','on')
     end
-
+    
     set(handles.lesionvolumecorrectiondropdown,'Value',find(strcmp(handles.parameters.lesionvolcorrection,get(handles.lesionvolumecorrectiondropdown,'String'))))
     set(handles.hypodirectiondropdown,'Value',         find(strcmp(handles.parameters.tails              ,get(handles.hypodirectiondropdown,'String'))))
 
