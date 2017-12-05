@@ -414,6 +414,7 @@ catch ME % If the analysis encounters an error of some sort...
           success = 2; % cancelled...
           % don't rethrow here -- stop gracefully.
       else
-        rethrow(ME)
+        handles.error = ME;
+%         rethrow(ME)
       end
 end
