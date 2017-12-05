@@ -615,7 +615,7 @@ function runanalysisbutton_Callback(hObject, eventdata, handles)
         case 0 % failure
             handles.parameters.analysis_is_completed = 2; % Error...
             handles = UpdateProgress(handles,'Analysis encountered an error and did not complete...',1);
-            rethrow(ME)
+            rethrow(handles.error)
         case 2 % interrupted
             handles.parameters.analysis_is_completed = 2; % Error...
             handles = UpdateProgress(handles,'Analysis was interrupted by user...',1);            
