@@ -510,23 +510,18 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-% ok
 function chooselesionfolderbutton_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
 
-% ok
 function computebetamapcheckbox_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
 
-% ok
 function computesensitivitymapcheckbox_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
 
-% ok
 function invertpmapcheckbox_Callback(hObject, eventdata, handles) %#ok<*INUSL>
 handles = UpdateCurrentAnalysis(handles,hObject);
 
-% ok
 function analysisnameeditbox_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
 
@@ -535,14 +530,12 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-% ok
 function onlinehelpmenu_Callback(hObject, eventdata, handles)
 %web('https://docs.google.com/a/email.arizona.edu/document/d/1McqkxVTmhzkE2tesAk_d4zp_qS_xt8WWGQlZ1lUONmY/edit?usp=sharing','-browser')
 web('https://github.com/atdemarco/svrlsmgui/wiki')
 
 function figure1_CreateFcn(hObject, eventdata, handles)
 
-% ok
 function clusterwisepeditbox_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
 
@@ -551,7 +544,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-% ok
 function lesionthresholdeditbox_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
 
@@ -613,9 +605,8 @@ function runanalysisbutton_Callback(hObject, eventdata, handles)
             handles.parameters.analysis_is_completed = 1; % Completed...
             handles = UpdateProgress(handles,'Analysis has completed successfully.',1);
         case 0 % failure
-            handles.parameters.analysis_is_completed = 2; % Error...
+            handles.parameters.analysis_is_completed = 0; % Error...
             handles = UpdateProgress(handles,'Analysis encountered an error and did not complete...',1);
-            rethrow(handles.error)
         case 2 % interrupted
             handles.parameters.analysis_is_completed = 2; % Error...
             handles = UpdateProgress(handles,'Analysis was interrupted by user...',1);            
@@ -623,6 +614,10 @@ function runanalysisbutton_Callback(hObject, eventdata, handles)
     
     guidata(hObject, handles); % Update handles structure
     handles = PopulateGUIFromParameters(handles); % refresh gui so we can enable/disable control variable as necessary.
+    
+    if success == 0 % error
+        rethrow(handles.error)
+    end
 
 function permutationtestingcheckbox_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);

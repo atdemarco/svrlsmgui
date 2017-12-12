@@ -4,17 +4,29 @@ variables.lesion_vol = zeros(size(variables.one_score));
 h = waitbar(0,'Reading lesioned images...','Tag','WB');
 for ni= 1 : numel(variables.SubjectID)
     waitbar(ni / length(variables.SubjectID),h) % show progress.
-    fname = fullfile(parameters.lesion_img_folder, [variables.SubjectID{ni}, '.nii']);
+    subname = [variables.SubjectID{ni}, '.nii'];
+    fname = fullfile(parameters.lesion_img_folder, subname);
+    
     if ~exist(fname,'file')
         error('Cannot find lesion image file: %s\n', fname);
-        %continue;
     end
+    
     vo = spm_vol(fname);
     tmp = spm_read_vols(vo);
     tmp(isnan(tmp(:))) = 0; % Denan the image.
-    tmp = tmp > 0;  % Binarize
     Ldat(:,:,:,ni) = uint8(tmp);
-    variables.lesion_vol(ni,1) = sum(tmp(:));
+    
+    %% get a mask based on overlapping map and given mask image
+    unique_tmp = unique(tmp(:));
+    n_unique_tmp = numel(unique_tmp);
+    if n_unique_tmp ~= 2
+        warning(['Lesion file ' subname ' has more than 2 unique values, suggesting that there are values other than 0 and 1. Unless this is deliberate, binarize your lesion files and rerun this analysis.']')
+    end
+    
+    % for calculating lesion volume, we need to binarize the files.
+    tmp_binarized = tmp(:) > 0;
+    variables.lesion_vol(ni,1) = sum(tmp_binarized);
+
     check_for_interrupt(parameters)
 end
 
@@ -24,8 +36,8 @@ variables.vo = vo;
 variables.vo.name = 'NULL.nii';
 variables.vo.dt = [64,0];
 
-%% get a mask based on overlapping map and given mask image
-mask_map = sum(Ldat, 4);
+Ldat_binarized = Ldat > 0; % binarize for the count
+mask_map = sum(Ldat_binarized, 4);
 
 variables.l_idx = find(mask_map >= 1); % index of voxels with lesion on at least 1 subject
 variables.m_idx = find(mask_map >= parameters.lesion_thresh);  % index of voxels that will be excluded from result
