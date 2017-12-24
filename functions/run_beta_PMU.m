@@ -27,13 +27,15 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
             trial_score = permdata(:,PermIdx); % extract the row of permuted data.
             if uselibsvm
                 m = svmtrain(trial_score,sparseLesionData,cmd); %#ok<SVMTRAIN>
+                alpha = m.sv_coef';
+                SVs = m.SVs;
             else
                 [m,~,~] = ComputeMatlabSVRLSM(parameters,variables);
+                alpha = m.Alpha'; 
+                SVs = m.SupportVectors;
             end
             
-            alpha = m.sv_coef.';
-            SVs = m.SVs;
-            pmu_beta_map = betascale * alpha*SVs;
+            pmu_beta_map = betascale * alpha * SVs;
             tmp_map = zerostemplate; % zeros(nx, ny, nz);
             tmp_map(lidx) = pmu_beta_map;
             pmu_beta_map = tmp_map(midx).';
