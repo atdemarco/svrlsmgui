@@ -95,12 +95,11 @@ function variables = run_beta_PMU(parameters, variables, cmd, beta_map,handles)
             if parameters.useLibSVM
                 alpha = m.sv_coef';
                 SVs = m.SVs;
-                pmu_beta_map = variables.beta_scale * alpha*SVs;
             else % MATLAB's version.
                 alpha = m.Alpha'; 
                 SVs = m.SupportVectors;
-                pmu_beta_map = variables.beta_scale * alpha*SVs;
             end
+            pmu_beta_map = variables.beta_scale * alpha*SVs;
             
             
             tmp_map = zerostemplate;
