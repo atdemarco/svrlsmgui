@@ -874,8 +874,9 @@ function open_batch_job_Callback(hObject, eventdata, handles)
     fname = {files.name};
     [s,v] = listdlg('PromptString','Choose the analyse to run:','SelectionMode','multi','ListString',fname);
     if ~v, return; end % cancelled..
-    for f = s
-        curfile = fullfile(folder_name,fname{s});
+    for f = 1:numel(s)
+        curs=s(f);
+        curfile = fullfile(folder_name,fname{curs});
         try % so one or more can fail without stopping them all.
             success = RunAnalysisNoGUI(curfile);
         end

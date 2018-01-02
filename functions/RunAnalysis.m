@@ -1,8 +1,8 @@
 function [success,handles] = RunAnalysis(hObject,eventdata,handles)
-if ~isempty(gcbo)
-    handles.parameters.runfromgui = 1;
-else
+if isempty(gcbo) || strcmp(get(gcbo,'Label'),'Batch Job...')
     handles.parameters.runfromgui = 0;
+else
+    handles.parameters.runfromgui = 1;
 end
 try
 
