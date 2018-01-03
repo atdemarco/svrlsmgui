@@ -1,5 +1,5 @@
 function [success,handles] = RunAnalysis(hObject,eventdata,handles)
-if isempty(gcbo) || strcmp(get(gcbo,'Label'),'Batch Job...')
+if isempty(gcbo) || isa(gcbo,'matlab.ui.container.Menu')
     handles.parameters.runfromgui = 0;
 else
     handles.parameters.runfromgui = 1;
