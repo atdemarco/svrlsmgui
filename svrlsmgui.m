@@ -390,7 +390,9 @@ function details = CheckIfNecessaryFilesAreInstalled(handles)
     end
     
 function doignore = IgnoreUnsavedChanges(handles)
-    if isfield(handles.parameters,'is_saved') && ~handles.parameters.is_saved % then prompt if the user wants to continue or cancel.
+    if ~isfield(handles,'parameters') % something bad probably happened with gui initiation.
+    	doignore = 1; 
+    elseif isfield(handles.parameters,'is_saved') && ~handles.parameters.is_saved % then prompt if the user wants to continue or cancel.
         choice = questdlg('If you continue you will lose unsaved changes to this analysis configuration.', 'Unsaved Changes', 'Continue Anyway','Cancel','Cancel');
         switch choice
             case 'Continue Anyway', doignore = 1;
