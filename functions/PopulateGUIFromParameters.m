@@ -74,11 +74,11 @@ function handles = PopulateGUIFromParameters(handles)
     else
         set(handles.realcovariateslistbox,'String',[],'Value',[])
     end
-
-    if isempty(handles.parameters.control_variable_names)
-        set(handles.removecovariate,'enable','off')
+    
+    if numel(handles.parameters.control_variable_names) == 0
+        set([handles.removecovariate handles.realcovariateslistbox],'enable','off')
     else
-        set(handles.removecovariate,'enable','on')
+        set([handles.removecovariate handles.realcovariateslistbox],'enable','on')
     end
 
 
