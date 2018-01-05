@@ -501,32 +501,27 @@ if isfield(parms,'behavioralmodeldata') % earlier versions don't have this (adde
 %         figindex = find(strcmp({children.Tag},'corrPlotFigure')); % match the tag, which is hard coded
 %         corrplothandle = children(figindex); %#ok<FNDSB> % grab its handle;
         
-        fprintf(parms.fileID,'%s','[temporarily disabled]');
-
-%         [r,p] = corrcoef(parms.behavioralmodeldata);
-%         
-%         corrplothandle = figure;
-%         for subp = 1:numel(p)
-%             [i,j] = ind2sub(size(p),subp);
-%             subplot(size(p,1),size(p,2),subp)
-%             currp = p(i,j);
-%             currr = r(i,j);
-%             
-%             
-%         end
-%         parms.behavioralmodeldata
-%         
-%         
-%         correl_im = getframe(corrplothandle); % capture whole figure.
-%         close(corrplothandle); % close the fig
-%         
-%         corrfname = 'behav_nuisance_correl_im.png';
-%         imwrite(correl_im.cdata,fullfile(picturedir,corrfname));
-%         imstr = 'Correlation between variables in the behavioral nuisance model.';
-%         fprintf(parms.fileID,'%s<br>',imstr);
-%         cur_alttext = imstr;
-%         imtxt = ['<img src="images/' corrfname '" alt="' cur_alttext '">'];
-%         fprintf(parms.fileID,'%s',imtxt);
+        [r,p] = corrcoef(parms.behavioralmodeldata);
+        
+        corrplothandle = figure;
+        for subp = 1:numel(p)
+            [iu,ind2sub(size(p),subp);
+            subplot(size(p,1),size(p,2),subp)
+            
+        end
+        parms.behavioralmodeldata
+        
+        
+        correl_im = getframe(corrplothandle); % capture whole figure.
+        close(corrplothandle); % close the fig
+        
+        corrfname = 'behav_nuisance_correl_im.png';
+        imwrite(correl_im.cdata,fullfile(picturedir,corrfname));
+        imstr = 'Correlation between variables in the behavioral nuisance model.';
+        fprintf(parms.fileID,'%s<br>',imstr);
+        cur_alttext = imstr;
+        imtxt = ['<img src="images/' corrfname '" alt="' cur_alttext '">'];
+        fprintf(parms.fileID,'%s',imtxt);
         
     end
     fprintf(parms.fileID,'<br><br>'); % break before next section
