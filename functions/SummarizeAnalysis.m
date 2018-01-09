@@ -316,10 +316,11 @@ if ~parms.DoPerformPermutationTesting % (voxelwisedir) % permutation testing was
     fprintf(parms.fileID,'%s<br>',imstr);
 else
     voxelwisedir = fullfile(parms.outdir,voxelwisedir(1).name);
+    voxmap = dir(fullfile(voxelwisedir,'Voxelwise thresholded beta*.nii')); % now wildcard because of (abs) in some cases as of v0.1 (Jan 18)
+    clustfiles = ~cellfun(@isempty,cellfun(@(x) strfind(x,'clust'), {voxmap.name},'uni',false));
+    voxmap(clustfiles) = []; % remove any clust files inadvertantly picked up by the wildcard
 
-    fullfile(parms.outdir,voxelwisedir,'Voxelwise thresholded beta map.nii')
-
-    [threshbetamap.hdr,threshbetamap.img]=read_nifti(fullfile(voxelwisedir,'Voxelwise thresholded beta map.nii'));
+    [threshbetamap.hdr,threshbetamap.img]=read_nifti(fullfile(voxelwisedir,voxmap(1).name));
     raw_threshbetamap_img = threshbetamap.img~=0;
     beta_scale_max = 10; % so the cmap values will fall within -10 to 10.
     threshbetamap.img = threshbetamap.img + beta_scale_max;
@@ -382,7 +383,8 @@ if ~parms.DoPerformPermutationTesting
     imstr = 'Permutation testing was not conducted so there is no cluster correction data to display.';
     fprintf(parms.fileID,'%s<br>',imstr);
 else
-    clusttablefile = fullfile(voxelwisedir,'Voxelwise thresholded beta map_clustidx.nii');
+    clustfile = dir(fullfile(voxelwisedir,'Voxelwise thresholded beta map*clustidx.nii'));
+    clusttablefile = fullfile(voxelwisedir,clustfile(1).name); % 'Voxelwise thresholded beta map_clustidx.nii');
     %if ~exist(clusttablefile,'file'), return; end % cheap way to avoid an error.
 
     [clusteridx.hdr,clusteridx.img]=read_nifti(clusttablefile);
@@ -477,8 +479,6 @@ end
 
 fprintf(parms.fileID,'<br><br>');
 
-parms.behavioralmodeldata
-
 %% Variable correlation diagnostics from behavioral nuisance model - added v0.08 
 if isfield(parms,'behavioralmodeldata') % earlier versions don't have this (added 0.08, 9/25/17)
     fprintf(parms.fileID,'<hr>');
@@ -488,45 +488,52 @@ if isfield(parms,'behavioralmodeldata') % earlier versions don't have this (adde
     else
         fprintf(parms.fileID,'%s','Correlation plot of variables included in behavioral nuisance model, including the primary behavioral predictor of interest:');
         
-        % close previous figs of this name because corrplot returns no handle.
-%         baseinfo = get(0); % we need to find the handle of the corr plot figure...
-%         children = baseinfo.Children; % it's one of the children of 0 
-%         close(children(strcmp({children.Tag},'corrPlotFigure'))); % same named figures will cause problem
-%         
-%         set(0,'DefaultFigureVisible','off'); % so we don't show the figure when we plot it
-%         corrplot(parms.behavioralmodeldata,'testR','on'); % do the plotting.
-%         set(0,'DefaultFigureVisible','on'); % back on;
-%         baseinfo = get(0); % we need to find the handle of the corr plot figure...
-%         children = baseinfo.Children; % it's one of the children of 0 
-%         figindex = find(strcmp({children.Tag},'corrPlotFigure')); % match the tag, which is hard coded
-%         corrplothandle = children(figindex); %#ok<FNDSB> % grab its handle;
+        % this was updated in version 0.1 to not need the econometrics toolbox, and to fix the invisibility bug caused with manipulating figure visibility.
+        rawdata=table2array(parms.behavioralmodeldata);
+        [r,p] = corrcoef(rawdata);
         
-        fprintf(parms.fileID,'%s','[temporarily disabled]');
-
-%         [r,p] = corrcoef(parms.behavioralmodeldata);
-%         
-%         corrplothandle = figure;
-%         for subp = 1:numel(p)
-%             [i,j] = ind2sub(size(p),subp);
-%             subplot(size(p,1),size(p,2),subp)
-%             currp = p(i,j);
-%             currr = r(i,j);
-%             
-%             
-%         end
-%         parms.behavioralmodeldata
-%         
-%         
-%         correl_im = getframe(corrplothandle); % capture whole figure.
-%         close(corrplothandle); % close the fig
-%         
-%         corrfname = 'behav_nuisance_correl_im.png';
-%         imwrite(correl_im.cdata,fullfile(picturedir,corrfname));
-%         imstr = 'Correlation between variables in the behavioral nuisance model.';
-%         fprintf(parms.fileID,'%s<br>',imstr);
-%         cur_alttext = imstr;
-%         imtxt = ['<img src="images/' corrfname '" alt="' cur_alttext '">'];
-%         fprintf(parms.fileID,'%s',imtxt);
+        corrplothandle = figure;
+        
+        for subp = 1:numel(p)
+            [i,j] = ind2sub(size(p),subp);
+            subplot(size(p,1),size(p,2),subp)
+            currp = p(i,j);
+            currr = r(i,j);
+            if i == 1 % left column
+                ylabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{i},'_',' ')); % so latex interp doesn't subscript things
+                hold on;
+            end
+            if j == size(p,2) % bottom row
+                xlabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{j}),'_',' '); % so latex interp doesn't subscript things
+                hold on;
+            end
+            if i ~= j  % then we're off diagonal.
+              scatter(rawdata(:,i),rawdata(:,j));
+              hold on;
+              if currp < .05 % alpha for highlighting the r value red.
+                  color = 'r';
+              else
+                  color = 'k';
+              end
+              xoffset = max(get(gca,'xlim')) - (.9*diff(get(gca,'xlim'))); % 90% from the right
+              yoffset = max(get(gca,'ylim')) - (.15*diff(get(gca,'ylim'))); % 15% down from the top
+              text(yoffset,xoffset,sprintf('%0.2f',currr),'Color',color)
+            else % we're on diagonal. show a histogram of this variable
+                histogram(rawdata(:,i)); % i == j so we'll just use i.
+                hold on;
+            end
+        end        
+        
+        correl_im = getframe(corrplothandle); % capture whole figure.
+        close(corrplothandle); % close the fig
+        
+        corrfname = 'behav_nuisance_correl_im.png';
+        imwrite(correl_im.cdata,fullfile(picturedir,corrfname));
+        imstr = 'Correlation between variables in the behavioral nuisance model.';
+        fprintf(parms.fileID,'%s<br>',imstr);
+        cur_alttext = imstr;
+        imtxt = ['<img src="images/' corrfname '" alt="' cur_alttext '">'];
+        fprintf(parms.fileID,'%s',imtxt);
         
     end
     fprintf(parms.fileID,'<br><br>'); % break before next section
@@ -540,7 +547,7 @@ if ~parms.DoPerformPermutationTesting
     fprintf(parms.fileID,'%s','Permutation testing was not conducted, so there is no cluster correction threshold stability to display.');
 else
     assess_interval=100;
-    clusters_to_show = 5;
+    clusters_to_show = 5; %clusters_to_show = min(last_significant_cluster,5); % if there's less than 5, then 
     cluster_stability_im = plotClusterPermStability(clusterwisedir,assess_interval,clusters_to_show);
 
     imwrite(cluster_stability_im,fullfile(picturedir,'cluster_stabil.png'));

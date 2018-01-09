@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 16-Nov-2017 13:15:55
+% Last Modified by GUIDE v2.5 06-Jan-2018 17:42:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -87,9 +87,9 @@ function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     %        output file (corrplot); added custom support vector scaling
     %        other than max of the map when backprojecting the analysis
     %        hyperplane
+    % 0.10 - January 2018 - fixing reported bugs
     
-    handles.parameters.gui_version = 0.09; % version of the the gui
-
+    handles.parameters.gui_version = 0.10; % version of the the gui
     guidata(hObject, handles); % Update handles structure
 
 
@@ -118,7 +118,7 @@ function parameters = GetDefaultParameters(handles)
 
     parameters.svscaling = 100; % defaults to max (100th percentile) - added 9/29/17
     
-    parameters.control_variable_name = []; % vestigial.
+    %parameters.control_variable_name = []; % vestigial.
     parameters.tails = handles.options.hypodirection{1};
     parameters.datetime_run = []; % when the analysis was run.
     parameters.datetime_save = []; % when the analysis was run.
@@ -242,6 +242,9 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         if FileName
             scorefile_name =  fullfile(PathName,FileName);
             handles.parameters.score_file = scorefile_name;
+            handles.parameters.control_variable_names = {}; % also clear covariates...  
+            
+            
         else % cancel was clicked.
             changemade = false;
         end
@@ -460,17 +463,6 @@ function handles = SaveSVRLSMGUIFile(handles,hObject)
     handles = UpdateProgress(handles,['Saved ' handles.parameters.parameter_file_name],1);
     handles = LoadParametersFromSVRLSMFile(handles,hObject,handles.parameters.parameter_file_name);
 
-% function preferencesmenu_Callback(hObject, eventdata, handles)
-%     prefs_to_update = preferences(handles.parameters,handles.details);
-%     if ~isempty(prefs_to_update) % then prefs window "cancel" button was not clicked - update vals.
-%         handles.parameters.gamma = prefs_to_update.gamma;
-%         handles.parameters.cost = prefs_to_update.cost;
-%         handles.parameters.useLibSVM = prefs_to_update.useLibSVM;
-%         handles.parameters.is_saved = 0;
-%         handles = PopulateGUIFromParameters(handles);
-%     end
-%     guidata(hObject, handles); % Update handles structure
-
 function quitmenu_Callback(hObject, eventdata, handles)
     close(gcf) % to trigger close request fcn which handles unsaved changes...
     
@@ -677,6 +669,7 @@ end
 
 % Select in the dropdown list the selected item.
 function realcovariateslistbox_Callback(hObject, eventdata, handles)
+if isempty(get(hObject,'String')), return; end % hack for error
 contents = cellstr(get(hObject,'String'));
 val = contents{get(hObject,'Value')};
 dropdownoptions = get(handles.potentialcovariateslist,'string');

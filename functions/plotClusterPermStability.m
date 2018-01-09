@@ -45,7 +45,7 @@ end
 clusterfig = figure('visible','off');
 
 colororder = repmat('rcmgby',1,5);
-plot(assess_indices,vals,'ko-')
+plot(assess_indices,vals,'k.-')
 xlims = get(gca,'xlim');
 
 % Now show observed clusters..

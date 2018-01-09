@@ -88,6 +88,20 @@ save(tosave.parmsfile,'tosave') % write the file
 
 %% Read lesion images...
 handles = UpdateProgress(handles,'Reading lesion images...',1);
+
+% remove people with non-existent lesion data
+has_no_lesion = cellfun(@(x) exist(fullfile(parameters.lesion_img_folder,[x '.nii']),'file'),variables.SubjectID) == 0;
+n_without_lesions=sum(has_no_lesion);
+if n_without_lesions > 0
+    handles = UpdateProgress(handles,[num2str(n_without_lesions) ' lesion file(s) not found, so subject(s) removed from analysis.'],1);
+    variables.SubNum = variables.SubNum - n_without_lesions;
+    variables.scorefiledata(has_no_lesion,:) = []; % remove rows
+    variables.one_score(has_no_lesion) = []; % remove rows
+    variables.SubjectID(has_no_lesion) = []; % remove rows
+else
+    handles = UpdateProgress(handles,'All lesion files found.',1);
+end
+
 variables = read_lesion_imgs(parameters, variables);
 
 handles = UpdateProgress(handles,'Successfully read behavioral scores and lesion images...',1);
@@ -122,6 +136,12 @@ handles.parameters.lesion_vol = variables.lesion_vol;
 
 %% Construct and run behavioral nuisance model
 handles.parameters.behavioralmodeldata = []; % empty unless we have behavioral model to run - for summary diagnostics
+
+if isempty(parameters.control_variable_names) % then make sure we won't try to apply any covariates...
+    handles.parameters.apply_covariates_to_behavior = 0;
+    handles.parameters.apply_covariates_to_lesion = 0;
+end
+
 behavioral_nuisance_model_options = [handles.parameters.apply_covariates_to_behavior include_lesionvol_in_behavioral_nuisance_model];
 if any(behavioral_nuisance_model_options)
     modelspec = 'one_score ~';
@@ -176,6 +196,8 @@ end
 check_for_interrupt(parameters)
     
 %% Construct and run voxelwise lesion data nuisance model
+
+
 brain_nuisance_model_options = [handles.parameters.apply_covariates_to_lesion include_lesionvol_in_brain_nuisance_model];
 if any(brain_nuisance_model_options)
     tmp = [];
@@ -290,17 +312,18 @@ if parameters.DoPerformPermutationTesting
             one_tailed_beta_out_vol(real_beta_map_vol > null_beta_cutoff_map_neg) = 0; % zero out subthreshold values.
             survivingbetavals = numel(find(one_tailed_beta_out_vol(:))); % number of voxel beta values that survive permutation at the requested p value.
 
-            % Write voxelwise thresholded (for negative 1 tailed)
-            variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map.nii'); 
-            spm_write_vol(variables.vo, one_tailed_beta_out_vol);
+            % Write voxelwise thresholded (for negative 1 tailed) - the absolute values was added in v0.1 at Peter's request for display easy
+            variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map (abs).nii');  % since v0.1 we abs() here
+            spm_write_vol(variables.vo, abs(one_tailed_beta_out_vol)); % since v0.1 we abs() here
 
             % Cluster the resulting data.
-            thresh=-.01; % this is negative so we get "deactivations"
+            %thresh=-.01; % this is negative so we get "deactivations"
+            thresh=.01; % now it's positive because we've abs'ed the beta map 
             [cimg, ctab, peaks] = cluster(variables.vo.fname, thresh,1); %, saveoutputs);
             
             if ~isempty(ctab)
                 % Calculate clusterwise P value for each cluster.
-                clustertablefile = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map_clusttab.txt');
+                clustertablefile = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map (abs)_clusttab.txt'); % nb since v0.1 we abs() here
                 T=readtable(clustertablefile);
                 T.clusterP = nan(size(T,1),1);
                 for r = 1 : size(T,1)
@@ -337,7 +360,7 @@ if parameters.DoPerformPermutationTesting
             survivingbetavals = numel(find(two_tailed_beta_out_vol(:))); % number of voxel beta values that survive permutation at the requested p value.
 
             % Write voxelwise thresholded (for two tailed both tails)
-            variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map.nii');
+            variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map.nii'); % in the future abs() this.
             spm_write_vol(variables.vo, two_tailed_beta_out_vol);
 
             % Write ABS of voxelwise thresholded (for two tailed both tails) so that we can measure clusters in one fell swoop.
@@ -401,7 +424,7 @@ success = 1;
 
 check_for_interrupt(parameters)
 
-htmloutpath = SummarizeAnalysis(tosave.parmsfile); % if desired...
+SummarizeAnalysis(tosave.parmsfile); % if desired...
 
 catch ME % If the analysis encounters an error of some sort...
       success = 0; % failure.

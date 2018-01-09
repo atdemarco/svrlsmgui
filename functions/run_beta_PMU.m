@@ -204,20 +204,31 @@ else
         waitbar(col/L,h) % show progress.
     end
     close(h)
-%    error('compare svrBs to pvals')
+
 end
     %% Construct volumes of the solved alpha values and write them out - and write out beta cutoff maps, too
     switch parameters.tails
         case options.hypodirection{1} % 'one_positive' % One-tailed positive tail...
+            thresholded_pos = zerostemplate; 
             if parameters.invert_p_map_flag % it's already inverted
+                thresholded_pos(variables.m_idx) = one_tail_pos_alphas;            
+                % Write unthresholded P-map for the positive tail            
+                variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values (inv).nii');
+                spm_write_vol(variables.vo, thresholded_pos);
+                % Now write out the thresholded P-map for the positive tail            
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values (inv).nii');
+                thresholded_pos(thresholded_pos < (1-parameters.voxelwise_p)) = 0; % zero out sub-threshold p value voxels (note the 1-p)
+                spm_write_vol(variables.vo, thresholded_pos);
             else
-                one_tail_pos_alphas = 1 - one_tail_pos_alphas;
+                thresholded_pos(variables.m_idx) = 1 - one_tail_pos_alphas;
+                % Write unthresholded P-map for the positive tail            
+                variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values.nii');
+                spm_write_vol(variables.vo, thresholded_pos);
+                % Now write out the thresholded P-map for the positive tail    
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values.nii');
+                thresholded_pos(thresholded_pos > parameters.voxelwise_p) = 0; % zero out voxels whose values are greater than p 
+                spm_write_vol(variables.vo, thresholded_pos);
             end
-            thresholded_pos = zerostemplate; % zeros(nx,ny,nz); % reserve space;
-            thresholded_pos(variables.m_idx) = one_tail_pos_alphas;
-            spm_write_vol(variables.vo, thresholded_pos);
             
             % Now write out beta cutoff map.
             thresholded_pos = zerostemplate; % zeros(nx,ny,nz); % reserve space
@@ -226,38 +237,56 @@ end
             spm_write_vol(variables.vo, thresholded_pos);
             
         case options.hypodirection{2} % 'one_negative' % One-tailed negative tail...
-            
+            thresholded_neg = zerostemplate;
             if parameters.invert_p_map_flag  % it's already inverted...
+                thresholded_neg(variables.m_idx) = one_tail_neg_alphas;
+                % write out unthresholded negative p map
+                variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values (inv).nii');
+                spm_write_vol(variables.vo, thresholded_neg);
+                % write out thresholded negative p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values (inv).nii');
+                thresholded_neg(thresholded_neg < (1-parameters.voxelwise_p)) = 0; % zero out subthreshold p value voxels (note 1-p)
+                spm_write_vol(variables.vo, thresholded_neg);
             else
-                one_tail_neg_alphas = 1 - one_tail_neg_alphas;
+                thresholded_neg(variables.m_idx) = 1 - one_tail_neg_alphas;
+                % write out unthresholded negative p map
+                variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values.nii');
+                spm_write_vol(variables.vo, thresholded_neg);
+                % write out thresholded negative p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values.nii');
+                thresholded_neg(thresholded_neg > parameters.voxelwise_p) = 0; % zero out voxels whose values are greater than p 
+                spm_write_vol(variables.vo, thresholded_neg);
             end
-            thresholded_neg = zerostemplate; % zeros(nx,ny,nz); % reserve space;
-            thresholded_neg(variables.m_idx) = one_tail_neg_alphas;
-            spm_write_vol(variables.vo, thresholded_neg);
             
-            % Now beta cutoff map.
-            thresholded_neg = zerostemplate; % zeros(nx,ny,nz); % reserve space;
+            % Now beta cutoff map for one-taled negative tail...
+            thresholded_neg = zerostemplate; % reserve space;
             thresholded_neg(variables.m_idx) = neg_beta_map_cutoff; % put the 5th percentil beta values back into the lesion indices in a full volume
             variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (negative tail).nii');
             spm_write_vol(variables.vo, thresholded_neg);
             
-            
         case options.hypodirection{3} %'two'% Both tails..
-            
+            thresholded_twotails = zerostemplate;% reserve space;
             if parameters.invert_p_map_flag % it's already inverted...
+                thresholded_twotails(variables.m_idx) = twotails_alphas;
+                % write out unthresholded p map
+                variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values (inv).nii');
+                spm_write_vol(variables.vo, thresholded_twotails);
+                % write out thresholded p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values (inv).nii');
+                thresholded_twotails(thresholded_twotails < (1-(parameters.voxelwise_p/2))) = 0; % zero out subthreshold p value voxels (note 1-p)
+                spm_write_vol(variables.vo, thresholded_twotails);
             else
-                twotails_alphas = 1 - twotails_alphas;
-                variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values.nii');
+                thresholded_twotails(variables.m_idx) = 1 - twotails_alphas;
+                % write out unthresholded p map
+                variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values.nii');
+                spm_write_vol(variables.vo, thresholded_twotails);
+                % write out thresholded p map
+                variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values (inv).nii');
+                thresholded_twotails(thresholded_twotails > (parameters.voxelwise_p/2)) = 0; % zero out supra-alpha p value voxels
+                spm_write_vol(variables.vo, thresholded_twotails);
             end
             
-            thresholded_twotails = zerostemplate; % zeros(nx,ny,nz); % reserve space;
-            thresholded_twotails(variables.m_idx) = twotails_alphas;
-            spm_write_vol(variables.vo, thresholded_twotails);
-            
-            % Bet cutoff maps
+            % Beta cutoff maps
             % Two-tailed upper tail
             thresholded_twotail_upper = zerostemplate; %zeros(nx,ny,nz); % reserve space;
             thresholded_twotail_upper(variables.m_idx) = two_tailed_beta_map_cutoff_pos; % put the 2.5th percentil beta values back into the lesion indices in a full volume
@@ -354,12 +383,13 @@ end
 
     % Save the resulting cluster lists
     fname = 'Largest clusters.mat';
-    save(fullfile(variables.output_folder.clusterwise,fname),'all_max_cluster_sizes')
+    save(fullfile(variables.output_folder.clusterwise,fname),'all_max_cluster_sizes');
     
     handles = UpdateProgress(handles,'Cleaning up null data...',1);
     
     % Clean up as necessary
     if ~parameters.SavePermutationData
+        fclose all;
         delete(outfname_big) % delete the monster bin file with raw permutation data in it.
     end
     
