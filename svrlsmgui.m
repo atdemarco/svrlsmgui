@@ -425,6 +425,7 @@ function openmenu_Callback(hObject, eventdata, handles)
     if IgnoreUnsavedChanges(handles)
         [FileName,PathName] = uigetfile('*.mat','Select an SVRLSMGUI parameters file.');
         filepath = fullfile(PathName,FileName);
+        if ~exist(filepath,'file'), return; end
         handles = LoadParametersFromSVRLSMFile(handles,hObject,filepath);
     end
 
