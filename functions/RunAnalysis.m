@@ -98,11 +98,13 @@ if n_without_lesions > 0
     variables.scorefiledata(has_no_lesion,:) = []; % remove rows
     variables.one_score(has_no_lesion) = []; % remove rows
     variables.SubjectID(has_no_lesion) = []; % remove rows
+    if isempty(variables.SubjectID), error('No subjects are included in this analysis.'); end
 else
     handles = UpdateProgress(handles,'All lesion files found.',1);
 end
 
 variables = read_lesion_imgs(parameters, variables);
+
 
 handles = UpdateProgress(handles,'Successfully read behavioral scores and lesion images...',1);
 handles = UpdateProgress(handles,sprintf('Running analysis for ''%s''...', parameters.score_name),1);
