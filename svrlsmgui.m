@@ -442,18 +442,18 @@ function savemenu_Callback(hObject, eventdata, handles)
     end
    
 function saveasmenu_Callback(hObject, eventdata, handles)
+    
     if exist(handles.parameters.parameter_file_name,'file')
-        defaultsavename = fileparts(handles.parameters.parameter_file_name);
+        defaultsavename = handles.parameters.parameter_file_name; % fileparts(handles.parameters.parameter_file_name);
     else
-        defaultsavename = [handles.parameters.analysis_name '.mat'];
+        defaultsavename = fullfile(pwd,'Unnamed.mat');
     end
-    [file,path] = uiputfile(defaultsavename,'Save SVRLSM GUI parameter file as...');
+    [file,path] = uiputfile('*.mat','Save SVRLSM GUI parameter file as...',defaultsavename);
     if file == 0 % then cancel was pressed
         return;
     end
 
     handles.parameters.parameter_file_name = fullfile(path,file);
-    handles.parameters.parameter_file_name
     handles = SaveSVRLSMGUIFile(handles,hObject); % do the actual save.
     
 function handles = SaveSVRLSMGUIFile(handles,hObject)
@@ -530,14 +530,11 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-% ok
 function onlinehelpmenu_Callback(hObject, eventdata, handles)
-%web('https://docs.google.com/a/email.arizona.edu/document/d/1McqkxVTmhzkE2tesAk_d4zp_qS_xt8WWGQlZ1lUONmY/edit?usp=sharing','-browser')
 web('https://github.com/atdemarco/svrlsmgui/wiki')
 
 function figure1_CreateFcn(hObject, eventdata, handles)
 
-% ok
 function clusterwisepeditbox_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
 
@@ -546,7 +543,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-% ok
 function lesionthresholdeditbox_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
 
@@ -860,7 +856,7 @@ function gamma_menu_Callback(hObject, eventdata, handles)
     
 % --------------------------------------------------------------------
 function optimize_menu_Callback(hObject, eventdata, handles)
-% add me with Mirman code
+% add me based on Mirman code
 
 % --------------------------------------------------------------------
 function open_batch_job_Callback(hObject, eventdata, handles)
@@ -872,11 +868,19 @@ function open_batch_job_Callback(hObject, eventdata, handles)
     if ~v, return; end % cancelled..
     for f = 1:numel(s)
         curs=s(f);
-        curfile = fullfile(folder_name,fname{curs});
+        curfname = fname{curs};
+        curfile = fullfile(folder_name,curfname);
         try % so one or more can fail without stopping them all.
+            handles = UpdateProgress(handles,['Batch: Starting file ' curfname '...'],1);
             success = RunAnalysisNoGUI(curfile);
+            handles = UpdateProgress(handles,['Batch: Finished file ' curfname '.'],1);            
+        catch
+            msg = ['A batch job specified by file ' fname{curs} ' encountered an error and was aborted.'];
+            warning(msg)
         end
     end
+    handles = UpdateProgress(handles,'Batch: All batch jobs done.',1);            
+
 
 function figure1_CloseRequestFcn(hObject, eventdata, handles)
     if IgnoreUnsavedChanges(handles), delete(hObject); end
