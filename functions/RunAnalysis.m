@@ -426,7 +426,14 @@ success = 1;
 
 check_for_interrupt(parameters)
 
-SummarizeAnalysis(tosave.parmsfile); % if desired...
+handles = UpdateProgress(handles,sprintf('Starting summary file...'),1);
+htmlout = SummarizeAnalysis(tosave.parmsfile); % if desired...
+
+if isempty(htmlout) % then no summary requsted
+    handles = UpdateProgress(handles,sprintf('Done, no summary file requested.'),1);
+else
+    handles = UpdateProgress(handles,sprintf('Done writing summary file...'),1);    
+end
 
 catch ME % If the analysis encounters an error of some sort...
       success = 0; % failure.

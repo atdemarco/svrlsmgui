@@ -5,6 +5,7 @@ function out = plotClusterPermStability(varargin)
 % ... input parameters -- 1 analysis rootdir, 2 assess interval
 % AD 8/4/17
 % added getframe on 9/1/17
+% added references to specific figures (invis) for plot commands 1/20/18
 if nargin > 0
     clusterwisedir = varargin{1};
 else % default for testing...
@@ -43,10 +44,10 @@ for a = assess_indices
 end
 
 clusterfig = figure('visible','off');
-
+a = axes(clusterfig);
 colororder = repmat('rcmgby',1,5);
-plot(assess_indices,vals,'k.-')
-xlims = get(gca,'xlim');
+plot(assess_indices,vals,'k.-','parent',a)
+xlims = get(a,'xlim');
 
 % Now show observed clusters..
 empirically_observed_clusters = readtable(fullfile(clusterwisedir,'Table of clusters.txt'));
@@ -54,15 +55,15 @@ legendvals = {['Critical value ' pvalstr]}; % we'll add onto this with cluster i
 for c = 1 : ntopclusters
     if size(empirically_observed_clusters,1) >= c % make sure it exists.
         curclustersize = empirically_observed_clusters.nvox(c);
-        line(xlims,[curclustersize curclustersize],'Color',colororder(c),'LineStyle','--');
+        line(xlims,[curclustersize curclustersize],'Color',colororder(c),'LineStyle','--','parent',a);
         legendvals{end+1} = ['Cluster ' num2str(c) ' (' num2str(curclustersize) ')'];
     end
     
 end
 legend(legendvals)
-title(['Stability of crit clust vol (P = ' pvalstr ') by perm, N = ' num2str(nclusterperms)])
-ylabel('Cluster volume')
-xlabel('Permutation number')
+title(['Stability of crit clust vol (P = ' pvalstr ') by perm, N = ' num2str(nclusterperms)],'parent',a)
+ylabel('Cluster volume','parent',a)
+xlabel('Permutation number','parent',a)
 
 F = getframe(clusterfig); % capture whole figure.
 close(clusterfig);

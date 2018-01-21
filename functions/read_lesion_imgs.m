@@ -5,9 +5,8 @@ h = waitbar(0,'Reading lesioned images...','Tag','WB');
 for ni= 1 : numel(variables.SubjectID)
     waitbar(ni / length(variables.SubjectID),h) % show progress.
     fname = fullfile(parameters.lesion_img_folder, [variables.SubjectID{ni}, '.nii']);
-    if ~exist(fname,'file')
-        error('Cannot find lesion image file: %s\n', fname);
-        %continue;
+    if ~exist(fname,'file') % this should not happen since we've checked for missing files already...
+        error('Cannot find lesion image file: %s\n', fname); 
     end
     vo = spm_vol(fname);
     tmp = spm_read_vols(vo);

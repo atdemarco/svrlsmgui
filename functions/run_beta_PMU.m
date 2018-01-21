@@ -361,7 +361,7 @@ end
                     thresholded_mask=neg_threshed;
                 case options.hypodirection{3}
                     permtype='twotail';
-                    thresholded_mask=twotail_threshed;
+                   the file thresholded_mask=twotail_threshed;
             end
 
             testvol_thresholded = thresholded_mask; % now evaluate the surviving voxels for clusters...
@@ -391,6 +391,9 @@ end
     if ~parameters.SavePermutationData
         fclose all;
         delete(outfname_big) % delete the monster bin file with raw permutation data in it.
+        if exist(outfname_big,'file') % if it still exists...
+            warning('Was not able to delete large binary file with raw permutation data in it. This file can be quite large, so you may want to manually clean up the file and adjust your permissions so that this is not a problem in the future.')
+        end
     end
     
 % for parallelization to eliminate large overhead transfering to and from workers

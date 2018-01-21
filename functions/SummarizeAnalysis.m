@@ -12,7 +12,9 @@ htmloutpath = [];
 parms=load(parmsfile);
 parms=parms.tosave;
 
-if isfield(parms,'do_make_summary') && ~parms.do_make_summary, return; end
+if isfield(parms,'do_make_summary') && ~parms.do_make_summary
+    return
+end
     
 parms.outdir = fullfile(parms.baseoutputdir,[parms.score_name ', ' lower(parms.tails)]); %  force lower
 
@@ -206,8 +208,9 @@ for sl = 1 : numel(slices_to_show)
         G(relevant_pixels) = cmap(curlesionoverlapslice(relevant_pixels),2);
         B(relevant_pixels) = cmap(curlesionoverlapslice(relevant_pixels),3);
     end
+    
     % Edge outline min lesion mask overlap slice in green now.
-    curminslice= rot90(minlesionmask.img(:,:,slices_to_show(sl)));
+    curminslice=rot90(minlesionmask.img(:,:,slices_to_show(sl)));
     curminslice=fliplr(curminslice);
     BW = edge(curminslice,'Canny'); % edge detect.
     G(BW) = 1; % outline lesion min overlap region
@@ -227,7 +230,6 @@ imdata = PaintBarOnFrame(imdata,bar_location,cmapname,1,nlesionstotal,'Overlap o
 imwrite(imdata,fullfile(picturedir,'lesion_overlap.png'));
 
 %% Label our output  in the html file and put in the html tags to make it show up.
-
 fprintf(parms.fileID,'<hr>'); % horizonal line
 fprintf(parms.fileID,'<h2>Lesion overlaps</h2>');
 
@@ -276,7 +278,6 @@ for sl = 1 : numel(slices_to_show)
     
     % Edge outline min lesion mask overlap slice in green now.
     doOutline = false;
-    
     if doOutline
         curminslice = rot90(minlesionmask.img(:,:,slices_to_show(sl))); %#ok<*UNRCH>
         curminslice=fliplr(curminslice);
@@ -444,7 +445,8 @@ else
         rgbsize = size(curRGB);
 
         f = figure('visible','off');
-        imshow(curRGB)
+        a=axes(f);
+        imshow(curRGB,'Parent',a);
         %truesize; % one pixel per row/col
         % for each significant cluster, is there any relevant voxel on this frame?
         for c = 1 : last_significant_cluster
@@ -456,7 +458,7 @@ else
             end
         end
 
-        [curRGB] = frame2im(getframe); % pull frame
+        [curRGB] = frame2im(getframe(a)); % pull frame
         close(f)
         curRGB = curRGB(1:rgbsize(1),1:rgbsize(2),:); % what pixels are we losing?
         sep = 255*ones(size(curanatomicalslice,1),1,3); % add vertical separator...
@@ -486,40 +488,40 @@ if isfield(parms,'behavioralmodeldata') % earlier versions don't have this (adde
     if isempty(parms.behavioralmodeldata)
         fprintf(parms.fileID,'%s','No behavioral nuisance model was included, so no diagnostics to display.');
     else
-        fprintf(parms.fileID,'%s','Correlation plot of variables included in behavioral nuisance model, including the primary behavioral predictor of interest:');
+        fprintf(parms.fileID,'%s','Correlation plot of variables included in behavioral nuisance model, including the primary behavioral predictor of interest:<br>');
         
         % this was updated in version 0.1 to not need the econometrics toolbox, and to fix the invisibility bug caused with manipulating figure visibility.
         rawdata=table2array(parms.behavioralmodeldata);
         [r,p] = corrcoef(rawdata);
         
-        corrplothandle = figure;
-        
+        corrplothandle = figure('visible','off');
         for subp = 1:numel(p)
+            drawnow
             [i,j] = ind2sub(size(p),subp);
-            subplot(size(p,1),size(p,2),subp)
+            curSP = subplot(size(p,1),size(p,2),subp,'parent',corrplothandle);
             currp = p(i,j);
             currr = r(i,j);
             if i == 1 % left column
-                ylabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{i},'_',' ')); % so latex interp doesn't subscript things
+                ylabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{j},'_',' '),'parent',curSP); % so latex interp doesn't subscript things
                 hold on;
             end
             if j == size(p,2) % bottom row
-                xlabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{j}),'_',' '); % so latex interp doesn't subscript things
+                xlabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{i},'_',' '),'parent',curSP); % so latex interp doesn't subscript things
                 hold on;
             end
             if i ~= j  % then we're off diagonal.
-              scatter(rawdata(:,i),rawdata(:,j));
+              scatter(rawdata(:,i),rawdata(:,j),'parent',curSP);
               hold on;
               if currp < .05 % alpha for highlighting the r value red.
                   color = 'r';
               else
                   color = 'k';
               end
-              xoffset = max(get(gca,'xlim')) - (.9*diff(get(gca,'xlim'))); % 90% from the right
-              yoffset = max(get(gca,'ylim')) - (.15*diff(get(gca,'ylim'))); % 15% down from the top
-              text(yoffset,xoffset,sprintf('%0.2f',currr),'Color',color)
+               xoffset = max(get(curSP,'xlim')) - (.9*diff(get(curSP,'xlim'))); % 90% from the right
+               yoffset = max(get(curSP,'ylim')) - (.15*diff(get(curSP,'ylim'))); % 15% down from the top
+              text(xoffset,yoffset,sprintf('r=%0.2f',currr),'Color',color,'parent',curSP)
             else % we're on diagonal. show a histogram of this variable
-                histogram(rawdata(:,i)); % i == j so we'll just use i.
+                histogram(rawdata(:,i),'parent',curSP); % i == j so we'll just use i.
                 hold on;
             end
         end        
@@ -530,9 +532,8 @@ if isfield(parms,'behavioralmodeldata') % earlier versions don't have this (adde
         corrfname = 'behav_nuisance_correl_im.png';
         imwrite(correl_im.cdata,fullfile(picturedir,corrfname));
         imstr = 'Correlation between variables in the behavioral nuisance model.';
-        fprintf(parms.fileID,'%s<br>',imstr);
-        cur_alttext = imstr;
-        imtxt = ['<img src="images/' corrfname '" alt="' cur_alttext '">'];
+        %fprintf(parms.fileID,'%s<br>',imstr);
+        imtxt = ['<img src="images/' corrfname '" alt="' imstr '">'];
         fprintf(parms.fileID,'%s',imtxt);
         
     end
@@ -579,9 +580,6 @@ function parms = StartDocument(parms)
     fprintf(parms.fileID,'<html>');
     fprintf(parms.fileID,'<body>');
 
-
-
-
 function parms = FinishDocument(parms)
     % footer
     fprintf(parms.fileID,'</body>');
@@ -604,7 +602,8 @@ function im = PaintBarOnFrame(im,bar_xywh_percent,cmapname,colorminval,colormaxv
     end
 
     % Outline the bar in white
-    imbar(:,[1 end],:)=1; imbar([1 end],:,:)=1;
+    imbar(:,[1 end],:)=1; 
+    imbar([1 end],:,:)=1;
 
     % normalize our color scale to the max of the im in which we will set it into 
     if max(im(:)) > 1
@@ -624,13 +623,14 @@ function im = PaintBarOnFrame(im,bar_xywh_percent,cmapname,colorminval,colormaxv
     im = imresize(im, resize_amount,'bilinear','Antialiasing',true); % here we upsample so we get good looking font, I hope
 
     f = figure('visible','off');
-    imshow(im);
+    a = axes(f);
+    imshow(im,'Parent',a);
     
     truesize(f); % one pixel per row/col % added f...?
     
     % Draw the bar annotations
-    text(label_x_offset,label_y_offset,units,'Color','k','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off');
-    text(label_x_offset - (1.1*resize_amount*half_bar_width),label_y_offset,num2str(colorminval),'Color','w','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off'); % min
-    text(label_x_offset + (1.1*resize_amount*half_bar_width),label_y_offset,num2str(colormaxval),'Color','w','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off'); % max
-    im = frame2im(getframe);
+    text(label_x_offset,label_y_offset,units,'Color','k','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a);
+    text(label_x_offset - (1.1*resize_amount*half_bar_width),label_y_offset,num2str(colorminval),'Color','w','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a); % min
+    text(label_x_offset + (1.1*resize_amount*half_bar_width),label_y_offset,num2str(colormaxval),'Color','w','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a); % max
+    im = frame2im(getframe(a)); % do we want getframe a or f?
     close(f);
