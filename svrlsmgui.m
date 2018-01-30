@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 20-Jan-2018 10:33:43
+% Last Modified by GUIDE v2.5 21-Jan-2018 15:59:44
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -890,3 +890,18 @@ function cancelanalysisbutton_Callback(hObject, eventdata, handles)
     set(hObject,'string','Cancelling...')
     set(gcf,'userdata','cancel')
     guidata(hObject, handles); % Update handles structure so it saves...
+
+
+% --------------------------------------------------------------------
+function checkforupdates_Callback(hObject, eventdata, handles)
+% hObject    handle to checkforupdates (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+update_available = check_for_updates;
+if ~update_available
+    msgbox('There are no updates available.')
+    return
+end
+choice = questdlg('New updates are available, would you like to download them?','Update SVRLSMGUI','Not now','Update now','Update now');
+if strcmp(choice,'Not now'), return, end
+get_new_version(handles)

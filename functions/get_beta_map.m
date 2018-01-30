@@ -5,10 +5,8 @@ function [beta_map, variables] = get_beta_map(parameters, variables, cmd)
     if parameters.useLibSVM % using libSVM
         m = svmtrain(variables.one_score,sparse(variables.lesion_dat),cmd);
         w = m.sv_coef'*m.SVs;
-        
         % as of v0.8 9/29/17 we have customized scaling available in parameters.svscaling
-%             variables.beta_scale = 10/max(abs(w));    
-            variables.beta_scale = 10 / prctile(abs(w),parameters.svscaling); % parameters.svscaling is e.g, 100 or 99 or 95
+        variables.beta_scale = 10 / prctile(abs(w),parameters.svscaling); % parameters.svscaling is e.g, 100 or 99 or 95
     else % using MATLAB
         [m,w,variables] = ComputeMatlabSVRLSM(parameters,variables);
     end

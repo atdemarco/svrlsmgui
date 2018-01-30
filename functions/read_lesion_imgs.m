@@ -31,6 +31,7 @@ variables.m_idx = find(mask_map >= parameters.lesion_thresh);  % index of voxels
 
 % write out mask_map to check that these numbers make sense...
 variables.vo.fname = fullfile(variables.output_folder.base,['All lesion overlap n=' num2str(size(Ldat,4)) '.nii']);
+%variables.vo.dt(1) = 8; % new, try to avoid 64 bit files output...
 spm_write_vol(variables.vo, mask_map);
 
 % write out a mask of voxels that exceed the minimum lesion threshold requested

@@ -198,8 +198,6 @@ end
 check_for_interrupt(parameters)
     
 %% Construct and run voxelwise lesion data nuisance model
-
-
 brain_nuisance_model_options = [handles.parameters.apply_covariates_to_lesion include_lesionvol_in_brain_nuisance_model];
 if any(brain_nuisance_model_options)
     tmp = [];

@@ -38,6 +38,7 @@ function handles = PopulateGUIFromParameters(handles)
             track_variables(:,c) = ~isnan(coldata);
         end
     end
+    
     num_subs_that_have_all_variables = sum(all(track_variables,2));
 
     handles.scorefile.haslesion_file = zeros(numel(handles.scorefile.subjectrows),1);
@@ -56,7 +57,13 @@ function handles = PopulateGUIFromParameters(handles)
     set(handles.behavioralscorepresenttextbox,'String',sprintf('%d/%d subjects have required scores.',num_subs_that_have_all_variables,handles.scorefile.nsubs_in_scorefile))
 
     tmp = handles.scorefiledata.Properties.VariableNames;
-
+    
+    % new 1/23/18
+    registrycode_column_name = 'RegistryCode';
+    registrycode_column = strcmp(registrycode_column_name,tmp);
+    tmp(registrycode_column) = []; % remove.
+    % %
+    
     set([handles.scorenamepopupmenu handles.realcovariateslistbox handles.potentialcovariateslist handles.addcovariate handles.removecovariate],'enable','on')
     set([handles.scorenamepopupmenu handles.potentialcovariateslist],'String',tmp);
 
@@ -81,7 +88,6 @@ function handles = PopulateGUIFromParameters(handles)
         set([handles.removecovariate handles.realcovariateslistbox],'enable','on')
     end
 
-
     if handles.parameters.analysis_is_completed == 0 % hasn't been run yet.
         set(handles.runanalysisbutton,'enable','on')
         set(handles.viewresultsbutton,'enable','off')
@@ -95,12 +101,7 @@ function handles = PopulateGUIFromParameters(handles)
 
     set(handles.analysisnameeditbox,'String',handles.parameters.analysis_name)
     set(handles.lesionthresholdeditbox,'String',num2str(handles.parameters.lesion_thresh))
-
-
-%    set(handles.computebetamapcheckbox,'value',handles.parameters.beta_map)
-%    set(handles.computesensitivitymapcheckbox,'value',handles.parameters.sensitivity_map)
     set(handles.invertpmapcheckbox,'value',handles.parameters.invert_p_map_flag)
-
     set([handles.applycovariatestobehaviorcheckbox handles.applycovariatestolesioncheckbox],'enable','on'); % so we can modify them
     set(handles.applycovariatestobehaviorcheckbox,'value',handles.parameters.apply_covariates_to_behavior)
     set(handles.applycovariatestolesioncheckbox,'value',handles.parameters.apply_covariates_to_lesion)
