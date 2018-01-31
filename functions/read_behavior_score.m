@@ -1,5 +1,6 @@
 function variables = read_behavior_score(parameters)
-    variables.scorefiledata = readtable(parameters.score_file);
+    opts = detectImportOptions(parameters.score_file); % addded to support e.g., MAC CSV files 1/31/18
+    variables.scorefiledata = readtable(parameters.score_file,opts); 
     variables.covariates=[]; % placeholder.
     data = variables.scorefiledata; % shorthand...
     varsToCheck = [parameters.score_name parameters.control_variable_names];

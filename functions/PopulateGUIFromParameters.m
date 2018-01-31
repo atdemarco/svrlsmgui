@@ -10,7 +10,9 @@ function handles = PopulateGUIFromParameters(handles)
 
     warning('off', 'MATLAB:table:ModifiedVarnames');
     warning('off', 'MATLAB:table:ModifiedAndSavedVarnames') % MATLAB 2017a
-    handles.scorefiledata = readtable(handles.parameters.score_file); % )
+    
+    opts = detectImportOptions(handles.parameters.score_file);
+    handles.scorefiledata = readtable(handles.parameters.score_file,opts); % added to support e.g., MAC CSV files 1/31/18
 
     handles.scorefile.subjectrows = find(~cellfun(@isempty,handles.scorefiledata.RegistryCode));
     handles.scorefile.nsubs_in_scorefile = numel(handles.scorefile.subjectrows);

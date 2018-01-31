@@ -57,10 +57,13 @@ nsubs = parms.nsubjects;
 % Hypothesis direction and behavior variable name
 descr = ['This analysis named ''' parms.analysis_name ''' tested the hypothesis (' lower(parms.tails) ') that there is a relationship between lesion status and the behavior score ''' parms.score_name '''.'];
 descr = [ descr ' ' num2str(nsubs) ' subjects were listed for inclusion, and ' num2str(nexcluded) ' were excluded due to missing behavioral data.'];
+
 if pval < 0.05
-    descr = [ descr ' Prior to any correction, the behavior under investigation is significantly correlated with lesion volume across the patient group, (r = ' num2str(rho) ', p = ' num2str(pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
+    descr = [ descr ' Prior to any correction, the behavior under investigation is significantly correlated with lesion volume across the patient group, (r = ' sprintf('%.2f', rho) ', p = ' sprintf('%.2f', pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
+elseif pval < .1 % added 1/31/18
+    descr = [ descr ' Prior to any correction, the behavior under investigation is marginally correlated with lesion volume across the patient group, (r = ' sprintf('%.2f', rho) ', p = ' sprintf('%.2f', pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
 else
-    descr = [ descr ' Prior to any correction, the behavior under investigation is not significantly correlated with lesion volume across the patient group, (r = ' num2str(rho) ', p = ' num2str(pval) '), suggesting a lesion volume control may not be necessary for the analysis.'];
+    descr = [ descr ' Prior to any correction, the behavior under investigation is not significantly correlated with lesion volume across the patient group, (r = ' sprintf('%.2f', rho) ', p = ' sprintf('%.2f', pval) '), suggesting a lesion volume control may not be necessary for the analysis.'];
 end
 
 % Was it corrected for lesion volume?
@@ -83,15 +86,26 @@ if n_behav_covariates > 0
     if ~parms.apply_covariates_to_behavior && ~parms.apply_covariates_to_lesion
         descr = [descr ' Although ' num2str(n_behav_covariates) ' behavioral ' waswere ' specified (' strjoin(parms.control_variable_names,', ') '), ' itthey ' were not included in a nuisance model for either the behavioral score or lesion data prior to SVR.'];
     elseif parms.apply_covariates_to_behavior && ~parms.apply_covariates_to_lesion
-        descr = [descr ' ' num2str(n_behav_covariates) ' behavioral ' waswere ' specified (' strjoin(parms.control_variable_names,', ') ') and covariated out of the behavioral outcome variable ''' parms.score_name ''' in a nuisance model. No nuisance model was applied to the lesion data.'];
+        descr = [descr ' ' num2str(n_behav_covariates) ' behavioral ' waswere ' specified (' strjoin(parms.control_variable_names,', ') ') and covaried out of the behavioral outcome variable ''' parms.score_name ''' in a nuisance model. No nuisance model was applied to the lesion data.'];
     elseif parms.apply_covariates_to_behavior && parms.apply_covariates_to_lesion
-        descr = [descr ' ' num2str(n_behav_covariates) ' behavioral ' waswere ' specified (' strjoin(parms.control_variable_names,', ') ') and covariated out of both the behavioral outcome variable ''' parms.score_name ''' and the lesion data in nuisance models.'];
+        descr = [descr ' ' num2str(n_behav_covariates) ' behavioral ' waswere ' specified (' strjoin(parms.control_variable_names,', ') ') and covaried out of both the behavioral outcome variable ''' parms.score_name ''' and the lesion data in nuisance models.'];
     elseif ~parms.apply_covariates_to_behavior && parms.apply_covariates_to_lesion
-        descr = [descr ' ' num2str(n_behav_covariates) ' behavioral ' waswere ' specified (' strjoin(parms.control_variable_names,', ') ') and covariated out of the lesion data in a nuisance model. No nuisance model was applied to the behavioral outcome variable ''' parms.score_name '''.'];
+        descr = [descr ' ' num2str(n_behav_covariates) ' behavioral ' waswere ' specified (' strjoin(parms.control_variable_names,', ') ') and covaried out of the lesion data in a nuisance model. No nuisance model was applied to the behavioral outcome variable ''' parms.score_name '''.'];
     end
+    
+    % After the inclusion of behavioral covariates, 
+    if isfield(parms,'behavioralmodeldata') && ~isempty(parms.behavioralmodeldata) % earlier versions don't have this (added 0.08, 9/25/17)
+        post_correction_one_score = parms.behavioralmodeldata.([parms.score_name '_corrected']);
+        % is lesion volume and one_score correlated after correction?
+        [rho,pval] = corr(post_correction_one_score(:),parms.lesion_vol(:),'type','Pearson','tail','both');
+        descr = [ descr ' Following correction with the behavioral nuisance model, the behavioral score under investigation is correlated with lesion volume across the patient group at r = ' sprintf('%.2f', rho) ', p = ' sprintf('%.2f', pval) '.'];
+    end
+
 else % no covariates.
     descr = [descr ' No behavioral covariates were specified, so no nuisance model was applied to the behavioral score or the lesion data prior to SVR.'];
 end
+
+
     
 % Was permutation testing performed?
 if parms.DoPerformPermutationTesting, descr = [descr ' The resulting SVR-&beta; values were thresholded at p < ' strrep(num2str(parms.voxelwise_p),'0.','.') ' and corrected for cluster size at p < ' strrep(num2str(parms.clusterwise_p),'0.','.') ', both based on ' num2str(parms.PermNumVoxelwise) ' permutations.'];
@@ -502,11 +516,13 @@ if isfield(parms,'behavioralmodeldata') % earlier versions don't have this (adde
             currp = p(i,j);
             currr = r(i,j);
             if i == 1 % left column
-                ylabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{j},'_',' '),'parent',curSP); % so latex interp doesn't subscript things
+                %ylabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{j},'_',' '),'parent',curSP); % so latex interp doesn't subscript things
+                ylabel(curSP,strrep(parms.behavioralmodeldata.Properties.VariableNames{j},'_',' ')); % so latex interp doesn't subscript things
                 hold on;
             end
             if j == size(p,2) % bottom row
-                xlabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{i},'_',' '),'parent',curSP); % so latex interp doesn't subscript things
+                %xlabel(strrep(parms.behavioralmodeldata.Properties.VariableNames{i},'_',' '),'parent',curSP); % so latex interp doesn't subscript things
+                xlabel(curSP,strrep(parms.behavioralmodeldata.Properties.VariableNames{i},'_',' ')); % so latex interp doesn't subscript things
                 hold on;
             end
             if i ~= j  % then we're off diagonal.

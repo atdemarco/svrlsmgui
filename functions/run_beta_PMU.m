@@ -361,7 +361,7 @@ end
                     thresholded_mask=neg_threshed;
                 case options.hypodirection{3}
                     permtype='twotail';
-                   the file thresholded_mask=twotail_threshed;
+                   thresholded_mask=twotail_threshed;
             end
 
             testvol_thresholded = thresholded_mask; % now evaluate the surviving voxels for clusters...

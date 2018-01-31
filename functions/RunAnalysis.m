@@ -189,7 +189,8 @@ if any(behavioral_nuisance_model_options)
         % Now collect behavioral nuisance model data for diagnostics in summary - 9/25/17
         data = mdl.Variables;
         data.Properties.VariableNames{1} = parameters.score_name;
-        handles.parameters.behavioralmodeldata = data; % save so we can do model diagnostics in summary
+        tmp = table(variables.one_score,'VariableNames',{[parameters.score_name '_corrected']});
+        handles.parameters.behavioralmodeldata = [data tmp]; % save so we can do model diagnostics in summary
     end
 else
     handles = UpdateProgress(handles,sprintf('No behavior nuisance model will be constructed.'),1);
