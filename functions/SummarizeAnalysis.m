@@ -58,9 +58,9 @@ nsubs = parms.nsubjects;
 descr = ['This analysis named ''' parms.analysis_name ''' tested the hypothesis (' lower(parms.tails) ') that there is a relationship between lesion status and the behavior score ''' parms.score_name '''.'];
 descr = [ descr ' ' num2str(nsubs) ' subjects were listed for inclusion, and ' num2str(nexcluded) ' were excluded due to missing behavioral data.'];
 if pval < 0.05
-    descr = [ descr ' Prior to any correction, the behavior under investigation is significantly correlated with lesion volume across the patient group, (r = ' num2str(rho) ', p = ' num2str(pval) '), suggesting a lesion volume control may be appropriate for the analysis.'];
+    descr = [ descr ' Prior to any correction, the behavior under investigation is significantly correlated with lesion volume across the patient group, (r = ' num2str(rho) ', p = ' num2str(pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
 else
-    descr = [ descr ' Prior to any correction, the behavior under investigation is not significantly correlated with lesion volume across the patient group, (r = ' num2str(rho) ', p = ' num2str(pval) '), suggesting a lesion volume control may not be appropriate for the analysis.'];
+    descr = [ descr ' Prior to any correction, the behavior under investigation is not significantly correlated with lesion volume across the patient group, (r = ' num2str(rho) ', p = ' num2str(pval) '), suggesting a lesion volume control may not be necessary for the analysis.'];
 end
 
 % Was it corrected for lesion volume?
