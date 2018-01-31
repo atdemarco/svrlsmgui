@@ -1,4 +1,4 @@
-Registry code,Sim_ROI_123,LesionVol,randscore1,randscore2,randscore3,Gender,Handedness
+Registry cCode,Sim_ROI_123,LesionVol,randscore1,randscore2,randscore3,Gender,Handedness
 sub002,0.926537811,215.633,0.682713727,0.853201659,0.403210168,M,R
 sub003,0.366375121,72.066,0.999674366,0.003240109,0.896053624,F,R
 sub004,0.431126948,155.89,0.165875587,0.325053424,0.669706632,F,R

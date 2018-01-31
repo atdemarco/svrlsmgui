@@ -14,6 +14,15 @@ function handles = PopulateGUIFromParameters(handles)
     opts = detectImportOptions(handles.parameters.score_file);
     handles.scorefiledata = readtable(handles.parameters.score_file,opts); % added to support e.g., MAC CSV files 1/31/18
 
+    % tell user if registrycode is not a field
+    
+    fieldnames = handles.scorefiledata.Properties.VariableNames;
+    if ~any(strcmp(fieldnames,'RegistryCode'))
+        msgbox('Note: The selected CSV file does not appear to have a "RegistryCode" column listing subject lesion files. Please correct this and reload this file, otherwise the analysis will not run.')
+        return
+        % in the future, try to guess which is the subject list volumn...
+    end
+        
     handles.scorefile.subjectrows = find(~cellfun(@isempty,handles.scorefiledata.RegistryCode));
     handles.scorefile.nsubs_in_scorefile = numel(handles.scorefile.subjectrows);
 
