@@ -385,8 +385,8 @@ if parameters.DoPerformPermutationTesting
 
                 % Write out reduced table with cluster p values...
                 writetable(U,fullfile(variables.output_folder.clusterwise,'Table of clusters.txt')); % overwrite
+                delete(clustertablefile) % clean up this intermediary file.
             end
-            delete(clustertablefile) % clean up this intermediary file.
             delete(fullfile(variables.output_folder.clusterwise,'perm_beta_2tailed_voxwise_ABS.nii')) % and clean up this intermediary file we used to trick cluster() into working in one fell swoop.
 
             % Perform clusterwise thresholding (for two tailed both tails)

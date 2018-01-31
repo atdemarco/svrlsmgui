@@ -177,8 +177,8 @@ resliced_template_path = fullfile(fpath,['r' fname ext]);
 [lesionoverlapimg.hdr,lesionoverlapimg.img]=read_nifti(lesionoverlapfile);
 nvoxels_any_lesion_val = nnz(lesionoverlapimg.img); % number of voxels with >0 lesions...
 
-minlesionmask = dir(fullfile(parms.outdir,'Minimum lesion mask n=*.nii')); % angle bracket removed 10/31/17 cause it creates bad filenames in Windows environment
-[minlesionmask.hdr,minlesionmask.img]=read_nifti(fullfile(parms.outdir,minlesionmask(1).name));
+minlesionmaskfile = dir(fullfile(parms.outdir,'Minimum lesion mask n=*.nii')); % angle bracket removed 10/31/17 cause it creates bad filenames in Windows environment
+[minlesionmask.hdr,minlesionmask.img]=read_nifti(fullfile(parms.outdir,minlesionmaskfile(1).name));
 
 %% Config what we'll show in our images
 slice_bounds_percent = [.30 .80]; % highest and lowest percent over which to draw slices.
@@ -406,15 +406,19 @@ else
 
     clusterwisedir = dir(fullfile(voxelwisedir,'Clusterwise*'));
     clusterwisedir = fullfile(voxelwisedir,clusterwisedir(1).name);
-    cluster_table = readtable(fullfile(clusterwisedir,'Table of clusters.txt'));
-
-    % [threshbetamap.hdr,threshbetamap.img]=read_nifti(fullfile(clusterwisedir,'Voxelwise thresholded beta map.nii'));
-
-    nonsigclusters = cluster_table.clusterP > parms.clusterwise_p;
-    cluster_table(nonsigclusters,:) = []; % remove these rows...
-
-    last_significant_cluster = max(cluster_table.idx);
-
+    
+    clustertable = fullfile(clusterwisedir,'Table of clusters.txt');
+    if exist(clustertable,'file')
+        cluster_table = readtable(clustertable);
+        nonsigclusters = cluster_table.clusterP > parms.clusterwise_p;
+        cluster_table(nonsigclusters,:) = []; % remove these rows...
+        last_significant_cluster = max(cluster_table.idx);
+        nclusters = numel(parms.clusterwise_p);
+    else
+        last_significant_cluster= 0;
+        nclusters = 0;
+    end
+    
     if isempty(last_significant_cluster), last_significant_cluster=0; end
 
     nonsig_cluster_voxels = clusteridx.img > last_significant_cluster;
@@ -563,17 +567,21 @@ fprintf(parms.fileID,'<h2>Cluster correction threshold stability</h2>');
 if ~parms.DoPerformPermutationTesting
     fprintf(parms.fileID,'%s','Permutation testing was not conducted, so there is no cluster correction threshold stability to display.');
 else
-    assess_interval=100;
-    clusters_to_show = 5; %clusters_to_show = min(last_significant_cluster,5); % if there's less than 5, then 
-    cluster_stability_im = plotClusterPermStability(clusterwisedir,assess_interval,clusters_to_show);
+    if nclusters == 0
+        fprintf(parms.fileID,'%s','Although permutation testing was conducted, there were zero voxels that passed voxelwise thresolding, and thus no clusters of any size to plot.');
+    else
+        assess_interval=100;
+        clusters_to_show = 5; %clusters_to_show = min(last_significant_cluster,5); % if there's less than 5, then 
+        cluster_stability_im = plotClusterPermStability(clusterwisedir,assess_interval,clusters_to_show);
 
-    imwrite(cluster_stability_im,fullfile(picturedir,'cluster_stabil.png'));
+        imwrite(cluster_stability_im,fullfile(picturedir,'cluster_stabil.png'));
 
-    imstr = ['Cluster size stability over ' num2str(parms.PermNumVoxelwise) ' permutations, assessed every ' num2str(assess_interval) ' permutations. Also plotted are up to ' num2str(clusters_to_show) ' clusters regardless of significance for comparison to critical threshold.'];
-    fprintf(parms.fileID,'%s<br>',imstr);
-    cur_alttext = imstr;
-    imtxt = ['<img src="images/cluster_stabil.png" alt="' cur_alttext '">'];
-    fprintf(parms.fileID,'%s',imtxt);
+        imstr = ['Cluster size stability over ' num2str(parms.PermNumVoxelwise) ' permutations, assessed every ' num2str(assess_interval) ' permutations. Also plotted are up to ' num2str(clusters_to_show) ' clusters regardless of significance for comparison to critical threshold.'];
+        fprintf(parms.fileID,'%s<br>',imstr);
+        cur_alttext = imstr;
+        imtxt = ['<img src="images/cluster_stabil.png" alt="' cur_alttext '">'];
+        fprintf(parms.fileID,'%s',imtxt);
+    end
 end
 
 fprintf(parms.fileID,'<br><br>\n');
@@ -586,7 +594,9 @@ function parms = StartDocument(parms)
     % create new file
     parms.outhtmlfile = fullfile(parms.outdir,'overview.html');
     if exist(parms.outhtmlfile,'file')
-        try delete(parms.outhtmlfile); end %#ok<TRYNC>
+        try %#ok<TRYNC>
+            delete(parms.outhtmlfile); 
+        end 
     end
 
     parms.fileID = fopen(parms.outhtmlfile,'w');
