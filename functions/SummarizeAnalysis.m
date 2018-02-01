@@ -49,8 +49,10 @@ excluded_names = strjoin(parms.excluded_subjects,', ');
 nsubs = parms.nsubjects; 
 
 % is lesion volume and one_score correlated prior to correction?
-[rho,pval] = corr(parms.one_score(:),parms.lesion_vol(:),'type','Pearson','tail','both');
-
+%[rho,pval] = corr(parms.one_score(:),parms.lesion_vol(:),'type','Pearson','tail','both');
+[rho,pval] = corrcoef(parms.one_score(:),parms.lesion_vol(:));
+rho = rho(2,1);
+pval = pval(2,1);
 
 %% Assemble narrative summary...
 
@@ -97,7 +99,11 @@ if n_behav_covariates > 0
     if isfield(parms,'behavioralmodeldata') && ~isempty(parms.behavioralmodeldata) % earlier versions don't have this (added 0.08, 9/25/17)
         post_correction_one_score = parms.behavioralmodeldata.([parms.score_name '_corrected']);
         % is lesion volume and one_score correlated after correction?
-        [rho,pval] = corr(post_correction_one_score(:),parms.lesion_vol(:),'type','Pearson','tail','both');
+        %[rho,pval] = corr(post_correction_one_score(:),parms.lesion_vol(:),'type','Pearson','tail','both');
+        [rho,pval] = corrcoef(post_correction_one_score(:),parms.lesion_vol(:));
+        rho = rho(2,1);
+        pval = pval(2,1);
+        
         descr = [ descr ' Following correction with the behavioral nuisance model, the behavioral score under investigation is correlated with lesion volume across the patient group at r = ' sprintf('%.2f', rho) ', p = ' sprintf('%.2f', pval) '.'];
     end
 
@@ -334,7 +340,7 @@ else
     voxmap = dir(fullfile(voxelwisedir,'Voxelwise thresholded beta*.nii')); % now wildcard because of (abs) in some cases as of v0.1 (Jan 18)
     clustfiles = ~cellfun(@isempty,cellfun(@(x) strfind(x,'clust'), {voxmap.name},'uni',false));
     voxmap(clustfiles) = []; % remove any clust files inadvertantly picked up by the wildcard
-
+    
     [threshbetamap.hdr,threshbetamap.img]=read_nifti(fullfile(voxelwisedir,voxmap(1).name));
     raw_threshbetamap_img = threshbetamap.img~=0;
     beta_scale_max = 10; % so the cmap values will fall within -10 to 10.
