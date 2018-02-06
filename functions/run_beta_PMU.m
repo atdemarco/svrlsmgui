@@ -179,15 +179,25 @@ else
         observed_beta = ori_beta_val(col); % original observed beta value.
         curcol_sorted = sort(curcol); % smallest values at the top..
         
+        % hist(curcol_sorted)
+%         histogram(curcol_sorted,35)
+%         hold on
+%         title(num2str(col))
+%         pause
+        % fitdists{col} = fitdist(
+        % pd = fitdist(x,'Kernel','Kernel','epanechnikov')
+
+        
 %         p_vec=nan(size(curcol_sorted)); % allocate space
 %         all_ind = 1:numel(curcol_sorted); % we'll reuse this vector
-%         for i = all_ind % for each svr beta value in the vector
-%             ind_to_compare = setdiff(all_ind,i);
-%             p_vec(i) = 1 - mean(curcol_sorted(i) < curcol_sorted(ind_to_compare));
-%         end
+%          for i = all_ind % for each svr beta value in the vector
+%              ind_to_compare = setdiff(all_ind,i);
+%              p_vec(i) = 1 - mean(curcol_sorted(i) < curcol_sorted(ind_to_compare));
+%          end
 %         disp([num2str(i) ' of ' num2str(numel(p_vec)) ' - observed svrB = ' num2str(observed_beta)])
 %         [numel(unique(curcol_sorted)) numel(unique(p_vec))]
-        
+
+
         % Compute beta cutoff values and a pvalue map for the observed betas.
         switch parameters.tails
             case options.hypodirection{1} % 'one_positive'
@@ -390,7 +400,7 @@ end
     % Clean up as necessary
     if ~parameters.SavePermutationData
         fclose all;
-        delete(outfname_big) % delete the monster bin file with raw permutation data in it.
+        delete(outfname_big); % delete the monster bin file with raw permutation data in it.
         if exist(outfname_big,'file') % if it still exists...
             warning('Was not able to delete large binary file with raw permutation data in it. This file can be quite large, so you may want to manually clean up the file and adjust your permissions so that this is not a problem in the future.')
         end

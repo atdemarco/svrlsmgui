@@ -238,11 +238,10 @@ end
 
 check_for_interrupt(parameters)
 
-%% Beta-map
+%% Compute the real beta map
 handles = UpdateProgress(handles,'Computing beta map...',1);
-cmd = ['-s 3 -t 2 -c ', num2str(parameters.cost), ' -g ', num2str(parameters.gamma), ' -q'];
 variables.one_score = variables.one_score*100/max(abs(variables.one_score));
-[beta_map, variables] = get_beta_map(parameters, variables, cmd);
+[beta_map, variables] = get_beta_map(parameters, variables);
 
 check_for_interrupt(parameters)
 
@@ -252,166 +251,19 @@ if parameters.DoPerformPermutationTesting
     success = CreateDirectory(variables.output_folder.voxelwise); %#ok<NASGU>
     success = CreateDirectory(variables.output_folder.clusterwise); %#ok<NASGU>
 
-    [variables] = run_beta_PMU(parameters, variables, cmd, beta_map,handles);
-
-    % Read in real beta map
-    real_beta_map_vol = spm_read_vols(spm_vol(fullfile(variables.output_folder.base,'Beta map (unthresholded).nii')));
-
-    % Read in permutation generated cluster sizes...
-    clustervals = load(fullfile(variables.output_folder.clusterwise,'Largest clusters.mat'));
-    sorted_clusters = sort(clustervals.all_max_cluster_sizes);
-    switch parameters.tails
-        case handles.options.hypodirection{1} % Positive tail
-            hypothdirection = 'one-tailed, positive';
-            pos_thresh_index = median([1 round((1-parameters.clusterwise_p) * parameters.PermNumClusterwise) parameters.PermNumClusterwise]); % row 9500 in 10000 permutations.
-
-            % Read in the beta cutoff map (for positive 1 tailed)
-            null_beta_cutoff_map_pos = spm_read_vols(spm_vol(fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (positive tail).nii')));
-            one_tailed_beta_out_vol = real_beta_map_vol; % a copy to modify...
-
-            % Do the voxelwise thresholding (for positive 1 tailed)
-            one_tailed_beta_out_vol(real_beta_map_vol < null_beta_cutoff_map_pos) = 0; % zero out subthreshold values.
-            survivingbetavals = numel(find(one_tailed_beta_out_vol(:))); % number of voxel beta values that survive permutation at the requested p value.
-            
-            % Write voxelwise thresholded (for positive 1 tailed)
-            variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map.nii');
-            spm_write_vol(variables.vo, one_tailed_beta_out_vol);
-
-            % Cluster the resulting data.
-            thresh=0;
-            [cimg, ctab, peaks] = cluster(variables.vo.fname, thresh,1); %, saveoutputs);
-            if ~isempty(ctab) % Calculate clusterwise P value for each cluster.
-                clustertablefile = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map_clusttab.txt');
-                T=readtable(clustertablefile);
-                T.clusterP = nan(size(T,1),1);
-                for r = 1 : size(T,1)
-                    cur_nvox = T.nvox(r);
-                    T.clusterP(r) = sum(cur_nvox < sorted_clusters)/numel(sorted_clusters);
-                end
-                U = [T(:,1) T(:,end) T(:,2:end-1)]; % Reorder columns
-                delete(clustertablefile)
-                writetable(U,fullfile(variables.output_folder.clusterwise,'Table of clusters.txt')); 
-            end
-
-            % Perform clusterwise thresholding (for positive 1 tailed)
-            clusterthresh = sorted_clusters(pos_thresh_index)-1;
-            out_map = remove_scatter_clusters(one_tailed_beta_out_vol, clusterthresh);
-
-            % Write clusterwise thresholded (for positive 1 tailed)
-            variables.vo.fname = fullfile(variables.output_folder.clusterwise,'Thresholded by cluster size.nii');
-            spm_write_vol(variables.vo, out_map);
-
-        case handles.options.hypodirection{2} % Negative tail
-            hypothdirection = 'one-tailed, negative';
-            neg_thresh_index = median([1 round((1-parameters.clusterwise_p) * parameters.PermNumClusterwise) parameters.PermNumClusterwise]); % row 9500 in 10000 permutations.
-
-            % Read in beta cutoff map (for negative 1 tailed)
-            null_beta_cutoff_map_neg = spm_read_vols(spm_vol(fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (negative tail).nii')));
-
-            % Do voxelwise thresholding (for negative 1 tail)
-            one_tailed_beta_out_vol = real_beta_map_vol; % a copy to modify...
-            one_tailed_beta_out_vol(real_beta_map_vol > null_beta_cutoff_map_neg) = 0; % zero out subthreshold values.
-            survivingbetavals = numel(find(one_tailed_beta_out_vol(:))); % number of voxel beta values that survive permutation at the requested p value.
-
-            % Write voxelwise thresholded (for negative 1 tailed) - the absolute values was added in v0.1 at Peter's request for display easy
-            variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map (abs).nii');  % since v0.1 we abs() here
-            spm_write_vol(variables.vo, abs(one_tailed_beta_out_vol)); % since v0.1 we abs() here
-
-            % Cluster the resulting data.
-            %thresh=-.01; % this is negative so we get "deactivations"
-            thresh=.01; % now it's positive because we've abs'ed the beta map 
-            [cimg, ctab, peaks] = cluster(variables.vo.fname, thresh,1); %, saveoutputs);
-            
-            if ~isempty(ctab)
-                % Calculate clusterwise P value for each cluster.
-                clustertablefile = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map (abs)_clusttab.txt'); % nb since v0.1 we abs() here
-                T=readtable(clustertablefile);
-                T.clusterP = nan(size(T,1),1);
-                for r = 1 : size(T,1)
-                    cur_nvox = T.nvox(r);
-                    T.clusterP(r) = sum(cur_nvox < sorted_clusters)/numel(sorted_clusters);
-                end
-                U = [T(:,1) T(:,end) T(:,2:end-1)]; % Reorder columns
-
-                % Write out reduced table with cluster p values...
-                delete(clustertablefile)
-                writetable(U,fullfile(variables.output_folder.clusterwise,'Table of clusters.txt')); % overwrite
-            end
-
-            % Perform clusterwise thresholding (for negative 1 tailed)
-            clusterthresh = sorted_clusters(neg_thresh_index)-1;
-            out_map = remove_scatter_clusters(one_tailed_beta_out_vol, clusterthresh);
-
-            % Write clusterwise thresholded (for negative 1 tailed)
-            variables.vo.fname = fullfile(variables.output_folder.clusterwise,'Thresholded by cluster size.nii');
-            spm_write_vol(variables.vo, out_map);
-
-        case handles.options.hypodirection{3} % Two-tailed
-            hypothdirection = 'two-tailed';
-            two_tailed_thresh_index = median([1 round((1-(parameters.clusterwise_p/2)) * parameters.PermNumClusterwise) parameters.PermNumClusterwise]); % row 9750 in 10000 permutations.
-
-            % Read in the beta cutoff map (for two tailed upper and lower tail)
-            null_beta_cutoff_map_twotail_upper = spm_read_vols(spm_vol(fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (two tail, upper).nii')));
-            null_beta_cutoff_map_twotail_lower = spm_read_vols(spm_vol(fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (two tail, lower).nii')));
-
-            % Do voxelwise thresholding (for two tailed both tails)
-            two_tailed_beta_out_vol = real_beta_map_vol; % a copy to modify...
-            two_tailed_beta_out_vol((real_beta_map_vol > 0) & (real_beta_map_vol < null_beta_cutoff_map_twotail_upper)) = 0; % zero out subthreshold values.
-            two_tailed_beta_out_vol((real_beta_map_vol < 0) & (real_beta_map_vol > null_beta_cutoff_map_twotail_lower)) = 0; % zero out subthreshold values.
-            survivingbetavals = numel(find(two_tailed_beta_out_vol(:))); % number of voxel beta values that survive permutation at the requested p value.
-
-            % Write voxelwise thresholded (for two tailed both tails)
-            variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map.nii'); % in the future abs() this.
-            spm_write_vol(variables.vo, two_tailed_beta_out_vol);
-
-            % Write ABS of voxelwise thresholded (for two tailed both tails) so that we can measure clusters in one fell swoop.
-            variables.vo.fname = fullfile(variables.output_folder.clusterwise,'perm_beta_2tailed_voxwise_ABS.nii');
-            spm_write_vol(variables.vo, abs(two_tailed_beta_out_vol));
-            
-            % Cluster the resulting data.
-            thresh=0;
-            [cimg, ctab, peaks] = cluster(variables.vo.fname, thresh,1); %, saveoutputs);
-
-            if ~isempty(ctab)
-                % Calculate clusterwise P value for each cluster.
-                clustertablefile = fullfile(variables.output_folder.clusterwise,'perm_beta_2tailed_voxwise_ABS_clusttab.txt');
-                T=readtable(clustertablefile);
-                T.clusterP = nan(size(T,1),1);
-                for r = 1 : size(T,1)
-                    cur_nvox = T.nvox(r);   
-                    T.clusterP(r) = sum(cur_nvox < sorted_clusters)/numel(sorted_clusters);
-                end
-                U = [T(:,1) T(:,end) T(:,2:end-1)]; % Reorder columns
-
-                % Write out reduced table with cluster p values...
-                writetable(U,fullfile(variables.output_folder.clusterwise,'Table of clusters.txt')); % overwrite
-                delete(clustertablefile) % clean up this intermediary file.
-            end
-            delete(fullfile(variables.output_folder.clusterwise,'perm_beta_2tailed_voxwise_ABS.nii')) % and clean up this intermediary file we used to trick cluster() into working in one fell swoop.
-
-            % Perform clusterwise thresholding (for two tailed both tails)
-            clusterthresh = sorted_clusters(two_tailed_thresh_index)-1;
-            out_map = remove_scatter_clusters(two_tailed_beta_out_vol, clusterthresh);
-
-            % Write clusterwise thresholded (for two tailed both tails)
-            variables.vo.fname = fullfile(variables.output_folder.clusterwise,'Thresholded by cluster size.nii');
-            spm_write_vol(variables.vo, out_map);
-            
-            % Need to rename the clustered idx file to match the other tailed analyses...
-            movefile(fullfile(variables.output_folder.clusterwise,'perm_beta_2tailed_voxwise_ABS_clustidx.nii'),fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded beta map_clustidx.nii'));
+    [variables] = run_beta_PMU2(parameters, variables, beta_map,handles);
+    
+    if parameters.do_CFWER
+        warning('add me')
+        % Evaluate CFWER results...
+    else    
+        % Evaluate clustering results
+        [survivingclusters,totalclusters,survivingbetavals,hypothdirection,clusterthresh] = evaluate_clustering_results(handles,variables,parameters);
+        
+        handles = UpdateProgress(handles,sprintf('Results of analysis (%s):',hypothdirection),1);
+        handles = UpdateProgress(handles,sprintf('%d voxels survive voxelwise threshold (P < %g, %d perms).',survivingbetavals,parameters.voxelwise_p,parameters.PermNumVoxelwise),1);
+        handles = UpdateProgress(handles,sprintf('%d of %d clusters survive clusterwise threshold (P < %g, k > %d voxels, %d perms).',survivingclusters,totalclusters,parameters.clusterwise_p,clusterthresh,parameters.PermNumClusterwise),1);
     end
-
-    if ~isempty(ctab)
-        survivingclusters = sum(T.clusterP < parameters.clusterwise_p);
-        totalclusters = numel(T.clusterP);
-    else
-        survivingclusters = 0;
-        totalclusters = 0;
-    end
-
-    handles = UpdateProgress(handles,sprintf('Results of analysis (%s):',hypothdirection),1);
-    handles = UpdateProgress(handles,sprintf('%d voxels survive voxelwise threshold (P < %g, %d perms).',survivingbetavals,parameters.voxelwise_p,parameters.PermNumVoxelwise),1);
-    handles = UpdateProgress(handles,sprintf('%d of %d clusters survive clusterwise threshold (P < %g, k > %d voxels, %d perms).',survivingclusters,totalclusters,parameters.clusterwise_p,clusterthresh,parameters.PermNumClusterwise),1);
 end
 
 handles.parameters.time.endtime = datestr(now);
@@ -419,6 +271,7 @@ handles.parameters.time.runduration = toc;
 handles.parameters.analysis_is_completed = 1;
 tosave=handles.parameters;
 
+%% Finish the analysis...
 try delete(parmsfile); end %#ok<TRYNC>
 save(tosave.parmsfile,'tosave') % write the file again so we know the analysis completed
 success = 1;

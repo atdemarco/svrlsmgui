@@ -120,13 +120,22 @@ function handles = PopulateGUIFromParameters(handles)
     if numel(handles.parameters.control_variable_names) == 0 % if necessary, disable the checkboxes (if there's no covariates added)
         set([handles.applycovariatestobehaviorcheckbox handles.applycovariatestolesioncheckbox],'enable','off');
     end
+    
+    %% display permutation testing pane choices
 
+    % set all the children of the pane to visible -- at the end of this code block we'll change the visibility.
+    set(get(handles.permutationtestingpanel,'children'),'visible','on')
+
+    % checkboxes...
+    set(handles.permutationtestingcheckbox,'value',handles.parameters.DoPerformPermutationTesting)
+    set(handles.do_cfwer_checkbox,'value',handles.parameters.do_CFWER)
+        
+    % fill in all the values in the pane
     set(handles.npermutationseditbox,'string',num2str(handles.parameters.PermNumVoxelwise))
-
     set(handles.cluster_voxelwise_p_editbox,'string',strrep(num2str(handles.parameters.voxelwise_p),'0.','.')) % remove leading zero - at PT request 5/2/17
     set(handles.clusterwisepeditbox,'string',strrep(num2str(handles.parameters.clusterwise_p),'0.','.')) % remove leading zero - at PT request 5/2/17
-
-    set(handles.permutationtestingcheckbox,'value',handles.parameters.DoPerformPermutationTesting)
+    set(handles.cfwer_v_value_editbox,'string',num2str(handles.parameters.cfwer_v_value));
+    set(handles.cfwer_p_value_editbox,'string',strrep(num2str(handles.parameters.cfwer_p_value),'0.','.')) % remove leading zero
 
     if ~handles.parameters.DoPerformPermutationTesting
         set(get(handles.permutationtestingpanel,'children'),'enable','off')
@@ -134,6 +143,14 @@ function handles = PopulateGUIFromParameters(handles)
     else
         set(get(handles.permutationtestingpanel,'children'),'enable','on')
     end
+    
+    if handles.parameters.do_CFWER
+        set([handles.cluster_voxelwise_p_editbox handles.clusterwisepeditbox handles.text18 handles.text13],'visible','off'); % hide the normal options
+    else % hide the cwfer options...
+        set([handles.cfwer_v_value_editbox handles.cfwer_p_value_editbox handles.text28 handles.text29],'visible','off'); % hide the cwfer options
+    end
+    
+    %%
 
     set(handles.lesionvolumecorrectiondropdown,'Value',find(strcmp(handles.parameters.lesionvolcorrection,get(handles.lesionvolumecorrectiondropdown,'String'))))
     set(handles.hypodirectiondropdown,'Value',         find(strcmp(handles.parameters.tails              ,get(handles.hypodirectiondropdown,'String'))))

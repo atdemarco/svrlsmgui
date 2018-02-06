@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 21-Jan-2018 15:59:44
+% Last Modified by GUIDE v2.5 03-Feb-2018 23:41:15
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -131,9 +131,12 @@ function parameters = GetDefaultParameters(handles)
     parameters.analysis_root = fullfile(mypath,'output');
     parameters.score_file = fullfile(mypath,'default','PNT.csv');
     parameters.score_name = 'Sim_ROI_123';
-    parameters.lesion_img_folder = fullfile(mypath,'default','lesion_imgs'); %parameters.analysis_root
+    parameters.lesion_img_folder = fullfile(mypath,'default','lesion_imgs');
     
-    parameters.DoPerformPermutationTesting = 1;
+    parameters.DoPerformPermutationTesting = true;
+    parameters.do_CFWER = false;
+    parameters.cfwer_v_value = 1; % do we want to stick with this?
+    parameters.cfwer_p_value = .05; % do we want to stick with tihs as default?
 
     parameters.gamma = 5;
     parameters.cost = 30;
@@ -243,8 +246,6 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
             scorefile_name =  fullfile(PathName,FileName);
             handles.parameters.score_file = scorefile_name;
             handles.parameters.control_variable_names = {}; % also clear covariates...  
-            
-            
         else % cancel was clicked.
             changemade = false;
         end
@@ -273,13 +274,13 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'analysisnameeditbox'
         handles.parameters.analysis_name = get(gcbo,'string');
     case 'lesionthresholdeditbox'
-        str = get(gcbo,'string'); %TO ADD: also make sure this doesn''t exceed the number of lesions available in the data
-        if isempty(str2num(str)) % then it's not a valid number...
-            set(gcbo,'string','10'); % change to default....
-            warndlg('Input must be numerical');
+        str = str2num(get(gcbo,'string')); %TO ADD: also make sure this doesn''t exceed the number of lesions available in the data
+        if isempty(str) || ~isint(str) 
+%             set(gcbo,'string','10'); % change to default....
+            warndlg('Input must be a positive integer.');
             changemade = false;
         else % update the parameter value.
-            handles.parameters.lesion_thresh = str2num(str);
+            handles.parameters.lesion_thresh = str;
         end
     case 'computebetamapcheckbox'
         handles.parameters.beta_map  = get(gcbo,'value');
@@ -288,24 +289,20 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'invertpmapcheckbox'
         handles.parameters.invert_p_map_flag = get(gcbo,'value');
     case 'cluster_voxelwise_p_editbox' 
-        str = get(gcbo,'string');
-        newval = str2num(str);
-        if isempty(newval) || newval <= 0 || newval >= 1 % then it's not a valid number...
-            %set(gcbo,'string','.005');
-            warndlg('Input must be a number between 0 and 1.');
+        str = str2num(get(gcbo,'string'));
+        if isempty(str) || str <= 0 || str >= 1 
             changemade = false;
+            warndlg('Input must be a number between 0 and 1.');
         else % update the parameter value.
-            handles.parameters.voxelwise_p = str2num(str);
+            handles.parameters.voxelwise_p = str;
         end
     case 'clusterwisepeditbox'
-        str = get(gcbo,'string');
-        newval = str2num(str);
-        if isempty(newval) || newval <= 0 || newval >= 1 % then it's not a valid value...
-            %set(gcbo,'string','.05');
+        str = str2num(get(gcbo,'string'));
+        if isempty(str) || str <= 0 || str >= 1
             warndlg('Input must be a number between 0 and 1.');
             changemade = false;
         else % update the parameter value.
-            handles.parameters.clusterwisepeditbox = str2num(str);
+            handles.parameters.clusterwise_p = str;
         end
     case 'sv_scaling_95th_percentile'
         handles.parameters.svscaling = 95;
@@ -314,17 +311,37 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'maxsvscaling'
         handles.parameters.svscaling = 100; % default
     case 'npermutationseditbox' % This is voxelwise permutations
-        str = get(gcbo,'string');
-        if isempty(str2num(str)) % then it's not a valid number...
-            set(gcbo,'string','10000');
-            warndlg('Input must be numerical');
+        str = str2num(get(gcbo,'string'));
+        if isempty(str) || str<=0 || ~isint(str)
+            changemade = false;
+            warndlg('Input must be a positive integer.');
         else % update the parameter value.
-            handles.parameters.PermNumVoxelwise = str2num(str);
+            handles.parameters.PermNumVoxelwise = str;
         end
     case 'permutationtestingcheckbox' % enable/disable permutation testing.
-        handles.parameters.DoPerformPermutationTesting = get(gcbo,'value'); % leave the giant bin file?
+        handles.parameters.DoPerformPermutationTesting = get(gcbo,'value');
+    case 'do_cfwer_checkbox'
+        handles.parameters.do_CFWER = get(gcbo,'value');
+    case 'cfwer_v_value_editbox'
+        str = str2num(get(gcbo,'string'));
+        if isempty(str) || str <= 0 || ~isint(str)
+            changemade=false;
+            %set(gcbo,'string',num2str(handles.parameters.cfwer_v_value)); % revert
+            warndlg('Input must be a positive integer.');
+        else % update the parameter value.
+            handles.parameters.cfwer_v_value = str;
+        end
+    case 'cfwer_p_value_editbox'
+        str = str2num(get(gcbo,'string'));
+        if isempty(str) || str<=0 || str >= 1 % not a valid p value...
+            changemade=false;
+            %set(gcbo,'string',num2str(handles.parameters.cfwer_p_value)); % revert
+            warndlg('Input must be a positive number less than 1.');
+        else % update the parameter value.
+            handles.parameters.cfwer_p_value = str;
+        end
     otherwise
-        warndlg('Unknown callback object - has someone modified the code?')
+        warndlg(['Unknown callback object ' get(gcbo,'tag') ' - has someone modified the code?'])
 end
 
     if changemade % then set to not saved...
@@ -841,7 +858,6 @@ function cost_menu_Callback(hObject, eventdata, handles)
         end
     end
    
-% --------------------------------------------------------------------
 function gamma_menu_Callback(hObject, eventdata, handles)
     answer = inputdlg('Enter new parameter value for gamma:','Gamma Parameter',1,{num2str(handles.parameters.gamma)});
     if ~isempty(answer)
@@ -854,11 +870,9 @@ function gamma_menu_Callback(hObject, eventdata, handles)
         end
     end
     
-% --------------------------------------------------------------------
 function optimize_menu_Callback(hObject, eventdata, handles)
-% add me based on Mirman code
+% add me based on bayesopt.
 
-% --------------------------------------------------------------------
 function open_batch_job_Callback(hObject, eventdata, handles)
     folder_name = uigetdir(pwd,'Choose a folder containing .mat config files of your analyses.');
     if ~folder_name, return; end % if folder_name == 0 then cancel was clicked.
@@ -891,17 +905,33 @@ function cancelanalysisbutton_Callback(hObject, eventdata, handles)
     set(gcf,'userdata','cancel')
     guidata(hObject, handles); % Update handles structure so it saves...
 
-
 % --------------------------------------------------------------------
 function checkforupdates_Callback(hObject, eventdata, handles)
-% hObject    handle to checkforupdates (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-update_available = check_for_updates;
-if ~update_available
-    msgbox('There are no updates available.')
-    return
+    update_available = check_for_updates;
+    if ~update_available
+        msgbox('There are no updates available.')
+        return
+    end
+    choice = questdlg('New updates are available, would you like to download them?','Update SVRLSMGUI','Not now','Update now','Update now');
+    if strcmp(choice,'Not now'), return, end
+    get_new_version(handles)
+
+% --- Executes on button press in do_cfwer_checkbox.
+function do_cfwer_checkbox_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+
+function cfwer_v_value_editbox_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+
+function cfwer_v_value_editbox_CreateFcn(hObject, eventdata, handles)
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
 end
-choice = questdlg('New updates are available, would you like to download them?','Update SVRLSMGUI','Not now','Update now','Update now');
-if strcmp(choice,'Not now'), return, end
-get_new_version(handles)
+
+function cfwer_p_value_editbox_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+
+function cfwer_p_value_editbox_CreateFcn(hObject, eventdata, handles)
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

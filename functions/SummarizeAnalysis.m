@@ -111,8 +111,6 @@ else % no covariates.
     descr = [descr ' No behavioral covariates were specified, so no nuisance model was applied to the behavioral score or the lesion data prior to SVR.'];
 end
 
-
-    
 % Was permutation testing performed?
 if parms.DoPerformPermutationTesting, descr = [descr ' The resulting SVR-&beta; values were thresholded at p < ' strrep(num2str(parms.voxelwise_p),'0.','.') ' and corrected for cluster size at p < ' strrep(num2str(parms.clusterwise_p),'0.','.') ', both based on ' num2str(parms.PermNumVoxelwise) ' permutations.'];
 else descr = [ descr ' Permutation testing was not performed at either the voxel level or cluster level, meaning the results should be interpreted as tentative at very best.']; 
@@ -406,8 +404,8 @@ if ~parms.DoPerformPermutationTesting
 else
     clustfile = dir(fullfile(voxelwisedir,'Voxelwise thresholded beta map*clustidx.nii'));
     clusttablefile = fullfile(voxelwisedir,clustfile(1).name); % 'Voxelwise thresholded beta map_clustidx.nii');
-    %if ~exist(clusttablefile,'file'), return; end % cheap way to avoid an error.
 
+    %if ~exist(clusttablefile,'file'), return; end % cheap way to avoid an error.
     [clusteridx.hdr,clusteridx.img]=read_nifti(clusttablefile);
 
     clusterwisedir = dir(fullfile(voxelwisedir,'Clusterwise*'));
