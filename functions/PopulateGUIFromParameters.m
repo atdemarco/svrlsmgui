@@ -112,7 +112,6 @@ function handles = PopulateGUIFromParameters(handles)
 
     set(handles.analysisnameeditbox,'String',handles.parameters.analysis_name)
     set(handles.lesionthresholdeditbox,'String',num2str(handles.parameters.lesion_thresh))
-    set(handles.invertpmapcheckbox,'value',handles.parameters.invert_p_map_flag)
     set([handles.applycovariatestobehaviorcheckbox handles.applycovariatestolesioncheckbox],'enable','on'); % so we can modify them
     set(handles.applycovariatestobehaviorcheckbox,'value',handles.parameters.apply_covariates_to_behavior)
     set(handles.applycovariatestolesioncheckbox,'value',handles.parameters.apply_covariates_to_lesion)
@@ -152,7 +151,22 @@ function handles = PopulateGUIFromParameters(handles)
     
     %%
 
+    set(handles.interrupt_button,'Enable','off') % only enable during an analysis....
+    
     set(handles.lesionvolumecorrectiondropdown,'Value',find(strcmp(handles.parameters.lesionvolcorrection,get(handles.lesionvolumecorrectiondropdown,'String'))))
+    
+
+    % Accommodate reading in old config files with "one tail pos", "one tail neg" and "two tails" old labeling for hypothesis directionality
+    if ~any(strcmp(handles.parameters.tails,handles.options.hypodirection)) % the options are labeled in the old way...
+        if strfind(handles.parameters.tails,'pos') % one tail pos.
+            handles.parameters.tails = handles.options.hypodirection{1}; % first option is on tailed pos no matter the label.
+        elseif strfind(handles.parameters.tails,'neg') % one tail neg
+            handles.parameters.tails = handles.options.hypodirection{2}; % second option is one tailed neg no matter the label.
+        else % two-tailed
+             handles.parameters.tails = handles.options.hypodirection{3}; % third option is two tailed no matter the label.
+        end
+    end
+    
     set(handles.hypodirectiondropdown,'Value',         find(strcmp(handles.parameters.tails              ,get(handles.hypodirectiondropdown,'String'))))
 
     UpdateTitleBar(handles);

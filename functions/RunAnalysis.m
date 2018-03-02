@@ -4,6 +4,7 @@ if isempty(gcbo) || isa(gcbo,'matlab.ui.container.Menu')
 else
     handles.parameters.runfromgui = 1;
 end
+
 try
 
 handles.parameters = ValidateSVRLSMParameters(handles.parameters);  % fill in any missing parms
@@ -29,18 +30,18 @@ if OutputDirectoryAlreadyExists(handles)
         return
     end
     handles.parameters.analysis_name = answer{1};
-    if handles.parameters.runfromgui 
+    if handles.parameters.runfromgui
         handles = PopulateGUIFromParameters(handles); 
     end
+    handles.parameters.baseoutputdir = fullfile(handles.parameters.analysis_out_path,handles.parameters.analysis_name,handles.parameters.datetime_run); % so we write to this directory in this analysis.
 end
 
-handles = UpdateProgress(handles,'Beginning analysis...',1);
+handles = UpdateProgress(handles,'Beginning analysis...',0);
 
-% Expose the Cancel Analysis button...
+% Expose the Cancel button...
 if handles.parameters.runfromgui
-    set(handles.runanalysisbutton,'visible','off')
-    set(handles.cancelanalysisbutton,'visible','on')
-    set(handles.cancelanalysisbutton,'string','Cancel Analysis')
+    set(handles.runanalysisbutton,'Enable','off')
+    set(handles.interrupt_button,'Enable','on')
     set(gcf,'userdata',[]); % in case it was set to 'cancel' previously we don't want to re-trigger
     
     % disable analysis controls while running.
@@ -49,42 +50,53 @@ if handles.parameters.runfromgui
     set(get(handles.covariatespanel,'children'),'enable','off')
 end
 
-parameters = handles.parameters; % Make a local copy of parameters struct ... for convenience.
+%% 
 
-% Tell which SVM will be used...
-if parameters.useLibSVM, svmmethod = 'libSVM';
-else svmmethod = 'MATLAB''s SVM';
+parameters = handles.parameters; % Make a local copy of parameters struct for convenience.
+
+if handles.parameters.runfromgui
+    parameters.waitbar = [handles.progressaxes_rectangle handles.progressaxes_text];
+else
+    parameters.waitbar = [];
 end
 
-handles = UpdateProgress(handles,['Analyses will be computed with ' svmmethod '.'],1);
+% Tell which SVM will be used...
+handles = UpdateProgress(handles,sprintf('Analyses will be computed with %s.',myif(parameters.useLibSVM,'libSVM','MATLAB''s SVM')),1);
 
+% Tell what optimization...
+handles = UpdateProgress(handles,sprintf('Hyperparameters will %s.',myif(parameters.optimization.do_optimize,['be optimized via ' CurrentOptimString(handles.parameters)],'not be optimized.')),1);
 
 %% Read behavior score and/or make sure all the requested behavioral scores are present for the patients in the file.
 handles = UpdateProgress(handles,'Reading behavioral scores...',1);
-
 variables = read_behavior_score(parameters);
 
-%% Setup our output directory.
+%% Set up our output directory names
 variables.output_folder.analysis = fullfile(handles.parameters.analysis_out_path,handles.parameters.analysis_name);
-
-folderstring = [parameters.score_name ', ' lower(parameters.tails)]; % Sim_ROI_123, One Tailed (Negative)
+folderstring = [parameters.score_name ', ' lower(parameters.tails)];
 variables.output_folder.base = fullfile(variables.output_folder.analysis,handles.parameters.datetime_run,folderstring);
 variables.output_folder.covariates = fullfile(variables.output_folder.base,'Covariates');
+variables.output_folder.hyperparameterinfo = fullfile(variables.output_folder.base,'hyperparameters');
+variables.output_folder.cache = fullfile(variables.output_folder.base,'cache');
+
 folderstring = sprintf('Voxelwise p%s based on %d permutations',strrep(num2str(parameters.voxelwise_p),'0.',''),parameters.PermNumVoxelwise);
 variables.output_folder.voxelwise = fullfile(variables.output_folder.base,folderstring);
 folderstring = sprintf('Clusterwise p%s based on %d permutations',strrep(num2str(parameters.clusterwise_p),'0.',''),parameters.PermNumClusterwise);
 variables.output_folder.clusterwise = fullfile(variables.output_folder.voxelwise,folderstring);
 
+if parameters.do_CFWER
+    folderstring = sprintf('CFWER p%s at v%d based on %d permutations',strrep(num2str(parameters.cfwer_p_value),'0.',''),parameters.cfwer_v_value,parameters.PermNumClusterwise);
+    variables.output_folder.cfwer = fullfile(variables.output_folder.base,folderstring);
+    
+    % Overwrite voxelwise and clusterwise directory names used for regular non-cfwer output
+    variables.output_folder.voxelwise = variables.output_folder.cfwer;
+    variables.output_folder.clusterwise = variables.output_folder.cfwer;
+end
+
 success = CreateDirectory(variables.output_folder.base); %#ok<NASGU> % this is the date subdirectory.
 
 handles.parameters.parmsfile = fullfile(variables.output_folder.base,'Analysis Parameters');
 
-% Record subjects in the analysis, and those who were excluded due to missi
-handles.parameters.excluded_subjects = variables.removed_subjects; % subjects that were removed from analysis because of missing 1 or more variables...
-handles.parameters.nsubjects = variables.SubNum;
-
-tosave = handles.parameters;
-save(tosave.parmsfile,'tosave') % write the file
+handles.parameters.output_folders = variables.output_folder;
 
 %% Read lesion images...
 handles = UpdateProgress(handles,'Reading lesion images...',1);
@@ -92,6 +104,7 @@ handles = UpdateProgress(handles,'Reading lesion images...',1);
 % remove people with non-existent lesion data
 has_no_lesion = cellfun(@(x) exist(fullfile(parameters.lesion_img_folder,[x '.nii']),'file'),variables.SubjectID) == 0;
 n_without_lesions=sum(has_no_lesion);
+variables.excluded.no_lesion = variables.SubjectID(has_no_lesion); % for summary.
 if n_without_lesions > 0
     handles = UpdateProgress(handles,[num2str(n_without_lesions) ' lesion file(s) not found, so subject(s) removed from analysis.'],1);
     variables.SubNum = variables.SubNum - n_without_lesions;
@@ -105,9 +118,35 @@ end
 
 variables = read_lesion_imgs(parameters, variables);
 
+% Notify user if/which subject(s) was/were removed because they had no voxels in the min lesion overlap mask
+if numel(variables.excluded.novoxels) == 0
+    msg = sprintf('All subject lesions fall within minimum lesion cutoff mask.');
+else
+    msg = sprintf('Subjects excluded because all voxels outside lesion cutoff mask: %s',strjoin(variables.excluded.novoxels,', '));
+end
+handles = UpdateProgress(handles,msg,1);
 
 handles = UpdateProgress(handles,'Successfully read behavioral scores and lesion images...',1);
 handles = UpdateProgress(handles,sprintf('Running analysis for ''%s''...', parameters.score_name),1);
+
+%% Save the pre-analysis parameters files. Will be replaced after analysis concludes.
+%% Record subjects in the analysis, and those who were excluded due to missing data...
+handles.parameters.excluded_subjects = variables.excluded; % for summary.
+handles.parameters.nsubjects = variables.SubNum;
+tosave = handles.parameters;
+save(tosave.parmsfile,'tosave') % write the parameters file before the analysis begins.
+
+%% Before going further, check if we think we'll have enough space to do this analysis...
+results = nbytes_required_for_svrlsm_analysis(parameters,variables);
+msg = sprintf('Analysis will require ~%sMB scratch space on disk.',num2str(round(results.nbytes_required/1e6))); % divide by a million... not 2^20 apparently.
+handles = UpdateProgress(handles,msg,1);    
+if ~results.enough_space
+    handles = UpdateProgress(handles,'There does not appear to be enough free disk space, aborting...',1);
+    success = 2;
+    return
+else
+    handles = UpdateProgress(handles,'Disk space should be adequate for estimated storage necessary.',1);
+end
 
 %% Decide what we have to covary out of the behavioral data (one score) and the lesion data
 switch handles.parameters.lesionvolcorrection
@@ -223,8 +262,8 @@ if any(brain_nuisance_model_options)
     
     % Run the model and save the results back to the lesion_dat matrix
     variables.lesion_nuisance_model = struct2array(tmp); % make into regular ol' data columns...
-    handles = UpdateProgress(handles,sprintf('Beginning to run lesion nuisance model with these covariates: %s\n',strjoin(fieldnames(tmp)')),1);
-    variables = continuize_lesions(variables,handles.parameters); % will automatically use the field .lesion_nuisance_model
+    handles = UpdateProgress(handles,sprintf('Beginning lesion nuisance model with covariates: %s',strjoin(fieldnames(tmp)')),1);
+    variables = continuize_lesions(variables,parameters); % will automatically use the field .lesion_nuisance_model
     variables.lesion_dat = variables.lesion_dat2;
     handles = UpdateProgress(handles,sprintf('Lesion nuisance model complete.'),1);
 else
@@ -233,72 +272,140 @@ end
 
 if ~isfield(handles,'options')
     handles.options.lesionvolumecorrection = {'Regress on Behavior','Regress on Lesion','Regress on Both','DTLVC','None'};
-    handles.options.hypodirection = {'One-tailed (positive)','One-tailed (negative)','Two-tailed'};
+    handles.options.hypodirection = {'One-tailed (positive)','One-tailed (negative)','Two-tailed'}; % this is ok even though it's old labeling
 end
 
 check_for_interrupt(parameters)
 
+% Standardize the behavior to be predicted (Y) - this is different from
+% 'Standardize' yes/no for the SVR, which afftects the the *predictor* data
+handles = UpdateProgress(handles,'Standardizing behavioral to be predicted to 0-100 range.',1);
+minoffset = min(variables.one_score(:)); % Accommodate negative numbers...
+variables.one_score = minoffset + variables.one_score; % bring all vals >=0
+variables.one_score = variables.one_score*100/max(abs(variables.one_score)); 
+
+%% Standardize behavior and lesion data if requested... the standardization only applies to both or neither at the moment.
+% if 1 == 2 
+%     %The software centers and scales each column of the predictor data (X) by the weighted column mean and standard deviation, 
+%     % respectively (for details on weighted standardizing, see Algorithms). 
+% 
+%     if parameters.standardize % I believe this is the right thing to do here...
+%         handles = UpdateProgress(handles,'Standardizing behavioral and lesion data to 0-100 range.',1);
+%         % standardize the behavioral data if requested.
+%         minoffset = min(variables.one_score(:)); % accommodate negative numbers...
+%         variables.one_score = minoffset + variables.one_score; % bring all vals >=0
+%         variables.one_score = variables.one_score*100/max(abs(variables.one_score)); 
+%         %variables.one_score = variables.one_score*100/max(abs(variables.one_score)); % < this is the default behavior for the original SVRLSM (Zhang et al., 2014)
+% 
+%         % standardize the lesion data -- could have values that are < 0 and > 1 depending on what transform was applied ...
+%     %     minoffset = min(variables.lesion_dat(:));
+%     %     variables.lesion_dat = variables.lesion_dat + minoffset; % bring all vals >=0
+%     %     variables.lesion_dat = variables.lesion_dat.*100./max(abs(variables.lesion_dat));
+%     else
+%         handles = UpdateProgress(handles,'Not standardizing behavioral and lesion data.',1);
+%     end
+% else
+%     disp('** Regular normalize step disabled for testing..')
+% end
+
+%% Optimize hyperparameters if requested
+parameters.optimization.best.sigma = nan; % placeholders regardless of whether we are optimizing.
+parameters.optimization.best.cost = nan; % not .box (although it's equivalent)
+parameters.optimization.best.standardize = nan;
+parameters.optimization.best.epsilon = nan;
+
+if parameters.method.mass_univariate
+    handles = UpdateProgress(handles,'Mass-univarate mode enabled, so hyperparameter optimization does not apply.',1);
+else
+    if parameters.optimization.do_optimize
+        handles = UpdateProgress(handles,'Beginning hyperparameter optimization...',1);
+        parameters = svrlsm_optimizehyperparameters(parameters,variables);
+        handles = UpdateProgress(handles,'Hyperparameter optimization complete...',1);
+    else
+        handles = UpdateProgress(handles,'No hyperparameter optimization requested, so skipping.',1);
+    end
+    % Tell what hyperparameters used will be
+    hyperparms = hyperparmstruct(parameters);
+    msg = sprintf('Hyperparameters: C = %.2f, %s = %.2f, ε = %.2f, standardize = %s', hyperparms.cost, myif(parameters.useLibSVM,'γ','σ'),myif(parameters.useLibSVM,hyperparms.gamma,hyperparms.sigma),hyperparms.epsilon,myif(hyperparms.standardize,'true','false'));
+    handles = UpdateProgress(handles,msg,1);
+
+    % If we finish hyperparameter optimization (or it was skipped) and standardize is true then let's apply that procedure here *ONCE* for libSVM. MATLAB will apply it at each fitrsvm call.
+    if parameters.useLibSVM % this accounts for either optimization choosing true or manually choosing true...
+        do_standardize = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.standardize, parameters.optimization.best.standardize, parameters.standardize);
+        if do_standardize
+            handles = UpdateProgress(handles,'Manually standardizing predictor (lesion) columns for libSVM (MATLAB does this auto).',1);
+            % In a MATLAB model with 'Standardize' set to true, the mean and std of each col is contained in .Mu and .Sigma output
+            % Do what MATLAB does when 'Standardize' == true: The software centers and scales each column of the predictor data (X) by 
+            % the weighted column mean and standard deviation, respectively (for details on weighted standardizing, see Algorithms). 
+            warning('In MATLAB these scaling values are only calculated based on rows used as support vectors... I don''t think we can easily do this for libSVM, can we?')
+            tmp = variables.lesion_dat;
+            tmp2 = tmp - nanmean(tmp); % subtract the mean of each column.
+            tmp3 = tmp2 ./ nanstd(tmp2); % divide each column by its standard deviation
+            variables.lesion_dat = tmp3;
+        end
+    end
+    
+    % Compute a parameter report in terms of its optimality.... based on Zhang et al 2014.
+    if ~parameters.useLibSVM
+        handles = UpdateProgress(handles,'Measuring quality of hyperparameters...',1);
+        variables = optimalParameterReport(parameters,variables);
+    else % we can't do it...
+        handles = UpdateProgress(handles,'Skipping hyperparameter quality measurement (no libSVM)...',1);
+    end
+end
+
 %% Compute the real beta map
 handles = UpdateProgress(handles,'Computing beta map...',1);
-variables.one_score = variables.one_score*100/max(abs(variables.one_score));
 [beta_map, variables] = get_beta_map(parameters, variables);
 
 check_for_interrupt(parameters)
 
 %% Permutation test
 if parameters.DoPerformPermutationTesting
-    handles = UpdateProgress(handles,'Creating output directories...',1);
+    handles = UpdateProgress(handles,'Creating output directories for permutation testing results...',1);
     success = CreateDirectory(variables.output_folder.voxelwise); %#ok<NASGU>
     success = CreateDirectory(variables.output_folder.clusterwise); %#ok<NASGU>
 
     [variables] = run_beta_PMU2(parameters, variables, beta_map,handles);
     
     if parameters.do_CFWER
-        warning('add me')
-        % Evaluate CFWER results...
+        %variables = evaluate_clustering_results(handles,variables,parameters);
     else    
         % Evaluate clustering results
-        [survivingclusters,totalclusters,survivingbetavals,hypothdirection,clusterthresh] = evaluate_clustering_results(handles,variables,parameters);
+        variables = evaluate_clustering_results(handles,variables,parameters);
         
-        handles = UpdateProgress(handles,sprintf('Results of analysis (%s):',hypothdirection),1);
-        handles = UpdateProgress(handles,sprintf('%d voxels survive voxelwise threshold (P < %g, %d perms).',survivingbetavals,parameters.voxelwise_p,parameters.PermNumVoxelwise),1);
-        handles = UpdateProgress(handles,sprintf('%d of %d clusters survive clusterwise threshold (P < %g, k > %d voxels, %d perms).',survivingclusters,totalclusters,parameters.clusterwise_p,clusterthresh,parameters.PermNumClusterwise),1);
+        handles = UpdateProgress(handles,sprintf('Results of analysis:'),1);
+        handles = UpdateProgress(handles,sprintf('%d voxels survive voxelwise threshold (P < %g, %d perms).',variables.clusterresults.survivingbetavals,parameters.voxelwise_p,parameters.PermNumVoxelwise),1);
+        handles = UpdateProgress(handles,sprintf('%d of %d clusters survive clusterwise threshold (P < %g, k > %d voxels, %d perms).',variables.clusterresults.survivingclusters,variables.clusterresults.totalclusters,parameters.clusterwise_p,variables.clusterresults.clusterthresh,parameters.PermNumClusterwise),1);
     end
 end
 
+handles.parameters.files_created = variables.files_created;
 handles.parameters.time.endtime = datestr(now);
 handles.parameters.time.runduration = toc;
 handles.parameters.analysis_is_completed = 1;
-tosave=handles.parameters;
+tosave = handles.parameters;
 
 %% Finish the analysis...
 try delete(parmsfile); end %#ok<TRYNC>
-save(tosave.parmsfile,'tosave') % write the file again so we know the analysis completed
+save(tosave.parmsfile,'tosave'); % write the file again so we know the analysis completed
 success = 1;
 
 check_for_interrupt(parameters)
 
 handles = UpdateProgress(handles,sprintf('Starting summary file...'),1);
 htmlout = SummarizeAnalysis(tosave.parmsfile); % if desired...
-
-if isempty(htmlout) % then no summary requsted
-    handles = UpdateProgress(handles,sprintf('Done, no summary file requested.'),1);
-else
-    handles = UpdateProgress(handles,sprintf('Done writing summary file...'),1);    
-end
+handles = UpdateProgress(handles,myif(isempty(htmlout),'Done, no summary file requested.','Done writing summary file...'),1);
 
 catch ME % If the analysis encounters an error of some sort...
       success = 0; % failure.
-      all_waitbars = findobj(allchild(0), 'flat', 'Tag', 'WB');
-      close([all_waitbars]); % clean up.
-
+      svrlsm_waitbar(parameters.waitbar,0,''); % clear this.
       if strcmp(get(gcf,'userdata'),'cancel') % if the running was canceled, then let's make sure to clean up what happened...
-          set(handles.cancelanalysisbutton,'string','Cancel Analysis')
           set(gcf,'userdata',[]); % in case it was set to 'cancel' previously we don't want to re-trigger
           success = 2; % cancelled...
           % don't rethrow here -- stop gracefully.
       else
         handles.error = ME;
-%         rethrow(ME)
+        % don't rethrow here -- stop gracefully.
       end
 end

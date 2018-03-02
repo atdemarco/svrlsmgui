@@ -224,27 +224,27 @@ end
                 thresholded_pos(variables.m_idx) = one_tail_pos_alphas;            
                 % Write unthresholded P-map for the positive tail            
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values (inv).nii');
-                spm_write_vol(variables.vo, thresholded_pos);
+                svrlsmgui_write_vol(variables.vo, thresholded_pos);
                 % Now write out the thresholded P-map for the positive tail            
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values (inv).nii');
                 thresholded_pos(thresholded_pos < (1-parameters.voxelwise_p)) = 0; % zero out sub-threshold p value voxels (note the 1-p)
-                spm_write_vol(variables.vo, thresholded_pos);
+                svrlsmgui_write_vol(variables.vo, thresholded_pos);
             else
                 thresholded_pos(variables.m_idx) = 1 - one_tail_pos_alphas;
                 % Write unthresholded P-map for the positive tail            
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values.nii');
-                spm_write_vol(variables.vo, thresholded_pos);
+                svrlsmgui_write_vol(variables.vo, thresholded_pos);
                 % Now write out the thresholded P-map for the positive tail    
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values.nii');
                 thresholded_pos(thresholded_pos > parameters.voxelwise_p) = 0; % zero out voxels whose values are greater than p 
-                spm_write_vol(variables.vo, thresholded_pos);
+                svrlsmgui_write_vol(variables.vo, thresholded_pos);
             end
             
             % Now write out beta cutoff map.
             thresholded_pos = zerostemplate; % zeros(nx,ny,nz); % reserve space
             thresholded_pos(variables.m_idx) = pos_beta_map_cutoff; % put the 95th percentil beta values back into the lesion indices in a full volume
             variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (positive tail).nii');
-            spm_write_vol(variables.vo, thresholded_pos);
+            svrlsmgui_write_vol(variables.vo, thresholded_pos);
             
         case options.hypodirection{2} % 'one_negative' % One-tailed negative tail...
             thresholded_neg = zerostemplate;
@@ -252,27 +252,27 @@ end
                 thresholded_neg(variables.m_idx) = one_tail_neg_alphas;
                 % write out unthresholded negative p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values (inv).nii');
-                spm_write_vol(variables.vo, thresholded_neg);
+                svrlsmgui_write_vol(variables.vo, thresholded_neg);
                 % write out thresholded negative p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values (inv).nii');
                 thresholded_neg(thresholded_neg < (1-parameters.voxelwise_p)) = 0; % zero out subthreshold p value voxels (note 1-p)
-                spm_write_vol(variables.vo, thresholded_neg);
+                svrlsmgui_write_vol(variables.vo, thresholded_neg);
             else
                 thresholded_neg(variables.m_idx) = 1 - one_tail_neg_alphas;
                 % write out unthresholded negative p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values.nii');
-                spm_write_vol(variables.vo, thresholded_neg);
+                svrlsmgui_write_vol(variables.vo, thresholded_neg);
                 % write out thresholded negative p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values.nii');
                 thresholded_neg(thresholded_neg > parameters.voxelwise_p) = 0; % zero out voxels whose values are greater than p 
-                spm_write_vol(variables.vo, thresholded_neg);
+                svrlsmgui_write_vol(variables.vo, thresholded_neg);
             end
             
             % Now beta cutoff map for one-taled negative tail...
             thresholded_neg = zerostemplate; % reserve space;
             thresholded_neg(variables.m_idx) = neg_beta_map_cutoff; % put the 5th percentil beta values back into the lesion indices in a full volume
             variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (negative tail).nii');
-            spm_write_vol(variables.vo, thresholded_neg);
+            svrlsmgui_write_vol(variables.vo, thresholded_neg);
             
         case options.hypodirection{3} %'two'% Both tails..
             thresholded_twotails = zerostemplate;% reserve space;
@@ -280,20 +280,20 @@ end
                 thresholded_twotails(variables.m_idx) = twotails_alphas;
                 % write out unthresholded p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values (inv).nii');
-                spm_write_vol(variables.vo, thresholded_twotails);
+                svrlsmgui_write_vol(variables.vo, thresholded_twotails);
                 % write out thresholded p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values (inv).nii');
                 thresholded_twotails(thresholded_twotails < (1-(parameters.voxelwise_p/2))) = 0; % zero out subthreshold p value voxels (note 1-p)
-                spm_write_vol(variables.vo, thresholded_twotails);
+                svrlsmgui_write_vol(variables.vo, thresholded_twotails);
             else
                 thresholded_twotails(variables.m_idx) = 1 - twotails_alphas;
                 % write out unthresholded p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded P values.nii');
-                spm_write_vol(variables.vo, thresholded_twotails);
+                svrlsmgui_write_vol(variables.vo, thresholded_twotails);
                 % write out thresholded p map
                 variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Thresholded P values (inv).nii');
                 thresholded_twotails(thresholded_twotails > (parameters.voxelwise_p/2)) = 0; % zero out supra-alpha p value voxels
-                spm_write_vol(variables.vo, thresholded_twotails);
+                svrlsmgui_write_vol(variables.vo, thresholded_twotails);
             end
             
             % Beta cutoff maps
@@ -301,13 +301,13 @@ end
             thresholded_twotail_upper = zerostemplate; %zeros(nx,ny,nz); % reserve space;
             thresholded_twotail_upper(variables.m_idx) = two_tailed_beta_map_cutoff_pos; % put the 2.5th percentil beta values back into the lesion indices in a full volume
             variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (two tail, upper).nii');
-            spm_write_vol(variables.vo, thresholded_twotail_upper);
+            svrlsmgui_write_vol(variables.vo, thresholded_twotail_upper);
             
             % Two-tailed lower tail
             thresholded_twotail_lower = zerostemplate; % zeros(nx,ny,nz); % reserve space;
             thresholded_twotail_lower(variables.m_idx) = two_tailed_beta_map_cutoff_neg; % put the 2.5th percentil beta values back into the lesion indices in a full volume
             variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Beta value cutoff mask (two tail, lower).nii');
-            spm_write_vol(variables.vo, thresholded_twotail_lower);
+            svrlsmgui_write_vol(variables.vo, thresholded_twotail_lower);
     end
      
     % Now for each permuted beta map, apply the beta mask and determine largest surviving cluster.
@@ -334,7 +334,7 @@ end
         
          if parameters.SavePreThresholdedPermutations % then write out raw voxel NON-thresholded images for this permutation.
             variables.vo.fname = fullfile(variables.output_folder.clusterwise,['UNthreshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
-            spm_write_vol(variables.vo, templatevol);
+            svrlsmgui_write_vol(variables.vo, templatevol);
          end
         
         switch parameters.tails
@@ -351,13 +351,13 @@ end
             switch parameters.tails
                 case options.hypodirection{1} % 'one_positive'
                     variables.vo.fname = fullfile(variables.output_folder.clusterwise,['pos_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
-                    spm_write_vol(variables.vo, pos_threshed);
+                    svrlsmgui_write_vol(variables.vo, pos_threshed);
                 case options.hypodirection{2} %'one_negative'
                     variables.vo.fname = fullfile(variables.output_folder.clusterwise,['neg_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
-                    spm_write_vol(variables.vo, neg_threshed);
+                    svrlsmgui_write_vol(variables.vo, neg_threshed);
                 case options.hypodirection{3} %'two'
                     variables.vo.fname = fullfile(variables.output_folder.clusterwise,['twotail_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);
-                    spm_write_vol(variables.vo, twotail_threshed);
+                    svrlsmgui_write_vol(variables.vo, twotail_threshed);
             end
         end
         
@@ -383,7 +383,7 @@ end
                 if parameters.SavePostClusterwiseThresholdedPermutations % then save them...
                     out_map = remove_scatter_clusters(testvol_thresholded, largest_cluster_size-1);
                     variables.vo.fname = fullfile(variables.output_folder.clusterwise,[permtype '_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumClusterwise) '_largest_cluster.nii']);
-                    spm_write_vol(variables.vo, out_map);
+                    svrlsmgui_write_vol(variables.vo, out_map);
                 end
             end
             all_max_cluster_sizes(f) = largest_cluster_size; % record...

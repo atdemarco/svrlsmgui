@@ -22,32 +22,25 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 03-Feb-2018 23:41:15
+% Last Modified by GUIDE v2.5 01-Mar-2018 17:05:57
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
-gui_State = struct('gui_Name',       mfilename, ...
-                   'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @svrlsmgui_OpeningFcn, ...
-                   'gui_OutputFcn',  @svrlsmgui_OutputFcn, ...
-                   'gui_LayoutFcn',  [] , ...
-                   'gui_Callback',   []);
+gui_State = struct('gui_Name',       mfilename,'gui_Singleton',  gui_Singleton, ...
+                   'gui_OpeningFcn', @svrlsmgui_OpeningFcn, 'gui_OutputFcn',  @svrlsmgui_OutputFcn, ...
+                   'gui_LayoutFcn',  [] , 'gui_Callback',   []);
+
 if nargin && ischar(varargin{1})
-    gui_State.gui_Callback = str2func(varargin{1});
+    gui_State.gui_Callback = str2func(varargin{1}); 
 end
 
 if nargout
     [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
 else
-    gui_mainfcn(gui_State, varargin{:});
+    gui_mainfcn(gui_State, varargin{:}); 
 end
-% End initialization code - DO NOT EDIT
 
-function handles = ConfigureSVRLSMGUIOptions(handles)
-    handles.options.lesionvolumecorrection = {'Regress on Behavior','Regress on Lesion','Regress on Both','DTLVC','None'};
-    handles.options.hypodirection = {'One-tailed (positive)','One-tailed (negative)','Two-tailed'};
-    set(handles.lesionvolumecorrectiondropdown,'String',handles.options.lesionvolumecorrection)
-    set(handles.hypodirectiondropdown,'String',handles.options.hypodirection)
+% End initialization code - DO NOT EDIT
 
 % --- Executes just before svrlsmgui is made visible.
 function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
@@ -88,99 +81,221 @@ function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     %        other than max of the map when backprojecting the analysis
     %        hyperplane
     % 0.10 - January 2018 - fixing reported bugs
+    % 0.15 - massive code refactoring and implementation of CFWER
     
-    handles.parameters.gui_version = 0.10; % version of the the gui
+    handles.parameters.gui_version = 0.15; % version of the the gui
     guidata(hObject, handles); % Update handles structure
-
 
 function handles = DisableAll(handles)
     set(get(handles.analysispreferencespanel,'children'),'enable','off')
     set(get(handles.covariatespanel,'children'),'enable','off')
     set(get(handles.permutationtestingpanel,'children'),'enable','off')
-    set([handles.viewresultsbutton handles.cancelanalysisbutton handles.runanalysisbutton],'enable','off')
+    set([handles.viewresultsbutton handles.interrupt_button handles.runanalysisbutton],'Enable','off') % handles.cancelanalysisbutton 
     set(handles.optionsmenu,'enable','off') % since viewing this menu references parameters that may not be loaded.  
     msgbox('One or more necessary component is missing from MATLAB''s path. Address the message in the SVRLSMgui window and restart this gui.')
 
-function handles = LoadParametersFromSVRLSMFile(handles,hObject,filepath)
-    tmp = load(filepath); 
-    handles.parameters = tmp.tosave; % tosave is the name of the variable we save; it's arbitrary but invariant.
-    handles = PopulateGUIFromParameters(handles); % show what we've just loaded.    
-    guidata(hObject, handles); % Update handles structure
-    handles = UpdateProgress(handles,['Loaded ' handles.parameters.parameter_file_name],0);
-    
-function parameters = GetDefaultParameters(handles)
-    % To add: make this a "default" .mat file, configurable in preferences...
-    if handles.details.libsvm
-        parameters.useLibSVM = 1; % 1 = libSVM and 0 = MATLAB
-    else %if handles.details.stats_toolbox 
-        parameters.useLibSVM = 0; % 1 = libSVM and 0 = MATLAB
-    end
-
-    parameters.svscaling = 100; % defaults to max (100th percentile) - added 9/29/17
-    
-    %parameters.control_variable_name = []; % vestigial.
-    parameters.tails = handles.options.hypodirection{1};
-    parameters.datetime_run = []; % when the analysis was run.
-    parameters.datetime_save = []; % when the analysis was run.
-    parameters.analysis_is_completed = 0;
-    parameters.parameter_file_name = ''; % identity of file if parameters were opened from a file.
-    parameters.parallelize = false; % do not parallelize...
-	
-    mypath = fileparts(which('svrlsmgui'));
-    
-    parameters.analysis_root = fullfile(mypath,'output');
-    parameters.score_file = fullfile(mypath,'default','PNT.csv');
-    parameters.score_name = 'Sim_ROI_123';
-    parameters.lesion_img_folder = fullfile(mypath,'default','lesion_imgs');
-    
-    parameters.DoPerformPermutationTesting = true;
-    parameters.do_CFWER = false;
-    parameters.cfwer_v_value = 1; % do we want to stick with this?
-    parameters.cfwer_p_value = .05; % do we want to stick with tihs as default?
-
-    parameters.gamma = 5;
-    parameters.cost = 30;
-
-    parameters.lesionvolcorrection = handles.options.lesionvolumecorrection{2}; % DTLVC
-
-    parameters.beta_map = 1; 
-    parameters.sensitivity_map = 1; 
-
-    parameters.invert_p_map_flag = 1; % Inverse p-map, i.e., use 1-p instead of p for display on MRIcron.
-    parameters.control_variable_names = {}; % None at first ...  
-
-    parameters.lesion_thresh = 10; % The least lesion subject number for a voxel to be considered in the following analysis. 
-    parameters.voxelwise_p = 0.005;
-    parameters.clusterwise_p = 0.05;
-    parameters.PermNumVoxelwise = 10000;
-    parameters.PermNumClusterwise = 10000;
-
-    parameters.apply_covariates_to_behavior = 0;
-    parameters.apply_covariates_to_lesion = 0;
-
-    parameters.analysis_name = 'Unnamed';
-    parameters.analysis_out_path = parameters.analysis_root; % is this a good default?
-    parameters.is_saved = 0;
-    
-    parameters.do_make_summary = 1; % default to make summary...
-    
-    parameters.SavePreThresholdedPermutations = 0;
-    parameters.SavePostVoxelwiseThresholdedPermutations = 0;
-    parameters.SavePostClusterwiseThresholdedPermutations = 0;
-    parameters.SavePermutationData = 0; % leave the giant bin file?
-    
-    handles = UpdateProgress(handles,'Retrieved default parameters...',1); %#ok<*NASGU>
-
 function handles = UpdateCurrentAnalysis(handles,hObject)
-changemade = true; % default
+    changemade = true; % default
 
 switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what field it goes to -- and to validate
+    case 'requirements_menu'
+    case 'search_strategy_options'
+        set(handles.optimization_iterations_menu_option,'Label',['Iterations: ' num2str(handles.parameters.optimization.iterations)])
+        set(handles.griddivs_optimization_menu_option,'Label',['Grid Divs: ' num2str(handles.parameters.optimization.grid_divisions)])
+        return
+
+    case 'summary_prediction_menu'
+        handles.parameters.summary.predictions = ~handles.parameters.summary.predictions;
+    case 'lsm_method_parent_menu'
+        set(get(handles.lsm_method_parent_menu,'children'),'checked','off')
+        if handles.parameters.method.mass_univariate
+            set(handles.mass_univariate_menu_option,'checked','on')
+            set(handles.svr_parent_menu,'enable','off')
+        else
+            set(handles.multivariate_lsm_option,'checked','on')
+            set(handles.svr_parent_menu,'enable','on')
+        end
+        
+        if handles.details.libsvm || handles.details.stats_toolbox
+            set(handles.multivariate_lsm_option,'enable','on')
+        else
+            handles.parameters.method.mass_univariate = true; % at least...
+            set(handles.multivariate_lsm_option,'enable','off')            
+        end
+    case 'mass_univariate_menu_option'
+        handles.parameters.method.mass_univariate = true;
+    case 'multivariate_lsm_option'
+        handles.parameters.method.mass_univariate = false;
+    case 'svr_parent_menu'
+    case 'optimization_is_verbose_menu'
+        handles.parameters.optimization.verbose_during_optimization = ~handles.parameters.optimization.verbose_during_optimization;
+    case 'summary_lesionoverlap'
+        handles.parameters.summary.lesion_overlap = ~handles.parameters.summary.lesion_overlap;
+    case 'summary_paramoptimization'
+        handles.parameters.summary.hyperparameter_optimization_record = ~handles.parameters.summary.hyperparameter_optimization_record;
+    case 'summary_create_summary'
+        handles.parameters.do_make_summary = ~handles.parameters.do_make_summary;
+    case 'summary_narrative_summary'
+        handles.parameters.summary.narrative = ~handles.parameters.summary.narrative;
+    case 'summary_svrbetamap'
+        handles.parameters.summary.beta_map = ~handles.parameters.summary.beta_map;
+    case 'summary_voxelwise_thresholded'
+        handles.parameters.summary.voxelwise_thresholded = ~handles.parameters.summary.voxelwise_thresholded;
+    case 'summary_clusterwise_thresholded'
+        handles.parameters.summary.clusterwise_thresholded = ~handles.parameters.summary.clusterwise_thresholded;
+    case 'summary_cfwerdiagnostics'
+        handles.parameters.summary.cfwer_diagnostics = ~handles.parameters.summary.cfwer_diagnostics;
+    case 'model_variablediagnostics'
+        handles.parameters.summary.variable_diagnostics = ~handles.parameters.summary.variable_diagnostics;
+    case 'summary_clusterstability'
+        handles.parameters.summary.cluster_stability = ~handles.parameters.summary.cluster_stability;
+    case 'summary_parameterassessment'
+        handles.parameters.summary.parameter_assessment = ~handles.parameters.summary.parameter_assessment;
+    case 'do_use_cache_menu'
+        handles.parameters.do_use_cache_when_available = ~handles.parameters.do_use_cache_when_available;
+    case 'crossval_menu_option_none'
+        handles.parameters.optimization.crossval.do_crossval = false; % disable crossvalidation.
+    case 'crossval_menu_option_kfold'
+        msg = sprintf('Enter the number of folds for cross-validation (default = %d):',handles.parameters.optimization.crossval.nfolds_default);
+        answer = inputdlg(msg, ...
+            'Number of folds', 1,{num2str(handles.parameters.optimization.crossval.nfolds)});
+        warning('bug here - if you click cancel it causes an error - in future, embed the str<=0 and isint within the isempty... and do that with other str2num(answer{1})''s as well')
+        if ~isempty(answer)
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.optimization.crossval.do_crossval = true; % enable crossvalidation.
+                handles.parameters.optimization.crossval.nfolds = str;
+            end
+        end
+        
+    case 'do_repartition_menu_option' % flip this choice.
+        handles.parameters.optimization.crossval.repartition = ~handles.parameters.optimization.crossval.repartition;
+    case 'standardize_menu' % set the value to use if not optimization
+        vals = {'true','false'};
+        msg = sprintf('Standardize value (default = %s):',myif(handles.parameters.svr_defaults.standardize,'true','false'));
+        s = listdlg('PromptString',msg,'SelectionMode','single', ...
+            'ListString',vals,'InitialValue',myif(handles.parameters.standardize,1,2), ...
+            'Name','Standardize Parameter','ListSize',[250 80]);
+       
+        if isempty(s)
+            changemade=false; % cancelled...
+        else
+            handles.parameters.standardize = str2num(vals{s}); % myif(v==1,true,false); % new value.
+        end
+        
+    case 'epsilon_menu' % set the value to use if not optimization
+        msg = sprintf('Enter new value for epsilon (default = %0.2f):',handles.parameters.svr_defaults.epsilon);
+        % add min and max range - dev1
+        answer = inputdlg(msg,'Epsilon Parameter',1,{num2str(handles.parameters.epsilon)});
+        if ~isempty(answer)
+            numval = str2num(answer{1});
+            if isnumeric(numval) && ~isempty(numval)
+                handles.parameters.epsilon = numval;
+            end
+        end
+
+    % Whether to allow optimization of given hyperparameter
+    case 'do_optimize_cost_menu'
+        if ~handles.parameters.optimization.params_to_optimize.cost % then enabling it will prompt for new values...
+            minmsg = sprintf('Minimum (default = %0.3f):',handles.parameters.optimization.params_to_optimize.cost_range_default(1));
+            maxmsg = sprintf('Maximum (default = %0.2f):',handles.parameters.optimization.params_to_optimize.cost_range_default(2));
+            msg = {minmsg,maxmsg};
+            defaultans = {num2str(handles.parameters.optimization.params_to_optimize.cost_range(1)),num2str(handles.parameters.optimization.params_to_optimize.cost_range(2))};
+            answer = inputdlg(msg,'Cost Range',1,defaultans);
+            if any(cellfun(@isempty,answer)), warndlg('Invalid Cost range.'); return; end
+            minval = str2num(answer{1}); maxval = str2num(answer{2});
+            if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Cost range values must be numbers.'); return; end
+            if ~all([minval maxval] > 0), warndlg('Cost range values must be positive.'); return; end
+            handles.parameters.optimization.params_to_optimize.cost_range = sort([minval maxval]);
+        end
+        
+        handles.parameters.optimization.params_to_optimize.cost = ~handles.parameters.optimization.params_to_optimize.cost;
+    case 'do_optimize_gamma_menu'
+        if ~handles.parameters.optimization.params_to_optimize.sigma % then enabling it will prompt for new values...
+            minmsg = sprintf('Minimum (default = %0.3f):',handles.parameters.optimization.params_to_optimize.sigma_range_default(1));
+            maxmsg = sprintf('Maximum (default = %0.2f):',handles.parameters.optimization.params_to_optimize.sigma_range_default(2));
+            msg = {minmsg,maxmsg};
+            defaultans = {num2str(handles.parameters.optimization.params_to_optimize.sigma_range(1)),num2str(handles.parameters.optimization.params_to_optimize.sigma_range(2))};
+            answer = inputdlg(msg,'Sigma Range',1,defaultans);
+            if any(cellfun(@isempty,answer)), warndlg('Invalid Sigma range.'); return; end
+            minval = str2num(answer{1}); maxval = str2num(answer{2});
+            if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Sigma range values must be numbers.'); return; end
+            if ~all([minval maxval] > 0), warndlg('Sigma range values must be positive.'); return; end
+            handles.parameters.optimization.params_to_optimize.sigma_range = sort([minval maxval]);
+        end
+
+        handles.parameters.optimization.params_to_optimize.sigma = ~handles.parameters.optimization.params_to_optimize.sigma;
+    case 'do_optimize_epsilon_menu'
+        
+        if ~handles.parameters.optimization.params_to_optimize.epsilon % then enabling it will prompt for new values...
+            minmsg = sprintf('Minimum (default = %0.3f):',handles.parameters.optimization.params_to_optimize.epsilon_range_default(1));
+            maxmsg = sprintf('Maximum (default = %0.2f):',handles.parameters.optimization.params_to_optimize.epsilon_range_default(2));
+            msg = {minmsg,maxmsg};
+            defaultans = {num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(1)),num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(2))};
+            answer = inputdlg(msg,'Epsilon Range',1,defaultans);
+            if any(cellfun(@isempty,answer)), warndlg('Invalid Epsilon range.'); return; end
+            minval = str2num(answer{1}); maxval = str2num(answer{2});
+            if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Epsilon range values must be numbers.'); return; end
+            if ~all([minval maxval] > 0), warndlg('Epsilon range values must be positive.'); return; end
+            handles.parameters.optimization.params_to_optimize.epsilon_range = sort([minval maxval]);
+        end
+        handles.parameters.optimization.params_to_optimize.epsilon = ~handles.parameters.optimization.params_to_optimize.epsilon;
+    case 'do_optimize_standardize_menu'
+        handles.parameters.optimization.params_to_optimize.standardize = ~handles.parameters.optimization.params_to_optimize.standardize;
+
+    % Optimization misc choices
+    case 'optimization_iterations_menu_option'
+        answer = inputdlg('Enter a new number of iterations:','Number of optimization iterations',1,{num2str(handles.parameters.optimization.iterations)});
+        if ~isempty(answer)
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.optimization.iterations = str;
+            end
+        end
+    case 'griddivs_optimization_menu_option'
+        answer = inputdlg('Enter a new number of grid divisions:','Number of optimization grid divisions',1,{num2str(handles.parameters.optimization.grid_divisions)});
+        if ~isempty(answer)
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.optimization.grid_divisions = str;
+            end
+        end
+    
+    % Optimization search strategy choice
+    case 'random_search_menu_option'
+        handles.parameters.optimization.search_strategy = 'Random Search';
+    case 'bayes_optimization_menu_choice'
+        handles.parameters.optimization.search_strategy = 'Bayes Optimization';
+    case 'gridsearch_option'
+        handles.parameters.optimization.search_strategy = 'Grid Search';        
+
+    % Optimization objective function choice
+    case 'predictbehavior_optimize_menu_choice' % bayes opt predict behavior
+        handles.parameters.optimization.objective_function = 'Predict Behavior';
+    case 'correlation_optimize_menu_choice' % maximum correlation w behavior
+        handles.parameters.optimization.objective_function = 'Maximum Correlation';
+    case 'resubloss_optimize_menu_choice'
+        handles.parameters.optimization.objective_function = 'Resubstitution Loss';
+    % Whether or not to optimize hyperparameters
+    case 'no_optimize_menu_choice'
+        handles.parameters.optimization.do_optimize = false;
+    case 'current_optimization_menu_option'
+        handles.parameters.optimization.do_optimize = true; % will use whatever setting is configured.
+    
+	% Which SVR algorithm to use
     case 'use_lib_svm'
         handles.parameters.useLibSVM = 1;
     case 'use_matlab_svr'
         handles.parameters.useLibSVM = 0;        
-    case 'output_summary_menu'
-        handles.parameters.do_make_summary = ~handles.parameters.do_make_summary;
     case 'save_pre_thresh'
         handles.parameters.SavePreThresholdedPermutations = ~handles.parameters.SavePreThresholdedPermutations;
     case 'retain_big_binary_file'
@@ -189,13 +304,18 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         handles.parameters.SavePostVoxelwiseThresholdedPermutations = ~handles.parameters.SavePostVoxelwiseThresholdedPermutations;
     case 'save_post_clusterwise_thresholded'
         handles.parameters.SavePostClusterwiseThresholdedPermutations= ~handles.parameters.SavePostClusterwiseThresholdedPermutations;
+    case 'save_unthresholded_pmaps_cfwer'
+        handles.parameters.SaveNullPMapsPreThresholding = ~handles.parameters.SaveNullPMapsPreThresholding;
+    case 'save_thresholded_pmaps_cfwer'
+        handles.parameters.SaveNullPMapsPostThresholding = ~handles.parameters.SaveNullPMapsPostThresholding;
+    case 'retain_big_binary_pval_file'
+        handles.parameters.SavePermutationPData = ~handles.parameters.SavePermutationPData;
     case 'parallelizemenu'
         handles.parameters.parallelize = ~handles.parameters.parallelize;
     case 'applycovariatestobehaviorcheckbox'
         handles.parameters.apply_covariates_to_behavior = get(gcbo,'value');
     case 'applycovariatestolesioncheckbox'
         handles.parameters.apply_covariates_to_lesion = get(gcbo,'value');
-        handles.parameters.is_saved = 0;
     case 'lesionvolumecorrectiondropdown'
         contents = get(handles.lesionvolumecorrectiondropdown,'string');
         newval = contents{get(handles.lesionvolumecorrectiondropdown,'value')};
@@ -203,12 +323,17 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'hypodirectiondropdown'
         contents = get(handles.hypodirectiondropdown,'string');
         newval = contents{get(handles.hypodirectiondropdown,'value')};
-        handles.parameters.tails = newval;
+        if find(strcmp(newval,handles.options.hypodirection)) == 3 % Disable two-tails from the GUI
+            warndlg('Two-tailed hypothesis tests are not available in this version of SVRLSMGUI.')
+            changemade = false;
+        else
+            handles.parameters.tails = newval;
+        end
     case 'addcovariate'
         % first, what are we trying to add?
         contents = get(handles.potentialcovariateslist,'String'); 
         newcovariate = contents{get(handles.potentialcovariateslist,'Value')};
-        if strcmp(newcovariate,handles.parameters.score_name) %dev1 % check if it's our main score name...
+        if strcmp(newcovariate,handles.parameters.score_name) % check if it's our main score name...
             warndlg('This variable is already chosen as the main outcome in the analysis. If you''d like to add it as a covariate, remove it from "Score Name."')
             changemade = false;
         elseif any(strcmp(newcovariate,handles.parameters.control_variable_names)) % only if it's not on our list of covariates already.
@@ -218,8 +343,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
             handles.parameters.control_variable_names{end+1} = newcovariate;
         end
     case 'removecovariate'
-       % what are we trying to remove? 
-       contents = get(handles.potentialcovariateslist,'String');
+       contents = get(handles.potentialcovariateslist,'String'); % what are we trying to remove? 
        newcovariate = contents{get(handles.potentialcovariateslist,'Value')};
        if any(strcmp(newcovariate,handles.parameters.control_variable_names)) % only if it IS on our list!
            index_to_remove = strcmp(newcovariate,handles.parameters.control_variable_names);
@@ -276,7 +400,6 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'lesionthresholdeditbox'
         str = str2num(get(gcbo,'string')); %TO ADD: also make sure this doesn''t exceed the number of lesions available in the data
         if isempty(str) || ~isint(str) 
-%             set(gcbo,'string','10'); % change to default....
             warndlg('Input must be a positive integer.');
             changemade = false;
         else % update the parameter value.
@@ -286,8 +409,6 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         handles.parameters.beta_map  = get(gcbo,'value');
     case 'computesensitivitymapcheckbox'
         handles.parameters.sensitivity_map = get(gcbo,'value');
-    case 'invertpmapcheckbox'
-        handles.parameters.invert_p_map_flag = get(gcbo,'value');
     case 'cluster_voxelwise_p_editbox' 
         str = str2num(get(gcbo,'string'));
         if isempty(str) || str <= 0 || str >= 1 
@@ -326,16 +447,14 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         str = str2num(get(gcbo,'string'));
         if isempty(str) || str <= 0 || ~isint(str)
             changemade=false;
-            %set(gcbo,'string',num2str(handles.parameters.cfwer_v_value)); % revert
             warndlg('Input must be a positive integer.');
         else % update the parameter value.
-            handles.parameters.cfwer_v_value = str;
+            handles.parameters.cfwer_v_value = str; % note that this is cubic millimeters and will later be converted into # voxels (in read_lesioned_images)
         end
     case 'cfwer_p_value_editbox'
         str = str2num(get(gcbo,'string'));
         if isempty(str) || str<=0 || str >= 1 % not a valid p value...
             changemade=false;
-            %set(gcbo,'string',num2str(handles.parameters.cfwer_p_value)); % revert
             warndlg('Input must be a positive number less than 1.');
         else % update the parameter value.
             handles.parameters.cfwer_p_value = str;
@@ -356,59 +475,6 @@ end
     guidata(hObject, handles); % Update handles structure
     UpdateTitleBar(handles); % update title bar to show if we have any changes made.
 
-function details = CheckIfNecessaryFilesAreInstalled(handles)
-    % Try to add private functions to path....
-    mypath = fileparts(which('svrlsmgui'));
-    addpath(fullfile(mypath,'functions')) % when called 'private' this was unnecessary, but let's add it.
-    % make sure nifti toolbox is on path.
-    addpath(fullfile(mypath,'functions','nifti')) % nifti toolbox
-    addpath(fullfile(mypath,'functions','libsvm-3.18')) % libsvm...
-    addpath(fullfile(mypath,'functions','libsvm-3.18','matlab')) % libsvm's matlab directory...
-    
-    handles = UpdateProgress(handles,'Checking if necessary files are installed...',1);
-
-    spm_found = which('spm','-all');
-    if isempty(spm_found)
-        handles = UpdateProgress(handles,'Warning: SPM is not installed and/or visible on MATLAB''s path.',1);
-        details.spm = 0;
-    else
-        handles = UpdateProgress(handles,'SPM is installed and visible on MATLAB''s path.',1);
-        details.spm = 1;
-    end
-    
-    svmtrain_found = which('svmtrain','-all'); % nb: svmtrain is also the name of a statistics toolbox function.
-    correct_svmtrains = cellfun(@(x) strfind(x,'libsvm'),svmtrain_found,'Uni',false);
-    
-    if ~isempty(correct_svmtrains{1})
-        handles = UpdateProgress(handles,'libsvm is installed and visible on MATLAB''s path.',1);
-        details.libsvm = 1;
-    elseif ~all(isempty(correct_svmtrains)) % one of the function is right, but not at top of path
-        handles = UpdateProgress(handles,'libsvm may be installed but it appears to be overloaded MATLAB''s path (svmtrain.m?).',1);
-        details.libsvm = 0;
-    else
-        handles = UpdateProgress(handles,'libsvm is either not installed or not visible on MATLAB''s path.',1);
-        details.libsvm = 0;
-    end
-    
-    % Now for the MATLAB statistics svr functions
-    matlab_stats_found = license('checkout','statistics_toolbox');
-    if matlab_stats_found
-        handles = UpdateProgress(handles,'MATLAB Statistics Toolbox license found.',1);
-        details.stats_toolbox = 1;
-    else
-        handles = UpdateProgress(handles,'MATLAB Statistics Toolbox license not found.',1);
-        details.stats_toolbox = 0;
-    end
-    
-    % can we parallelize?
-    if ~isempty(ver('distcomp')) && license('test','Distrib_Computing_Toolbox') && feature('numcores') > 1
-        handles = UpdateProgress(handles,'Parallelization available: Distributed Computing Toolbox installed, licensed, and > 1 core.',1);
-        details.can_parallelize = true;
-    else
-        handles = UpdateProgress(handles,'Parallelization unavailable: Distributed Computing Toolbox not installed, or only 1 core.',1);
-        details.can_parallelize = false;
-    end
-    
 function doignore = IgnoreUnsavedChanges(handles)
     if ~isfield(handles,'parameters') % something bad probably happened with gui initiation.
     	doignore = 1; 
@@ -425,12 +491,6 @@ function doignore = IgnoreUnsavedChanges(handles)
 % --- Outputs from this function are returned to the command line.
 function varargout = svrlsmgui_OutputFcn(hObject, eventdata, handles) 
 varargout{1} = handles.output;
-
-function filemenu_Callback(hObject, eventdata, handles)
-% nothing goes here.
-
-function helpmenu_Callback(hObject, eventdata, handles)
-% nothing goes here.
 
 function newmenu_Callback(hObject, eventdata, handles) %#ok<*DEFNU>
     if IgnoreUnsavedChanges(handles)
@@ -459,7 +519,6 @@ function savemenu_Callback(hObject, eventdata, handles)
     end
    
 function saveasmenu_Callback(hObject, eventdata, handles)
-    
     if exist(handles.parameters.parameter_file_name,'file')
         defaultsavename = handles.parameters.parameter_file_name; % fileparts(handles.parameters.parameter_file_name);
     else
@@ -472,144 +531,23 @@ function saveasmenu_Callback(hObject, eventdata, handles)
 
     handles.parameters.parameter_file_name = fullfile(path,file);
     handles = SaveSVRLSMGUIFile(handles,hObject); % do the actual save.
-    
-function handles = SaveSVRLSMGUIFile(handles,hObject)
-    handles.parameters.is_saved = 1;
-    handles.parameters.datetime_save = datetime;
-    tosave = handles.parameters; % arbitrary, but I think it was giving me issues saving the field parameters from struct handles...
-    save(handles.parameters.parameter_file_name,'tosave') % write the file
-    handles = UpdateProgress(handles,['Saved ' handles.parameters.parameter_file_name],1);
-    handles = LoadParametersFromSVRLSMFile(handles,hObject,handles.parameters.parameter_file_name);
 
 function quitmenu_Callback(hObject, eventdata, handles)
     close(gcf) % to trigger close request fcn which handles unsaved changes...
     
-function scorefileeditbox_Callback(hObject, eventdata, handles)
-% This should never trigger.
-
-function scorefileeditbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-%ok
-function choosescorefilebutton_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% ok
-function scorenamepopupmenu_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
-
-function scorenamepopupmenu_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-% ok
-function controlvariablepopupmenu_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function controlvariablepopupmenu_CreateFcn(hObject, eventdata, handles) %#ok<*INUSD>
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function lesionfoldereditbox_Callback(hObject, eventdata, handles)
-% this should never trigger
-
-function lesionfoldereditbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-% ok
-function chooselesionfolderbutton_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% ok
-function computebetamapcheckbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% ok
-function computesensitivitymapcheckbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% ok
-function invertpmapcheckbox_Callback(hObject, eventdata, handles) %#ok<*INUSL>
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% ok
-function analysisnameeditbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function analysisnameeditbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
 function onlinehelpmenu_Callback(hObject, eventdata, handles)
 web('https://github.com/atdemarco/svrlsmgui/wiki')
 
 function figure1_CreateFcn(hObject, eventdata, handles)
 
-function clusterwisepeditbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function clusterwisepeditbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function lesionthresholdeditbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function lesionthresholdeditbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function npermutationseditbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function save_raw_permutation_data_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function permutation_unthresholded_checkbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function permutation_voxelwise_checkbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function permutation_largest_cluster_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function npermutationseditbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function progresslistbox_Callback(hObject, eventdata, handles)
-
-function generictext_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function progresslistbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
 function aboutmenu_Callback(hObject, eventdata, handles)
-    helpstr = ['SVRLSM GUI ' num2str(handles.parameters.gui_version) ', Andrew DeMarco 2017, based on Zhang et al. (2014)'];
+    helpstr = ['SVRLSM GUI ' num2str(handles.parameters.gui_version) ', Andrew DeMarco 2017-2018, based on Zhang et al. (2014)'];
     helpdlg(helpstr,'About');
 
 function runanalysisbutton_Callback(hObject, eventdata, handles)
-
     [success,handles] = RunAnalysis(hObject,eventdata,handles); % now returns handles 10/26/17
 
-    set(handles.runanalysisbutton,'visible','on')
-    set(handles.cancelanalysisbutton,'visible','off')
+    set(handles.runanalysisbutton,'Enable','on') %set(handles.cancelanalysisbutton,'visible','off')
 
     % Re-enable interface...
     set(get(handles.permutationtestingpanel,'children'),'enable','on')
@@ -623,6 +561,7 @@ function runanalysisbutton_Callback(hObject, eventdata, handles)
         case 0 % failure
             handles.parameters.analysis_is_completed = 2; % Error...
             handles = UpdateProgress(handles,'Analysis encountered an error and did not complete...',1);
+            set(handles.interrupt_button,'enable','off') % disable.
             rethrow(handles.error)
         case 2 % interrupted
             handles.parameters.analysis_is_completed = 2; % Error...
@@ -632,129 +571,19 @@ function runanalysisbutton_Callback(hObject, eventdata, handles)
     guidata(hObject, handles); % Update handles structure
     handles = PopulateGUIFromParameters(handles); % refresh gui so we can enable/disable control variable as necessary.
 
-function permutationtestingcheckbox_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
-
-function cluster_voxelwise_p_editbox_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
-
-function cluster_voxelwise_p_editbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function outputfoldereditbox_Callback(hObject, eventdata, handles)
-
-function outputfoldereditbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function chooseoutputfolderbutton_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function viewresultsbutton_Callback(hObject, eventdata, handles)
-    LaunchResultsDirectory(hObject,eventdata,handles);
-
-function LaunchResultsDirectory(hObject,eventdata,handles)
-    fulloutdir = fullfile(handles.parameters.analysis_out_path,handles.parameters.analysis_name);
-    if ismac || isunix % use open ...
-        [~] = system(['open "' fulloutdir '"']);
-    elseif ispc % use winopen
-        winopen(fulloutdir)
-    else
-        warndlg('Cannot open output directory because I cannot determine the OS you are using.')
-    end
-    
-    % Open overview file... %dev1
-    fpath = fileparts(handles.parameters.parmsfile);
-    overviewhtmlfile = fullfile(fpath,'overview.html');
-    if exist(overviewhtmlfile,'file')
-        web(overviewhtmlfile) % Launch in MATLAB's "web browser"
-    end
-    
-function npermutationsclustereditbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-function npermutationsclustereditbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
 % Select in the dropdown list the selected item.
 function realcovariateslistbox_Callback(hObject, eventdata, handles)
-if isempty(get(hObject,'String')), return; end % hack for error
-contents = cellstr(get(hObject,'String'));
-val = contents{get(hObject,'Value')};
-dropdownoptions = get(handles.potentialcovariateslist,'string');
-set(handles.potentialcovariateslist,'value',find(strcmp(val,dropdownoptions)))
-
-% --- Executes during object creation, after setting all properties.
-function realcovariateslistbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function addcovariate_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
-
-function potentialcovariateslist_Callback(hObject, eventdata, handles)
-
-function potentialcovariateslist_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function removecovariate_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
-
-function lesionvolumecorrectiondropdown_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
-
-function lesionvolumecorrectiondropdown_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function hypodirectiondropdown_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
-
-function hypodirectiondropdown_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function applycovariatestobehaviorcheckbox_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
-
-function applycovariatestolesioncheckbox_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
+    if isempty(get(hObject,'String')), return; end % hack for error
+    contents = cellstr(get(hObject,'String'));
+    val = contents{get(hObject,'Value')};
+    dropdownoptions = get(handles.potentialcovariateslist,'string');
+    set(handles.potentialcovariateslist,'value',find(strcmp(val,dropdownoptions)))
 
 function optionsmenu_Callback(hObject, eventdata, handles)
-if handles.parameters.do_make_summary
-    set(handles.output_summary_menu,'Checked','on')
-else
-    set(handles.output_summary_menu,'Checked','off')
-end
+    yn = {'off','on'};
+    set(handles.parallelizemenu,'Checked',yn{1+handles.parameters.parallelize}) % is parallelization selected by user?
+    set(handles.parallelizemenu,'Enable',yn{1+handles.details.can_parallelize}) % can we parallelize on this platform?
 
-% is parallelization selected by user?
-if handles.parameters.parallelize
-    set(handles.parallelizemenu,'Checked','on')
-else
-    set(handles.parallelizemenu,'Checked','off')
-end
-
-% can we parallelize on this platform?
-if handles.details.can_parallelize
-    set(handles.parallelizemenu,'Enable','on')
-else
-    set(handles.parallelizemenu,'Enable','off')
-end
-
-function parallelizemenu_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% --------------------------------------------------------------------
 function SVscalingmenu_Callback(hObject, eventdata, handles)
     children = get(handles.SVscalingmenu,'children');
     set(children,'Checked','off')
@@ -767,49 +596,16 @@ function SVscalingmenu_Callback(hObject, eventdata, handles)
         case 95
             set(children(1),'Checked','on')
     end
-% --------------------------------------------------------------------
-function maxsvscaling_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
 
-% --------------------------------------------------------------------
-function sv_scaling_99th_percentile_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% --------------------------------------------------------------------
-function sv_scaling_95th_percentile_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% --------------------------------------------------------------------
-function debug_menu_Callback(hObject, eventdata, handles)
-
-% --------------------------------------------------------------------
 function save_perm_data_Callback(hObject, eventdata, handles) % update the subitems with checkboxes
-yn = {'off','on'};
-set(handles.save_post_clusterwise_thresholded,'Checked',yn{1+handles.parameters.SavePostClusterwiseThresholdedPermutations})
-set(handles.save_post_vox_thresh,'Checked',yn{1+handles.parameters.SavePostVoxelwiseThresholdedPermutations})
-set(handles.retain_big_binary_file,'Checked',yn{1+handles.parameters.SavePermutationData})
-set(handles.save_pre_thresh,'Checked',yn{1+handles.parameters.SavePreThresholdedPermutations})
+    yn = {'off','on'};
+    set(handles.save_post_clusterwise_thresholded,'Checked',yn{1+handles.parameters.SavePostClusterwiseThresholdedPermutations})
+    set(handles.save_post_vox_thresh,'Checked',yn{1+handles.parameters.SavePostVoxelwiseThresholdedPermutations})
+    set(handles.save_pre_thresh,'Checked',yn{1+handles.parameters.SavePreThresholdedPermutations})
+    % the cfwer files...
+    set(handles.save_unthresholded_pmaps_cfwer,'Checked',yn{1+handles.parameters.SaveNullPMapsPreThresholding})
+    set(handles.save_thresholded_pmaps_cfwer,'Checked',yn{1+handles.parameters.SaveNullPMapsPostThresholding})
 
-% --------------------------------------------------------------------
-function output_summary_menu_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% --------------------------------------------------------------------
-function save_pre_thresh_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% --------------------------------------------------------------------
-function save_post_vox_thresh_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% --------------------------------------------------------------------
-function save_post_clusterwise_thresholded_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-% --------------------------------------------------------------------
-function retain_big_binary_file_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% --------------------------------------------------------------------
 function svrmenu_Callback(hObject, eventdata, handles)
 if handles.parameters.useLibSVM
     set(handles.use_lib_svm,'checked','on')
@@ -818,36 +614,21 @@ else
     set(handles.use_lib_svm,'checked','off')
     set(handles.use_matlab_svr,'checked','on')
 end
-
 if handles.details.stats_toolbox
     set(handles.use_matlab_svr,'enable','on')
 else
     set(handles.use_matlab_svr,'enable','off')
 end
-
 if handles.details.libsvm
     set(handles.use_lib_svm,'enable','on')
 else
     set(handles.use_lib_svm,'enable','off')
 end
 
-% --------------------------------------------------------------------
-function use_lib_svm_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-%handles.parameters.useLibSVM
-
-% --------------------------------------------------------------------
-function use_matlab_svr_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-
-% --------------------------------------------------------------------
-function parameters_menu_Callback(hObject, eventdata, handles)
-set(handles.cost_menu,'label',['Cost: ' num2str(handles.parameters.cost)]);
-set(handles.gamma_menu,'label',['Gamma: ' num2str(handles.parameters.gamma)]);
-
-% --------------------------------------------------------------------
 function cost_menu_Callback(hObject, eventdata, handles)
-    answer = inputdlg('Enter new parameter value for cost:','Cost Parameter',1,{num2str(handles.parameters.cost)});
+    msg = sprintf('Enter new parameter value for cost (default = %0.1f)',handles.parameters.svr_defaults.cost);
+    % add min and max range - dev1
+    answer = inputdlg(msg,'Cost Parameter',1,{num2str(handles.parameters.cost)});
     if ~isempty(answer)
         numval = str2num(answer{1}); %#ok<*ST2NM>
         if isnumeric(numval) && ~isempty(numval)
@@ -859,26 +640,25 @@ function cost_menu_Callback(hObject, eventdata, handles)
     end
    
 function gamma_menu_Callback(hObject, eventdata, handles)
-    answer = inputdlg('Enter new parameter value for gamma:','Gamma Parameter',1,{num2str(handles.parameters.gamma)});
+    msg = sprintf('Enter new parameter value for sigma (default = %0.1f)',handles.parameters.svr_defaults.sigma);
+    % add min and max range - dev1
+    answer = inputdlg(msg,'Sigma Parameter',1,{num2str(handles.parameters.sigma)});
     if ~isempty(answer)
         numval = str2num(answer{1});
         if isnumeric(numval) && ~isempty(numval)
-            handles.parameters.gamma = numval;
+            handles.parameters.sigma = numval;
             handles.parameters.is_saved = 0;
             guidata(hObject, handles);
             handles = PopulateGUIFromParameters(handles);
         end
     end
     
-function optimize_menu_Callback(hObject, eventdata, handles)
-% add me based on bayesopt.
-
 function open_batch_job_Callback(hObject, eventdata, handles)
     folder_name = uigetdir(pwd,'Choose a folder containing .mat config files of your analyses.');
     if ~folder_name, return; end % if folder_name == 0 then cancel was clicked.
     files = dir(fullfile(folder_name,'*.mat'));
     fname = {files.name};
-    [s,v] = listdlg('PromptString','Choose the analyse to run:','SelectionMode','multi','ListString',fname);
+    [s,v] = listdlg('PromptString','Choose the analyses to run:','SelectionMode','multi','ListString',fname);
     if ~v, return; end % cancelled..
     for f = 1:numel(s)
         curs=s(f);
@@ -895,17 +675,9 @@ function open_batch_job_Callback(hObject, eventdata, handles)
     end
     handles = UpdateProgress(handles,'Batch: All batch jobs done.',1);            
 
-
 function figure1_CloseRequestFcn(hObject, eventdata, handles)
     if IgnoreUnsavedChanges(handles), delete(hObject); end
 
-function cancelanalysisbutton_Callback(hObject, eventdata, handles)
-    % attempt to interrupt an ongoing analysis
-    set(hObject,'string','Cancelling...')
-    set(gcf,'userdata','cancel')
-    guidata(hObject, handles); % Update handles structure so it saves...
-
-% --------------------------------------------------------------------
 function checkforupdates_Callback(hObject, eventdata, handles)
     update_available = check_for_updates;
     if ~update_available
@@ -916,22 +688,229 @@ function checkforupdates_Callback(hObject, eventdata, handles)
     if strcmp(choice,'Not now'), return, end
     get_new_version(handles)
 
-% --- Executes on button press in do_cfwer_checkbox.
-function do_cfwer_checkbox_Callback(hObject, eventdata, handles)
+%% callbacks -- replace these in the future.
+function controlvariablepopupmenu_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+
+function computebetamapcheckbox_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+function computesensitivitymapcheckbox_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+function analysisnameeditbox_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+%function save_raw_permutation_data_Callback(hObject, eventdata, handles)
+%    handles = UpdateCurrentAnalysis(handles,hObject);
+function permutation_unthresholded_checkbox_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+function permutation_voxelwise_checkbox_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+function permutation_largest_cluster_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+function progresslistbox_Callback(hObject, eventdata, handles)
+function maxsvscaling_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+function potentialcovariateslist_Callback(hObject, eventdata, handles)
+
+function viewresultsbutton_Callback(hObject, eventdata, handles)
+    LaunchResultsDirectory(hObject,eventdata,handles);
+function npermutationsclustereditbox_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+
+function parallelizemenu_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+function sv_scaling_99th_percentile_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+function sv_scaling_95th_percentile_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+function debug_menu_Callback(hObject, eventdata, handles)
+
+function use_lib_svm_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+function use_matlab_svr_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
+
+function interrupt_button_Callback(hObject, eventdata, handles) % attempt to interrupt an ongoing analysis
+    set(hObject,'enable','off') % so user doesn't click a bunch...
+%     poolobj = gcp('nocreate'); % < this doesn't stop, it just relaunches the parpool...
+%     delete(poolobj); % try to stop what's happening if there's parallelization happening
+    set(gcf,'userdata','cancel')
+    guidata(hObject, handles); % Update handles structure so it saves...
+
+function no_optimize_menu_choice_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
 
-function cfwer_v_value_editbox_Callback(hObject, eventdata, handles)
+function correlation_optimize_menu_choice_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+    
+function resubloss_optimize_menu_choice_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+function predictbehavior_optimize_menu_choice_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
 
-function cfwer_v_value_editbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
+function optimize_menu_Callback(hObject, eventdata, handles)
+    set(get(hObject,'Children'),'Checked','off') % uncheck all child menus
+    cur_optim_string = CurrentOptimString(handles.parameters);
+    set(handles.current_optimization_menu_option,'Label',cur_optim_string)
+    opts = [handles.parameters_to_optimize_menu handles.search_strategy_menu_option handles.objective_function_menu_option handles.crossvalidation_parent_menu handles.optimization_is_verbose_menu];
+    if ~handles.parameters.optimization.do_optimize % then no optimization...
+        set(handles.no_optimize_menu_choice,'Checked','on')
+        set(opts,'enable','off') % Visual cue that these don't apply when optimization is off
+    else 
+        set(handles.current_optimization_menu_option,'Checked','on')
+        set(opts,'enable','on') % Visual cue that these don't apply when optimization is off
+    end
+     if handles.parameters.optimization.verbose_during_optimization 
+         set(handles.optimization_is_verbose_menu,'Checked','on')
+     end
 
-function cfwer_p_value_editbox_Callback(hObject, eventdata, handles)
+function current_optimization_menu_option_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
 
-function cfwer_p_value_editbox_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
+function parameters_menu_Callback(hObject, eventdata, handles)
+    do_opt = handles.parameters.optimization.do_optimize; % for convenience
+    
+    if do_opt && handles.parameters.optimization.params_to_optimize.cost
+        label = ['Cost: optimize (' num2str(handles.parameters.optimization.params_to_optimize.cost_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.cost_range(2)) ')'];
+        set(handles.cost_menu,'label',label,'enable','off');
+    else
+        set(handles.cost_menu,'label',['Cost: ' num2str(handles.parameters.cost) myif(handles.parameters.svr_defaults.cost == handles.parameters.cost,' (default)','')],'enable','on');
+    end
+
+    if do_opt && handles.parameters.optimization.params_to_optimize.sigma
+        % dev1 -- add Gamma if libsvm is true...
+        label = ['Sigma: optimize (' num2str(handles.parameters.optimization.params_to_optimize.sigma_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.sigma_range(2)) ')'];
+        set(handles.gamma_menu,'label',label,'enable','off');
+    else
+        % dev1 -- add Gamma if libsvm is true...
+        set(handles.gamma_menu,'label',['Sigma: ' num2str(handles.parameters.sigma) myif(handles.parameters.svr_defaults.sigma == handles.parameters.sigma,' (default)','')],'enable','on');
+    end
+    
+    if do_opt && handles.parameters.optimization.params_to_optimize.epsilon
+        label = ['Epsilon: optimize (' num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(2)) ')'];
+        set(handles.epsilon_menu,'label',label,'enable','off');
+    else
+        set(handles.epsilon_menu,'label',['Epsilon: ' num2str(handles.parameters.epsilon) myif(handles.parameters.svr_defaults.epsilon == handles.parameters.epsilon,' (default)','')],'enable','on');       
+    end
+
+    if do_opt && handles.parameters.optimization.params_to_optimize.standardize
+        set(handles.standardize_menu,'label','Standardize: optimize (yes/no)','enable','off');
+    else
+        set(handles.standardize_menu,'label',['Standardize: ' myif(handles.parameters.standardize,'true','false') myif(handles.parameters.svr_defaults.standardize == handles.parameters.standardize,' (default)','')],'enable','on');
+    end
+    
+function epsilon_menu_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+function standardize_menu_Callback(hObject, eventdata, handles)
+    handles = UpdateCurrentAnalysis(handles,hObject);
+    
+%% Objective function...
+function objective_function_menu_option_Callback(hObject, eventdata, handles)
+    set(get(hObject,'Children'),'Checked','off') % uncheck all child menus
+    switch handles.parameters.optimization.objective_function
+        case 'Predict Behavior'
+            set(handles.predictbehavior_optimize_menu_choice,'Checked','on')
+        case 'Maximum Correlation'
+            set(handles.correlation_optimize_menu_choice,'Checked','on')
+        case 'Resubstitution Loss'
+            set(handles.resubloss_optimize_menu_choice,'Checked','on')
+        otherwise
+            error('Unknown optimization objective function.')
+    end
+    
+%% Search strategy ...
+function search_strategy_menu_option_Callback(hObject, eventdata, handles)
+    set(get(hObject,'Children'),'Checked','off') % uncheck all child menus
+    switch handles.parameters.optimization.search_strategy
+        case 'Bayes Optimization'
+            set(handles.bayes_optimization_menu_choice,'Checked','on')
+        case 'Grid Search'
+            set(handles.gridsearch_option,'Checked','on')
+        case 'Random Search'
+            set(handles.random_search_menu_option,'Checked','on')
+        otherwise
+            error('Unknown optimization objective function.')
+    end
+
+function parameters_to_optimize_menu_Callback(hObject, eventdata, handles)
+    set(get(hObject,'children'),'checked','off')
+    
+    if handles.parameters.optimization.params_to_optimize.cost
+        label = ['Cost (' num2str(handles.parameters.optimization.params_to_optimize.cost_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.cost_range(2)) ')'];
+        set(handles.do_optimize_cost_menu,'label',label,'checked','on')
+    end
+    if handles.parameters.optimization.params_to_optimize.sigma
+        label = ['Sigma (' num2str(handles.parameters.optimization.params_to_optimize.sigma_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.sigma_range(2)) ')'];
+        set(handles.do_optimize_gamma_menu,'label',label,'checked','on')
+    end
+    if handles.parameters.optimization.params_to_optimize.epsilon
+        label = ['Epsilon (' num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(2)) ')'];
+        set(handles.do_optimize_epsilon_menu,'label',label,'checked','on')
+    end
+    
+    if handles.parameters.optimization.params_to_optimize.standardize
+        label = 'Standardize (yes/no)';
+        set(handles.do_optimize_standardize_menu,'label',label,'checked','on')
+    end
+    
+    
+    %set(handles.do_optimize_epsilon_menu,'enable','on')
+     
+    %dev1
+    %set(handles.do_optimize_standardize_menu,'enable','on') % there's a problem passing 'Standardize' hyperopt range to bayesopt... so don't allow optimization of it.
+        
+    %set(get(hObject,'children'),'enable','on')
+
+function crossvalidation_parent_menu_Callback(hObject, eventdata, handles)
+    set(get(hObject,'children'),'checked','off')
+    set(handles.crossval_menu_option_kfold,'label',['K-Fold: ' num2str(handles.parameters.optimization.crossval.nfolds) ' folds' myif(handles.parameters.optimization.crossval.nfolds == handles.parameters.optimization.crossval.nfolds_default,' (default)','')])
+    if ~handles.parameters.optimization.crossval.do_crossval
+        set(handles.crossval_menu_option_none,'checked','on')
+        set(handles.do_repartition_menu_option,'enable','off')
+    else
+        if handles.parameters.optimization.crossval.repartition 
+            set(handles.do_repartition_menu_option,'checked','on','enable','on')
+        end
+        if strcmp(handles.parameters.optimization.crossval.method,'kfold')
+            set(handles.crossval_menu_option_kfold,'checked','on')
+        else
+            error('Unknown crossvalidation option string.')
+        end
+    end
+    
+function parent_cache_menu_Callback(hObject, eventdata, handles)
+    yn = {'off','on'};
+    set(handles.do_use_cache_menu,'Checked',yn{1+handles.parameters.do_use_cache_when_available})
+    set(handles.retain_big_binary_file,'Checked',yn{1+handles.parameters.SavePermutationData})
+    set(handles.retain_big_binary_pval_file,'Checked',yn{1+handles.parameters.SavePermutationPData})
+
+
+function output_summary_menu_Callback(hObject, eventdata, handles)
+    yn = {'off','on'};
+    set(handles.summary_create_summary,'checked',yn{1+handles.parameters.do_make_summary});
+    set(handles.summary_narrative_summary,'checked',yn{1+handles.parameters.summary.narrative});
+    set(handles.summary_svrbetamap,'checked',yn{1+handles.parameters.summary.beta_map});
+    set(handles.summary_voxelwise_thresholded,'checked',yn{1+handles.parameters.summary.voxelwise_thresholded});
+    set(handles.summary_clusterwise_thresholded,'checked',yn{1+handles.parameters.summary.clusterwise_thresholded});
+    set(handles.summary_cfwerdiagnostics,'checked',yn{1+handles.parameters.summary.cfwer_diagnostics});
+    set(handles.model_variablediagnostics,'checked',yn{1+handles.parameters.summary.variable_diagnostics});
+    set(handles.summary_clusterstability,'checked',yn{1+handles.parameters.summary.cluster_stability});
+    set(handles.summary_parameterassessment,'checked',yn{1+handles.parameters.summary.parameter_assessment});
+    set(handles.summary_paramoptimization,'checked',yn{1+handles.parameters.summary.hyperparameter_optimization_record});
+    set(handles.summary_lesionoverlap,'checked',yn{1+handles.parameters.summary.lesion_overlap});
+    set(handles.summary_prediction_menu,'checked',yn{1+handles.parameters.summary.predictions});
+    if handles.parameters.do_make_summary
+        set(get(hObject,'children'),'enable','on')
+    else
+        set(get(hObject,'children'),'enable','off')
+        set(handles.summary_create_summary,'enable','on')
+    end
+
+% --------------------------------------------------------------------
+function requirements_menu_Callback(hObject, eventdata, handles)
+%set(get(handles.requirements_menu,'children'),'checked',false)
+set(handles.spm12_installed_menu,'checked',myif(handles.details.spm,'on','off')) % this will not specifically detect spm12 though!
+set(handles.libsvm_installed_menu,'checked',myif(handles.details.libsvm,'on','off'))
+set(handles.parcomp_toolbox_installed_menu,'checked',myif(handles.details.can_parallelize,'on','off'))
+set(handles.stats_toolbox_installed_menu,'checked',myif(handles.details.stats_toolbox,'on','off'))
+set(handles.matlab_version_installed_menu,'checked','on') % what's the requirement?
+set(get(handles.requirements_menu,'children'),'enable','off')

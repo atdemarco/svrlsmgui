@@ -29,7 +29,7 @@ function variables = read_behavior_score(parameters)
         fprintf('%s\n', variables.SubjectID{remove_idx});
     end
     
-    variables.removed_subjects = variables.SubjectID(remove_idx);
+    variables.excluded.no_behavior = variables.SubjectID(remove_idx);
     
     variables.one_score(remove_idx) = [];
     if ~isempty(variables.covariates)

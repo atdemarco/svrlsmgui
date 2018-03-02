@@ -6,11 +6,13 @@ function out = plotClusterPermStability(varargin)
 % AD 8/4/17
 % added getframe on 9/1/17
 % added references to specific figures (invis) for plot commands 1/20/18
+% as of 2/14/18, the first input is the actual cluster file.
 if nargin > 0
-    clusterwisedir = varargin{1};
+    %clusterwisedir = varargin{1};
+    parms = varargin{1};
 else % default for testing...
-    error('One input is required pointing toward the cluster dir');
-    clusterwisedir = '';
+    %error('One input is required pointing toward the cluster dir');
+    error('First input should be parms struct for analysis to assess.');
 end
 if nargin > 1
     assess_interval = varargin{2};
@@ -24,14 +26,17 @@ else
 end
 
 % get requested critical value from directory name 
-[~,thisdir]=fileparts(clusterwisedir); 
-words = strsplit(thisdir);
-pvalstr = ['.' words{2}(2:end)];
-pval = str2num(pvalstr);
+% [~,thisdir]=fileparts(clusterwisedir); 
+% words = strsplit(thisdir);
+% pvalstr = ['.' words{2}(2:end)];
+% pval = str2num(pvalstr);
+pval = parms.clusterwise_p;
+pvalstr = num2str(pval);
 critical_percentile = round(100*(1-pval));
 
 % read in all max cluster size list
-clustdata = load(fullfile(clusterwisedir,'Largest clusters.mat'));
+%clustdata = load(fullfile(clusterwisedir,'Largest clusters.mat'));
+clustdata = load(parms.files_created.largest_clusters);
 clustdata = clustdata.all_max_cluster_sizes;
 
 nclusterperms = numel(clustdata);
@@ -50,7 +55,8 @@ plot(assess_indices,vals,'k.-','parent',a)
 xlims = get(a,'xlim');
 
 % Now show observed clusters..
-empirically_observed_clusters = readtable(fullfile(clusterwisedir,'Table of clusters.txt'));
+%empirically_observed_clusters = readtable(fullfile(clusterwisedir,'Table of clusters.txt'));
+empirically_observed_clusters = readtable(parms.files_created.clustertable);
 legendvals = {['Critical value ' pvalstr]}; % we'll add onto this with cluster identities.
 for c = 1 : ntopclusters
     if size(empirically_observed_clusters,1) >= c % make sure it exists.
