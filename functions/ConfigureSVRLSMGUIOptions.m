@@ -34,7 +34,6 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
     end
     
     set(generic_menus,menucallbackname,@(hObject,eventdata)svrlsmgui('UpdateCurrentAnalysis',guidata(hObject),hObject))
-    %set(generic_menus,'MenuSelectedFcn',@(hObject,eventdata)svrlsmgui('UpdateCurrentAnalysis',guidata(hObject),hObject))
     
     %% Populate the progress bar.
     curvature = .2;
