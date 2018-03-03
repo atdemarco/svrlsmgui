@@ -25,8 +25,16 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
                      get(handles.crossvalidation_parent_menu,'children') ;
                      get(handles.parent_cache_menu,'children') ;
                      handles.optimization_is_verbose_menu];
-                 
-    set(generic_menus,'MenuSelectedFcn',@(hObject,eventdata)svrlsmgui('UpdateCurrentAnalysis',guidata(hObject),hObject))
+    
+    % MenuSelectedFcn is not an available callback in older matlabs, so accomodate that
+    menucallbackname = 'MenuSelectedFcn';
+	test_menu_handle = get(generic_menus(1));
+    if ~isfield(test_menu_handle,'MenuSelectedFcn')
+        menucallbackname = 'Callback';
+    end
+    
+    set(generic_menus,menucallbackname,@(hObject,eventdata)svrlsmgui('UpdateCurrentAnalysis',guidata(hObject),hObject))
+    %set(generic_menus,'MenuSelectedFcn',@(hObject,eventdata)svrlsmgui('UpdateCurrentAnalysis',guidata(hObject),hObject))
     
     %% Populate the progress bar.
     curvature = .2;
