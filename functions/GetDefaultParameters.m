@@ -95,7 +95,7 @@ function parameters = GetDefaultParameters(handles)
     parameters.optimization.do_optimize = false; % default.
     parameters.optimization.verbose_during_optimization = false; % spit out the progress?
     parameters.optimization.search_strategy = 'Bayes Optimization'; % or 'Grid Search' or 'Random Search'
-    parameters.optimization.objective_function = 'Predict Behavior'; % or 'Maximum Correlation'
+    parameters.optimization.objective_function = 'Resubstitution Loss'; % 'Predict Behavior'; % or 'Maximum Correlation'
     parameters.optimization.iterations = 200; % by default allow 200 iterations for optimization.
     parameters.optimization.grid_divisions = 10; % by default, use 10 grid divisions...
     

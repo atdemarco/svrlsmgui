@@ -806,6 +806,8 @@ function standardize_menu_Callback(hObject, eventdata, handles)
 %% Objective function...
 function objective_function_menu_option_Callback(hObject, eventdata, handles)
     set(get(hObject,'Children'),'Checked','off') % uncheck all child menus
+    % For now let's just do Resubstitution Loss...
+    set([handles.predictbehavior_optimize_menu_choice handles.correlation_optimize_menu_choice],'enable','off')
     switch handles.parameters.optimization.objective_function
         case 'Predict Behavior'
             set(handles.predictbehavior_optimize_menu_choice,'Checked','on')

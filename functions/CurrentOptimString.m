@@ -3,11 +3,11 @@ function optim_string = CurrentOptimString(parameters)
     % obj function (search strategy, # iters/divs)
     switch parameters.optimization.search_strategy 
         case 'Bayes Optimization'
-            strategy_string = 'bayesopt';
+            strategy_string = 'bayopt';
         case 'Grid Search'
             strategy_string = 'grid';
         case 'Random Search'
-            strategy_string = 'random';
+            strategy_string = 'rand';
         otherwise
             error('Unknown search strategy string.')
     end
@@ -22,6 +22,9 @@ function optim_string = CurrentOptimString(parameters)
     switch parameters.optimization.objective_function
         case {'Predict Behavior','Maximum Correlation','Resubstitution Loss'}
             objfctn = parameters.optimization.objective_function;
+            objfctn = strrep(objfctn,'Predict Behavior','Pred Behav'); % shorten for menu display niceness
+            objfctn = strrep(objfctn,'Maximum Correlation','Max Corr'); % shorten for menu display niceness
+            objfctn = strrep(objfctn,'Resubstitution Loss','Resub Loss'); % shorten for menu display niceness
         otherwise
             error(['Unknown objective function string: ' parameters.optimization.objective_function])
     end

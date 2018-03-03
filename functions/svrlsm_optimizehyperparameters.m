@@ -3,9 +3,6 @@ function parameters = svrlsm_optimizehyperparameters(parameters,variables)
 
 %% Which search strategy to use
  doGeneric = true;
- disp('generic hyperopt:')
-doGeneric
-
  if ~doGeneric 
      switch parameters.optimization.search_strategy
          case 'Bayes Optimization'
@@ -30,7 +27,10 @@ doGeneric
      end
 
  elseif doGeneric
+    svrlsm_waitbar(parameters.waitbar,0,['Hyperparameter optimization (' CurrentOptimString(parameters) ')'])
+
      results = generic_hyperopts(parameters,variables);
+     
      for f = results.bestPoint.Properties.VariableNames % save the best field values...
          curname = f{1};
          curval = results.bestPoint.(curname);
@@ -53,6 +53,8 @@ doGeneric
      end
      
      parameters.optimization.results = results;
+    svrlsm_waitbar(parameters.waitbar,0,'')
+
  end
  
   
