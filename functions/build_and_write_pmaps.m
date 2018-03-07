@@ -22,9 +22,14 @@ function [thresholded,variables] = write_p_maps_pos_tail(parameters,variables,th
     svrlsmgui_write_vol(variables.vo, thresholded.thresholded_pos);
     variables.files_created.unthresholded_pmap = variables.vo.fname;
 
-    % Calculate z map
-    zmap = p2z(thresholded.thresholded_pos); % note the call to p2z() here
+    % % Calculate z map
+    %zmap = p2z(thresholded.thresholded_pos); % note the call to p2z() here
+    
+    % calculate z map
+    zmap = zeros(variables.vo.dim(1:3));
+    zmap(variables.m_idx) = p2z(thresholds.one_tail_neg_alphas); % so we don't try to convert 0 values in the rest of the brain volume...
 
+    
     % write out unthresholded positive Z map
     variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded Z map.nii');
     svrlsmgui_write_vol(variables.vo, zmap);
@@ -73,9 +78,10 @@ function [thresholded,variables] = write_p_maps_neg_tail(parameters,variables,th
     svrlsmgui_write_vol(variables.vo, thresholded.thresholded_neg);
     variables.files_created.unthresholded_pmap = variables.vo.fname;
 
-    % Calculate z map
-    zmap = p2z(thresholded.thresholded_neg); % note the call to p2z() here
-    
+    % calculate z map
+    zmap = zeros(variables.vo.dim(1:3));
+    zmap(variables.m_idx) = p2z(thresholds.one_tail_neg_alphas); % so we don't try to convert 0 values in the rest of the brain volume...
+
     % write out unthresholded negative Z map
     variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded Z map.nii');
     svrlsmgui_write_vol(variables.vo, zmap);

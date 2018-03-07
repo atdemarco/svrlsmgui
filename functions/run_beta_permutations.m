@@ -1,4 +1,5 @@
-function variables = run_beta_PMU2(parameters, variables, beta_map,handles)
+function variables = run_beta_permutations(parameters, variables, beta_map,handles)
+    % used to be called 'run_beta_PMU2.m' which was the refactoring of run_beta_PMU.m - the original
    
     parameters = ShortenTailString(parameters); % set parameters.tailshort to 'pos','neg', or 'two'
     variables.ori_beta_vals = beta_map(variables.m_idx).'; % Store original observed beta values.
@@ -29,7 +30,6 @@ function variables = run_beta_PMU2(parameters, variables, beta_map,handles)
         [thresholded,variables] = build_and_write_pmaps(handles.options,parameters,variables,thresholds); % we'll use the same function here for cfwer but change the p values inside and not write out the beta cutoff maps...
         variables = do_cfwer_clustering(handles,parameters,variables,all_perm_data,thresholded);
     else
-    
         %% Construct volumes of the solved p values and write them out - and write out beta cutoff maps, too
         [thresholded,variables] = build_and_write_pmaps(handles.options,parameters,variables,thresholds);
         [thresholded,variables] = build_and_write_beta_cutoffs(handles.options,parameters,variables,thresholds,thresholded);

@@ -77,6 +77,7 @@ variables.output_folder.base = fullfile(variables.output_folder.analysis,handles
 variables.output_folder.covariates = fullfile(variables.output_folder.base,'Covariates');
 variables.output_folder.hyperparameterinfo = fullfile(variables.output_folder.base,'hyperparameters');
 variables.output_folder.cache = fullfile(variables.output_folder.base,'cache');
+variables.output_folder.ica = fullfile(variables.output_folder.base,'ica');
 
 folderstring = sprintf('Voxelwise p%s based on %d permutations',strrep(num2str(parameters.voxelwise_p),'0.',''),parameters.PermNumVoxelwise);
 variables.output_folder.voxelwise = fullfile(variables.output_folder.base,folderstring);
@@ -278,11 +279,22 @@ end
 check_for_interrupt(parameters)
 
 % Standardize the behavior to be predicted (Y) - this is different from
-% 'Standardize' yes/no for the SVR, which afftects the the *predictor* data
-handles = UpdateProgress(handles,'Standardizing behavioral to be predicted to 0-100 range.',1);
-minoffset = min(variables.one_score(:)); % Accommodate negative numbers...
-variables.one_score = minoffset + variables.one_score; % bring all vals >=0
-variables.one_score = variables.one_score*100/max(abs(variables.one_score)); 
+% 'Standardize' yes/no for the SVR, which affects the the *predictor* data
+do_this_part = true;
+if do_this_part
+    handles = UpdateProgress(handles,'Standardizing behavioral to be predicted to 0-100 range.',1);
+    minoffset = min(variables.one_score(:)); % Accommodate negative numbers...
+    variables.one_score = minoffset + variables.one_score; % bring all vals >=0
+    maxscaleval = 100;
+    maxmultiplier = maxscaleval/max(abs(variables.one_score));
+    variables.one_score = variables.one_score*maxmultiplier; 
+else
+    minoffset = 0;
+    maxmultiplier = 1;    
+end
+% we'll use these in summary output function WritePredictBehaviorReport()
+parameters.original_behavior_transformation.minoffset = minoffset;
+parameters.original_behavior_transformation.maxmultiplier = maxmultiplier;
 
 %% Standardize behavior and lesion data if requested... the standardization only applies to both or neither at the moment.
 % if 1 == 2 
@@ -307,6 +319,12 @@ variables.one_score = variables.one_score*100/max(abs(variables.one_score));
 % else
 %     disp('** Regular normalize step disabled for testing..')
 % end
+
+%% ICA Decompose Lesion data if requested - pre-alpha...
+if parameters.beta.do_ica_on_lesiondata
+    handles = UpdateProgress(handles,'ICA decomposing lesion data... this is pre-alpha, do not use it.',1);    
+    [parameters,variables] = svrlsm_prepare_ica(parameters,variables);
+end
 
 %% Optimize hyperparameters if requested
 parameters.optimization.best.sigma = nan; % placeholders regardless of whether we are optimizing.
@@ -354,7 +372,7 @@ else
     end
 end
 
-%% Compute the real beta map
+%% Compute the real, single beta map of the observed data.
 handles = UpdateProgress(handles,'Computing beta map...',1);
 [beta_map, variables] = get_beta_map(parameters, variables);
 
@@ -366,7 +384,7 @@ if parameters.DoPerformPermutationTesting
     success = CreateDirectory(variables.output_folder.voxelwise); %#ok<NASGU>
     success = CreateDirectory(variables.output_folder.clusterwise); %#ok<NASGU>
 
-    [variables] = run_beta_PMU2(parameters, variables, beta_map,handles);
+    [variables] = run_beta_permutations(parameters, variables, beta_map,handles);
     
     if parameters.do_CFWER
         %variables = evaluate_clustering_results(handles,variables,parameters);
@@ -379,7 +397,8 @@ if parameters.DoPerformPermutationTesting
         handles = UpdateProgress(handles,sprintf('%d of %d clusters survive clusterwise threshold (P < %g, k > %d voxels, %d perms).',variables.clusterresults.survivingclusters,variables.clusterresults.totalclusters,parameters.clusterwise_p,variables.clusterresults.clusterthresh,parameters.PermNumClusterwise),1);
     end
 end
-
+handles.parameters.original_behavior_transformation = parameters.original_behavior_transformation; 
+handles.parameters.optimization = parameters.optimization;
 handles.parameters.files_created = variables.files_created;
 handles.parameters.time.endtime = datestr(now);
 handles.parameters.time.runduration = toc;

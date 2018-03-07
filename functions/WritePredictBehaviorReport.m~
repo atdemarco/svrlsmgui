@@ -38,12 +38,11 @@ function [] = WritePredictBehaviorReport(parms)
 
     %T = evalc('disp(lm_lesonly)'); %evalc (c=capture)
     %fprintf(parms.fileID,'<br>Model with lesion volume only<br>'); % break before next section
-    
-    % style="text-align:right"
-    
-    fprintf(parms.fileID,'<br>%s<br>',lm2table(lm_lesonly,'Behavioral Performance Predicted by Lesion Volume Only'));
-    fprintf(parms.fileID,'<br>%s<br>',lm2table(lm_predonly,'Behavioral Performance Predicted by SVR-Predicted Behavior Only'));
-    fprintf(parms.fileID,'<br>%s<br>',lm2table(lm_both,'Behavioral Performance Predicted Predicted by Lesion Volume and SVR-Predicted Behavior'));
+    fprintf(parms.fileID,'<br>%s<br>',lm2table(lm_lesonly,'Behavioral Performance Predicted by Lesion Volume Only')); % fprintf(parms.fileID,'%s',prep4output(lm_lesonly));
+    %fprintf(parms.fileID,'<br>Model with predicted behavior only<br>'); % break before next section
+    fprintf(parms.fileID,'<br>%s<br>',lm2table(lm_predonly,'Behavioral Performance Predicted by Model with Pred Behav Only')); % fprintf(parms.fileID,'%s',prep4output(lm_predonly));
+    %fprintf(parms.fileID,'<br>Model with both lesion volume and predicted behavior<br>'); % break before next section
+    fprintf(parms.fileID,'<br>%s<br>',lm2table(lm_both,'Model with Pred Behav and Les Vol')); %fprintf(parms.fileID,'%s',prep4output(lm_both));
     fprintf(parms.fileID,'<br>');
 
     [b,se,pval,inmodel,stats,nextstep,history] = stepwisefit([t.lesion_vol t.(predicted_field)],t.(behavior_name),'display','off');

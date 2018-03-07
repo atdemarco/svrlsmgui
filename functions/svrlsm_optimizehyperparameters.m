@@ -27,6 +27,7 @@ function parameters = svrlsm_optimizehyperparameters(parameters,variables)
      end
 
  elseif doGeneric
+     
     svrlsm_waitbar(parameters.waitbar,0,['Hyperparameter optimization (' CurrentOptimString(parameters) ')'])
 
      results = generic_hyperopts(parameters,variables);
@@ -48,12 +49,12 @@ function parameters = svrlsm_optimizehyperparameters(parameters,variables)
          end
          
          if strcmp(curname,'Standardize')
-             parameters.optimization.best.standardize = curval == categorical(true); % need it as a boolean...
+             parameters.optimization.best.standardize = curval == categorical(true); % need it as a Boolean...
          end
      end
      
      parameters.optimization.results = results;
-    svrlsm_waitbar(parameters.waitbar,0,'')
+     svrlsm_waitbar(parameters.waitbar,0,'')
 
  end
  

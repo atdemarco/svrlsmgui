@@ -119,4 +119,7 @@ function parameters = GetDefaultParameters(handles)
     parameters.optimization.crossval.nfolds_default = parameters.optimization.crossval.nfolds;
     parameters.optimization.crossval.repartition = true; % repartition at each iteration
     
+    % ICA Beta stuff...
+    parameters.beta.do_ica_on_lesiondata = false;
+    
     handles = UpdateProgress(handles,'Retrieved default parameters...',1); %#ok<*NASGU>

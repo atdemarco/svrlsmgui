@@ -24,7 +24,8 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
                      get(handles.parameters_to_optimize_menu,'children') ;
                      get(handles.crossvalidation_parent_menu,'children') ;
                      get(handles.parent_cache_menu,'children') ;
-                     handles.optimization_is_verbose_menu];
+                     handles.optimization_is_verbose_menu ; 
+                     get(handles.beta_options_menu,'children')]; % beta options
     
     % MenuSelectedFcn is not an available callback in older matlabs, so accomodate that
     menucallbackname = 'MenuSelectedFcn';

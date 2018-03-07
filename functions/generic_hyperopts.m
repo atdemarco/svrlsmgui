@@ -46,8 +46,7 @@ function results = generic_hyperopts(parameters,variables)
    
        % 'OutputFcn',@optim_outputfun); % verbose is either 0 or 2...
    
-   Mdl = fitrsvm(lesiondata,behavdata,'KernelFunction','rbf', 'OptimizeHyperparameters',params, ...
-       'HyperparameterOptimizationOptions', hyperoptoptions);
+   Mdl = fitrsvm(lesiondata,behavdata,'KernelFunction','rbf', 'OptimizeHyperparameters',params, 'HyperparameterOptimizationOptions', hyperoptoptions);
 
    results = Mdl.HyperparameterOptimizationResults;
 %    
@@ -68,11 +67,15 @@ function optimizeropts = resolveoptimizeropts(parameters)
     
     repartitionopt = myif(parameters.optimization.crossval.do_crossval, ...
         {'Repartition',parameters.optimization.crossval.repartition},{});
+    
     itersornumdivsstr = myif(strcmp(optimchoice,'gridsearch'),'NumGridDivisions','MaxObjectiveEvaluations'); % do we need grid divs or do we need max objective evaluations...?
     itersornumdivs = myif(strcmp(optimchoice,'gridsearch'),parameters.optimization.grid_divisions,parameters.optimization.iterations);
     parameters.optimization.crossval.do_crossval = true;
-    warning('Crossvalidation set to on for hyperparam opt.')
     nfolds = myif(parameters.optimization.crossval.do_crossval,parameters.optimization.crossval.nfolds,1);
+    if nfolds == 1  %  we'll throw an error... switch back to 5.
+        nfolds = 5;
+        warning('Crossvalidation set to on for hyperparam opt.')
+    end
     
     optimizeropts = {'Optimizer', optimchoice, ...
         itersornumdivsstr,itersornumdivs, ...

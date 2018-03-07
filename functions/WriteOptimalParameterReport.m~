@@ -10,29 +10,15 @@ function WriteOptimalParameterReport(parms)
 
 %     optim_data.hyperparameter_quality.pred_accuracy
 %     optim_data.hyperparameter_quality.repro_index.data
-    didconverge = myif(optim_data.hyperparameter_quality.behavioral_predictions.Mdl.ConvergenceInfo.Converged,'did','did not');
-    
-    
-    mdlparms = optim_data.hyperparameter_quality.behavioral_predictions.Mdl.ModelParameters;
 
-    
-    fprintf(parms.fileID,'The final SVR model %s converge. The model had parameters Cost/BoxConstraint = %.2f, Sigma/KernelScale = %.2f, Epsilon = %.2f, and Standardize = %s.', ...
-        didconverge, ...
-        mdlparms.BoxConstraint, ...
-        mdlparms.KernelScale, ...
-        mdlparms.Epsilon, ...
-        myif(mdlparms.StandardizeData,'true','false'));
-    
-    nsvs = sum(optim_data.hyperparameter_quality.behavioral_predictions.Mdl.IsSupportVector);
-    nsubs = optim_data.hyperparameter_quality.behavioral_predictions.Mdl.NumObservations;
-    modelbias = optim_data.hyperparameter_quality.behavioral_predictions.Mdl.Bias;
-    fprintf(parms.fileID,' The final model utilized data points from %d of the %d observations (individual subjects) as support vectors. The final model had a bias of %.2f. ',nsvs,nsubs,modelbias);
-    
-    fprintf(parms.fileID,'Average prediction accuracy is %.2f (SD = %.2f) and average reproducibility index is r =  %.2f (SD = %.2f).<br><br>', ...
+    fprintf(parms.fileID,'Average prediction accuracy is %.2f (SD = %.2f) and average reproducibility index is r =  %.2f (SD = %.2f).', ...
         optim_data.hyperparameter_quality.pred_accuracy.mean, ...
         optim_data.hyperparameter_quality.pred_accuracy.std, ...
         optim_data.hyperparameter_quality.repro_index.mean, ...
         optim_data.hyperparameter_quality.repro_index.std);
+    
+    nsvs = sum(a.hyperparameter_quality.behavioral_predictions.Mdl.IsSupportVector);
+    fprintf(parms.fileID,'The final model utilized %d SVs of the data and had a bias of %.2f',nsvs, optim_data.hyperparameter_quality.);
 
     %% Plot prediction accuracy data
     f=figure('visible','off');

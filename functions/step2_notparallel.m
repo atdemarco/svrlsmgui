@@ -17,7 +17,7 @@ function [parameters,variables,thresholds] = step2_notparallel(handles,parameter
 
         curcol = dataRef(col:L:end); % index out each voxel column using skips the length of the data ---> this returns curcol, which has the length of npermutations
         observed_beta = variables.ori_beta_vals(col); % original observed beta value.
-        curcol_sorted = sort(curcol); % smallest values at the top..
+        %curcol_sorted = sort(curcol); % smallest values at the top.. removed since we se compare_real_beta()
         
         if parameters.do_CFWER
             if col == 1 % open where we'll put our p-value converted volumetric data...
@@ -37,11 +37,15 @@ function [parameters,variables,thresholds] = step2_notparallel(handles,parameter
         % Compute beta cutoff values and a pvalue map for the observed betas.
         switch parameters.tailshort
             case 'pos' % - high scores bad 
-                thresholds.one_tail_pos_alphas(col) = sum(observed_beta < curcol_sorted)/numel(curcol_sorted); % percent of null values LESS extreme than observed beta - note, not p values
-                thresholds.pos_beta_map_cutoff(col) = curcol_sorted(thresholds.pos_thresh_index); % so the 9500th at p of 0.05 on 10,000 permutations
+                %thresholds.one_tail_pos_alphas(col) = sum(observed_beta < curcol_sorted)/numel(curcol_sorted); % percent of null values LESS extreme than observed beta - note, not p values
+                [thresholds.one_tail_pos_alphas(col), ...
+                    thresholds.pos_beta_map_cutoff(col)] = compare_real_beta(observed_beta,curcol,parameters.tailshort,thresholds.onetail_cutoff_index); % try to preclude p values of 0
+                %thresholds.pos_beta_map_cutoff(col) = curcol_sorted(thresholds.pos_thresh_index); % so the 9500th at p of 0.05 on 10,000 permutations
             case 'neg' % - high scores good
-                thresholds.one_tail_neg_alphas(col) = sum(observed_beta > curcol_sorted)/numel(curcol_sorted); % percent of null values LESS extreme than observed beta - note, not p values
-                thresholds.neg_beta_map_cutoff(col) = curcol_sorted(thresholds.neg_thresh_index); % so the 500th at p of 0.05 on 10,000 permutations
+                %thresholds.one_tail_neg_alphas(col) = sum(observed_beta > curcol_sorted)/numel(curcol_sorted); % percent of null values LESS extreme than observed beta - note, not p values
+                [thresholds.one_tail_neg_alphas(col), ...
+                    thresholds.neg_beta_map_cutoff(col)] = compare_real_beta(observed_beta,curcol,parameters.tailshort,thresholds.onetail_cutoff_index); % try to preclude p values of 0
+                %thresholds.neg_beta_map_cutoff(col) = curcol_sorted(thresholds.neg_thresh_index); % so the 500th at p of 0.05 on 10,000 permutations
 %             case 'two' % 'two'
 %                 warning('Check that these tails are right after code refactor') % ad 2/14/18
 %                 thresholds.two_tailed_beta_map_cutoff_pos(col) = curcol_sorted(thresholds.two_tailed_thresh_index); % 250...

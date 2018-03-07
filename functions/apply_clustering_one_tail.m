@@ -52,9 +52,10 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     variables.clusterresults.T = T;
     
     if isempty(T)
-        warning('No clusters at all.')
+        warning('No clusters at all (no suprathreshold voxels).')
+        T.clusterP = []; % so we don't get errors for not being able to access the field.
     elseif sum(T.clusterP <= parameters.clusterwise_p) == 0
-        warning('No significant clusters.')
+        warning('Clusters, not none significant.')
     end
         
     % Perform clusterwise thresholding on our p_inv file we read in... use this for masking
@@ -66,18 +67,19 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     %voxels_in_any_clusters = cimg>0;
     %voxels_in_significant_clusters = out_map > 0;
     
-    %% Write files containing cluster indices 
+    %% Write files containing cluster indices
     
     % All cluster indices, regardless of significance
-    variables.files_created.all_cluster_indices = fullfile(variables.output_folder.clusterwise,'All clusters indices.nii');
+    variables.files_created.all_cluster_indices = fullfile(variables.output_folder.clusterwise,'All clust indices.nii');
     variables.vo.fname = variables.files_created.all_cluster_indices;
     %variables.vo.private.dat.scl_scope = 1;
     svrlsmgui_write_vol(variables.vo, cimg);
     
     % Only significant cluster indices
-    variables.files_created.significant_cluster_indices = fullfile(variables.output_folder.clusterwise,'Significant clusters indices.nii');
+    variables.files_created.significant_cluster_indices = fullfile(variables.output_folder.clusterwise,'Significant clust indices.nii');
     variables.vo.fname = variables.files_created.significant_cluster_indices;
     cimg_only_significant = cimg;
+
     last_signif_clust_num = sum(T.clusterP <= parameters.clusterwise_p); %nb: sum is ok since they're sorted ascending in this column
     cimg_only_significant(cimg_only_significant > last_signif_clust_num) = 0; % zero out clusters whose indices are larger than the last significant cluster index
     svrlsmgui_write_vol(variables.vo, cimg_only_significant);
@@ -85,7 +87,7 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     %% Write files containing cluster-level p-values
     
     % All clusters, clusterwise thresholded with cluster p-values - not inverted
-    variables.files_created.all_cluster_cluster_pvals = fullfile(variables.output_folder.clusterwise,'All clusters cluster p values.nii');
+    variables.files_created.all_cluster_cluster_pvals = fullfile(variables.output_folder.clusterwise,'All clusts cluster pvals.nii');
     tmp = zeros(size(cimg));
     for c = 1 : numel(T.clusterP) % i.e. all cluster indices...
         tmp(cimg==c) = T.clusterP(c); 
@@ -94,7 +96,7 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     svrlsmgui_write_vol(variables.vo, tmp);
     
     % All clusters, clusterwise thresholded with cluster p-values - inverted
-    variables.files_created.all_cluster_cluster_pvals_inv = fullfile(variables.output_folder.clusterwise,'All clusters cluster p values (inv).nii');
+    variables.files_created.all_cluster_cluster_pvals_inv = fullfile(variables.output_folder.clusterwise,'All clusts cluster pvals (inv).nii');
     tmp = zeros(size(cimg));
     for c = 1 : numel(T.clusterP) % i.e. all cluster indices...
         tmp(cimg==c) = 1-T.clusterP(c); % invert the p-value
@@ -102,17 +104,20 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     variables.vo.fname = variables.files_created.all_cluster_cluster_pvals_inv;
     svrlsmgui_write_vol(variables.vo, tmp);
     
+    %% NOT OK V
     % Just significant clusters with cluster p values - not inv
-    variables.files_created.all_cluster_cluster_pvals = fullfile(variables.output_folder.clusterwise,'Significant clusters cluster p values.nii');
+    variables.files_created.all_cluster_cluster_pvals = fullfile(variables.output_folder.clusterwise,'Signif clusts cluster pvals.nii');
     tmp = zeros(size(cimg));
+    
     for c = 1 : last_signif_clust_num % only to the last significant cluster.
         tmp(cimg==c) = T.clusterP(c); % Non-inverted p-values
     end
     variables.vo.fname = variables.files_created.all_cluster_cluster_pvals;
     svrlsmgui_write_vol(variables.vo, tmp);
     
+    %% NOT OK V
     % Just significant clusters with cluster p values - inv
-    variables.files_created.all_cluster_cluster_pvals_inv = fullfile(variables.output_folder.clusterwise,'Significant clusters cluster p values (inv).nii');
+    variables.files_created.all_cluster_cluster_pvals_inv = fullfile(variables.output_folder.clusterwise,'Signif clusts cluster pvals (inv).nii');
     tmp = zeros(size(cimg));
     for c = 1 : last_signif_clust_num % only to the last significant cluster.
         tmp(cimg==c) = 1 - T.clusterP(c); % Invert the p-values
@@ -126,17 +131,18 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
 %     
 %     % Clusterwise thresholded with voxel p-values - inverted
 %     variables.files_created.all_cluster_voxelwise_pvals_inv = fullfile(variables.output_folder.clusterwise,'All clusters voxelwise p values (inv).nii');
-
+    %% NOT OK V
     % Just significant clusters with voxelwise p values - inv
     cimg_only_significant_mask = cimg_only_significant>0; % inclusive mask
-    variables.files_created.all_cluster_voxelwise_pvals_inv = fullfile(variables.output_folder.clusterwise,'Significant cluster voxelwise p values (inv).nii');
+    variables.files_created.all_cluster_voxelwise_pvals_inv = fullfile(variables.output_folder.clusterwise,'Signif clusts vox pvals (inv).nii');
     p_inv = volume_to_cluster; % use our file we already read in, which is inverted already.
     p_inv(~cimg_only_significant_mask) = 0;    
     variables.vo.fname = variables.files_created.all_cluster_voxelwise_pvals_inv;    
     svrlsmgui_write_vol(variables.vo, p_inv);
-
+    
+    %% NOT OK V
     % Just significant clusters with voxelwise p values - not inv
-    variables.files_created.all_cluster_voxelwise_pvals = fullfile(variables.output_folder.clusterwise,'Significant cluster voxelwise p values.nii');
+    variables.files_created.all_cluster_voxelwise_pvals = fullfile(variables.output_folder.clusterwise,'Signif clusts vox pvals.nii');
     variables.vo.fname = variables.files_created.all_cluster_voxelwise_pvals;
     p_notinv = volume_to_cluster; % use our file we already read in, which is inverted already.
     p_notinv(~cimg_only_significant_mask) = 0;    

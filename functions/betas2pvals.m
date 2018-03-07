@@ -4,7 +4,7 @@ function p_vec = betas2pvals(betavec,tail)
         case 'pos' % highest (beta) value have significant p values
             [~,p] = sort(betavec,'descend');
         case 'neg' % smallest (beta) values has significant p values
-            [~,p] = sort(betavec,'ascend');
+            [~,p] = sort(betavec,'ascend'); % this is default sort() behavior.
         case 'two'
             error('not supported atm')
     end   
@@ -12,7 +12,6 @@ function p_vec = betas2pvals(betavec,tail)
     r = 1:length(betavec);
     r(p) = r;
     p_vec = r/length(betavec);
-    
     
 %% Visual demo of the high scores good:
 %     [~,p] = sort(betavec,'descend');

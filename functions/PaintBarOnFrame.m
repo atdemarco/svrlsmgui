@@ -38,7 +38,7 @@ function im = PaintBarOnFrame(im,bar_xywh_percent,cmapname,colorminval,colormaxv
     a = axes(f);
     imshow(im,'Parent',a);
     
-    truesize(f); % one pixel per row/col % added f...?
+    truesize(f); % one pixel per row/col
     
     % Draw the bar annotations
     text(label_x_offset,label_y_offset,units,'Color','k','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a);

@@ -46,12 +46,20 @@ function [beta_map, variables] = get_beta_map(parameters, variables)
         end
 
         tmp = zeros(variables.vo.dim(1:3));
-        beta_map = tmp; 
+        beta_map = tmp;
+        
         tmp(variables.l_idx) = w'*variables.beta_scale; % return all lesion data to its l_idx indices.
         beta_map(variables.m_idx) = tmp(variables.m_idx); % m_idx -> m_idx
-
+        
         variables.vo.fname = fullfile(variables.output_folder.base,'Beta map (unthresholded).nii'); 
-        svrlsmgui_write_vol(variables.vo, beta_map);
+        
+        if ~parameters.beta.do_ica_on_lesiondata
+            svrlsmgui_write_vol(variables.vo, beta_map);
+        else % gotta dump the lesion parcels back into whole-brain space.
+            icdata = w'*variables.beta_scale; % we'll pull all the stuff out...
+            svrlsmgui_write_vol_from_icdata(parameters,variables,icdata)
+        end
+        
         variables.files_created.unthresholded_betamap = variables.vo.fname; % save for later reference.
 
         %variables.pos_idx = find(beta_map>0);

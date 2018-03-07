@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 01-Mar-2018 17:05:57
+% Last Modified by GUIDE v2.5 05-Mar-2018 17:54:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -98,6 +98,8 @@ function handles = UpdateCurrentAnalysis(handles,hObject)
     changemade = true; % default
 
 switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what field it goes to -- and to validate
+    case 'ica_lesion_decompose_option'
+        handles.parameters.beta.do_ica_on_lesiondata = ~handles.parameters.beta.do_ica_on_lesiondata;
     case 'requirements_menu'
     case 'search_strategy_options'
         set(handles.optimization_iterations_menu_option,'Label',['Iterations: ' num2str(handles.parameters.optimization.iterations)])
@@ -916,3 +918,7 @@ set(handles.parcomp_toolbox_installed_menu,'checked',myif(handles.details.can_pa
 set(handles.stats_toolbox_installed_menu,'checked',myif(handles.details.stats_toolbox,'on','off'))
 set(handles.matlab_version_installed_menu,'checked','on') % what's the requirement?
 set(get(handles.requirements_menu,'children'),'enable','off')
+
+% --------------------------------------------------------------------
+function beta_options_menu_Callback(hObject, eventdata, handles)
+set(handles.ica_lesion_decompose_option,'checked',myif(handles.parameters.beta.do_ica_on_lesiondata,'on','off'))

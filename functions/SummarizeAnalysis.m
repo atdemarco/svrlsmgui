@@ -126,7 +126,7 @@ nlesionstotal = str2num(fname(strfind(fname,'=')+1:end));  %#ok<ST2NM>
 bar_location = [.03 .84 .2 .1];
 
 if parms.summary.lesion_overlap
-    imdata = PaintBarOnFrame(imdata,bar_location,cmapname,1,nlesionstotal,'Overlap of lesions',1);
+    imdata = PaintBarOnFrame(imdata,bar_location,cmapname,1,nlesionstotal,'Overlap of lesions',0); % do not flip.
     imwrite(imdata,fullfile(parms.picturedir,'lesion_overlap.png'));
 
     %% Label our output in the html file and put in the html tags to make it show up.
@@ -192,7 +192,7 @@ if parms.summary.beta_map
         sep = ones(size(curanatomicalslice,1),1,3); % add vertical separator...
         imdata = [imdata sep curRGB]; % concat slice RGBs on horizontal axis
     end
-    imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-10,10,'svr-\beta (unthresholded)',1);
+    imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-10,10,'svr-\beta (unthresholded)',0); % do not flip.
     imwrite(imdata,fullfile(parms.picturedir,'uncorr_beta_map.png'));
     fprintf(parms.fileID,'<hr>'); % break
     imstr = 'Unthresholded SVR-&beta; map';
@@ -204,31 +204,55 @@ if parms.summary.beta_map
 
 end
 
-%% Now vox thresholded pval map...
+%% Now vox thresholded pval map... (NOW we will write z maps from -3 to +3
 % normalize image to 255 to index out of color map (used to scale using JET from -10 to +10)
-cmapname='hot';%'jet';
-cmap = eval([cmapname '(255)']);
-cmap=flipud(cmap); % new so small (extremely significant) values are hot.
+% pmap = false;
+% if pmap
+%     cmapname = 'hot';
+%     cmap = eval([cmapname '(255)']);
+%     cmap=flipud(cmap); % new so small (extremely significant) values are hot.
+% else
+    cmapname='jet';% 'hot';%'jet';
+    cmap = eval([cmapname '(255)']);
+%end
+
     
 if parms.summary.voxelwise_thresholded 
-    
     fprintf(parms.fileID,'<hr>');
-    fprintf(parms.fileID,'<h2>Voxelwise thresholded P Values</h2>');
-
+ %   if pmap
+ %       fprintf(parms.fileID,'<h2>Voxelwise thresholded P Values</h2>');
+ %   else
+        fprintf(parms.fileID,'<h2>Voxelwise thresholded Z(P) Values </h2>');
+ %   end
+    
     if ~parms.DoPerformPermutationTesting % (voxelwisedir) % permutation testing wasn't conducted
-        imstr = 'Permutation testing was not conducted so there is no threshold to apply to the uncorrected SVR-&beta; map.';
-        fprintf(parms.fileID,'%s<br>',imstr);
-    else
-        [threshpmap.hdr,threshpmap.img]=read_nifti(parms.files_created.thresholded_pmap);
-        raw_threshpmap_img = threshpmap.img~=0; % a mask.
-
+        if ~parms.method.mass_univariate % then we are using svr-B maps...
+            fprintf(parms.fileID,'%s<br>','Permutation testing was not conducted so there is no threshold to apply to the uncorrected SVR-&beta; map.');
+        else % we are using regular B maps...
+            fprintf(parms.fileID,'%s<br>','Permutation testing was not conducted so there is no threshold to apply to the uncorrected &beta; map.');
+        end
+    else % permutation was conducted so we have something to show >>
+        %[threshpmap.hdr,threshpmap.img]=read_nifti(parms.files_created.thresholded_pmap);
+        [threshzmap.hdr,threshzmap.img]=read_nifti(parms.files_created.thresholded_zmap);
+        
+        %raw_threshpmap_img = threshpmap.img~=0; % a mask.
+        raw_threshzmap_img = threshzmap.img~=0; % a mask.
+        
+        scalerange = 3;
+        threshzmap.img(threshzmap.img > scalerange) = scalerange; % max scale at Z = 3.5..
+        threshzmap.img(threshzmap.img < (-1*scalerange)) = -1*scalerange; % min scale at Z = -3.5..
+        
+        threshzmap.img = threshzmap.img + scalerange; % bring everything to zero.
+        threshzmap.img = ceil(255 * (threshzmap.img ./ (2*scalerange)));
+        threshzmap.img(threshzmap.img==0) = 1; % since we use these as indices into the cmap -- 0 gives error...
+        
         % set color map range...
-    %     beta_scale_max = 1; % beta_scale_max = 10; % so the cmap values will fall within -10 to 10.
+    %    beta_scale_max = 10; % so the cmap values will fall within -10 to 10.
     %     threshpmap.img = threshpmap.img + beta_scale_max;
     %     threshpmap.img = ceil(255 * (threshpmap.img ./ (2*beta_scale_max)));
 
-        threshpmap.img = ceil(255 * threshpmap.img); % since our values already range from 0 to 1.
-        threshpmap.img(threshpmap.img==0) = 1; % this is a hack to avoid zeros because we can't index a zero out of the colormap...
+        %threshpmap.img = ceil(255 * threshpmap.img); % since our values already range from 0 to 1.
+        %threshpmap.img(threshpmap.img==0) = 1; % this is a hack to avoid zeros because we can't index a zero out of the colormap...
 
         imdata = [];
 
@@ -240,10 +264,11 @@ if parms.summary.voxelwise_thresholded
             [R,G,B] = deal(curanatomicalslice); % tricky deal.
 
             % Uncorrected p map, will make RGB by indexing out of colormap
-            corrpmap = fliplr(rot90(threshpmap.img(:,:,slices_to_show(sl))));
+            %corrpmap = fliplr(rot90(threshpmap.img(:,:,slices_to_show(sl))));
+            corrpmap = fliplr(rot90(threshzmap.img(:,:,slices_to_show(sl))));
 
-            relevant_pixels = find(fliplr(rot90(raw_threshpmap_img(:,:,slices_to_show(sl)))));
-
+            %relevant_pixels = find(fliplr(rot90(raw_threshpmap_img(:,:,slices_to_show(sl)))));
+            relevant_pixels = find(fliplr(rot90(raw_threshzmap_img(:,:,slices_to_show(sl)))));
             if any(relevant_pixels(:))
                 R(relevant_pixels) = cmap(corrpmap(relevant_pixels),1);
                 G(relevant_pixels) = cmap(corrpmap(relevant_pixels),2);
@@ -267,26 +292,28 @@ if parms.summary.voxelwise_thresholded
 
         if parms.do_CFWER
             %imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-1,1,['CFWER p-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)']);
-            imdata = PaintBarOnFrame(imdata,bar_location,cmapname,0,1,['CFWER p-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
-            imstr = ['CFWER thresholded P values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations (v = XXX, FWE = XXX)'];
-            imagename = 'cfwer_thresh_p_map.png';
+            %imdata = PaintBarOnFrame(imdata,bar_location,cmapname,0,1,['CFWER p-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
+            %imstr = ['CFWER thresholded P values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations (v = XXX, FWE = XXX)'];
+            %imagename = 'cfwer_thresh_p_map.png';
+            imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-1*scalerange,scalerange,['CFWER Z(p)-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
+            imstr = ['CFWER thresholded Z(p) values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations (v = XXX, FWE = XXX)'];
+            imagename = 'cfwer_thresh_z_of_p_map.png';
         else % showing the voxelwise thresholded result from the regular svr-beta thresholding
-            % add a case here for CFWER... and change the label to v and q...
-            imdata = PaintBarOnFrame(imdata,bar_location,cmapname,0,1,['p-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
-            imstr = ['Voxelwise thresholded P values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations.'];
-            imagename = 'vox_thresh_p_map.png';
+%             imdata = PaintBarOnFrame(imdata,bar_location,cmapname,0,1,['p-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
+%             imstr = ['Voxelwise thresholded P values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations.'];
+%             imagename = 'vox_thresh_p_map.png';
+            imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-1*scalerange,scalerange,['Z(p)-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
+            imstr = ['Voxelwise thresholded Z(P) values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations.'];
+            imagename = 'vox_thresh_z_of_p_map.png';
         end
 
         imwrite(imdata,fullfile(parms.picturedir,imagename));
         fprintf(parms.fileID,'%s<br>',imstr);
 
         % write the img link html
-        cur_alttext = imstr;
-        imtxt = ['<img src="images/' imagename '" alt="' cur_alttext '" width="' image_widths '" height="' image_heights '">'];
+        imtxt = ['<img src="images/' imagename '" alt="' imstr '" width="' image_widths '" height="' image_heights '">'];
         fprintf(parms.fileID,'%s',imtxt);
-
     end
-
 end
 
 % Determine what output to summary depending on whether CFWER was chosen.
@@ -308,7 +335,7 @@ if parms.summary.clusterwise_thresholded
     elseif parms.DoPerformPermutationTesting && parms.do_CFWER
         imstr = 'Permutation testing was conducted, but because CFWE was chosen there is no cluster correction information to display.';
         fprintf(parms.fileID,'%s<br>',imstr);
-    else
+    else % show clusters since we are just using regular null cluster distribution...
         [clusteridx.hdr,clusteridx.img]=read_nifti(parms.files_created.significant_cluster_indices);
         clustertable = parms.files_created.clustertable;
         if exist(clustertable,'file')
@@ -324,8 +351,9 @@ if parms.summary.clusterwise_thresholded
 
         if isempty(last_significant_cluster), last_significant_cluster=0; end
 
-        nonsig_cluster_voxels = clusteridx.img > last_significant_cluster;
-        threshpmap.img(nonsig_cluster_voxels) = 0; % zero out voxels that aren't significant clusters...
+         nonsig_cluster_voxels = clusteridx.img > last_significant_cluster;
+         %threshpmap.img(nonsig_cluster_voxels) = 0; % zero out voxels that aren't significant clusters...
+         threshzmap.img(nonsig_cluster_voxels) = 0; % zero out voxels that aren't significant clusters...
 
         imdata = [];
 
@@ -348,9 +376,12 @@ if parms.summary.clusterwise_thresholded
             clusteridxslice = fliplr(rot90(clusteridx.img(:,:,slices_to_show(sl))));
 
             % Uncorrected beta map, will make RGB by indexing out of colormap
-            corrpmap = fliplr(rot90(threshpmap.img(:,:,slices_to_show(sl))));
+            %corrpmap = fliplr(rot90(threshpmap.img(:,:,slices_to_show(sl))));
+            corrpmap = fliplr(rot90(threshzmap.img(:,:,slices_to_show(sl))));
 
-            raw_relevant_pixels = fliplr(rot90(raw_threshpmap_img(:,:,slices_to_show(sl))));
+            %raw_relevant_pixels = fliplr(rot90(raw_threshpmap_img(:,:,slices_to_show(sl))));
+            raw_relevant_pixels = fliplr(rot90(raw_threshzmap_img(:,:,slices_to_show(sl))));
+            
             relevant_pixels = corrpmap~=0 & raw_relevant_pixels~=0; % mask by both so we don't get 0--> 128's...
 
             if any(relevant_pixels(:))
@@ -390,7 +421,8 @@ if parms.summary.clusterwise_thresholded
         end
 
         % we're still using jet for this plot...
-        imdata = PaintBarOnFrame(imdata,bar_location,'jet',-10,10,['svr-\beta (clust p < ' strrep(num2str(parms.clusterwise_p),'0.','.') ', ' num2str(parms.PermNumVoxelwise) ' perms)'],1);
+        %imdata = PaintBarOnFrame(imdata,bar_location,'jet',-10,10,['svr-\beta (clust p < ' strrep(num2str(parms.clusterwise_p),'0.','.') ', ' num2str(parms.PermNumVoxelwise) ' perms)'],1);
+        imdata = PaintBarOnFrame(imdata,bar_location,'jet',-1*scalerange,scalerange,['Z(p)-value (p < ' strrep(num2str(parms.clusterwise_p),'0.','.') ', ' num2str(parms.PermNumVoxelwise) ' perms)'],0);
         imwrite(imdata,fullfile(parms.picturedir,'signif_cluster_slices.png'));
 
         % Label our output  in the html file and put in the html tags to make it show up.
