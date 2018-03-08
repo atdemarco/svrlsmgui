@@ -162,14 +162,15 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         answer = inputdlg(msg, ...
             'Number of folds', 1,{num2str(handles.parameters.optimization.crossval.nfolds)});
         warning('bug here - if you click cancel it causes an error - in future, embed the str<=0 and isint within the isempty... and do that with other str2num(answer{1})''s as well')
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 0 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer.');
-        else % update the parameter value.
-            handles.parameters.optimization.crossval.do_crossval = true; % enable crossvalidation.
-            handles.parameters.optimization.crossval.nfolds = str;
+        if ~isempty(answer)
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.optimization.crossval.do_crossval = true; % enable crossvalidation.
+                handles.parameters.optimization.crossval.nfolds = str;
+            end
         end
         
     case 'do_repartition_menu_option' % flip this choice.
@@ -191,10 +192,11 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         msg = sprintf('Enter new value for epsilon (default = %0.2f):',handles.parameters.svr_defaults.epsilon);
         % add min and max range - dev1
         answer = inputdlg(msg,'Epsilon Parameter',1,{num2str(handles.parameters.epsilon)});
-        if isempty(answer), return; end % cancel pressed
-        numval = str2num(answer{1});
-        if isnumeric(numval) && ~isempty(numval)
-            handles.parameters.epsilon = numval;
+        if ~isempty(answer)
+            numval = str2num(answer{1});
+            if isnumeric(numval) && ~isempty(numval)
+                handles.parameters.epsilon = numval;
+            end
         end
 
     % Whether to allow optimization of given hyperparameter
@@ -205,7 +207,6 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
             msg = {minmsg,maxmsg};
             defaultans = {num2str(handles.parameters.optimization.params_to_optimize.cost_range(1)),num2str(handles.parameters.optimization.params_to_optimize.cost_range(2))};
             answer = inputdlg(msg,'Cost Range',1,defaultans);
-            if isempty(answer), return; end % cancel pressed
             if any(cellfun(@isempty,answer)), warndlg('Invalid Cost range.'); return; end
             minval = str2num(answer{1}); maxval = str2num(answer{2});
             if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Cost range values must be numbers.'); return; end
@@ -217,7 +218,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'do_optimize_gamma_menu'
         if ~handles.parameters.optimization.params_to_optimize.sigma % then enabling it will prompt for new values...
             useLibSVM = handles.parameters.useLibSVM; % for convenience.
-            parmname = myif(useLibSVM,'Gamma','Sigma'); % depending on what algorithm the user is using.
+            parmname = myif(useLibSVM,'Gamma','Sigma');
             defaultmin = handles.parameters.optimization.params_to_optimize.sigma_range_default(1);
             defaultmax = handles.parameters.optimization.params_to_optimize.sigma_range_default(2);
             minmsg = sprintf('Minimum (default = %0.3f):',myif(useLibSVM,sigma2gamma(defaultmin),defaultmin)); % convert to gamma if necessary
@@ -227,23 +228,22 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
             oldmax = handles.parameters.optimization.params_to_optimize.sigma_range(2);
             defaultans = {num2str(myif(useLibSVM,sigma2gamma(oldmin),oldmin)),num2str(myif(useLibSVM,sigma2gamma(oldmax),oldmax))}; % convert to gamma if necessary
             answer = inputdlg(msg,[parmname ' Range'],1,defaultans);  % display as gamma if necessary
-            if isempty(answer), return; end % cancel pressed
             if any(cellfun(@isempty,answer)), warndlg(['Invalid ' parmname ' range.']); return; end
             minval = str2num(answer{1}); maxval = str2num(answer{2});
             if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg([parmname ' range values must be numbers.']); return; end % display as gamma if necessary
             if ~all([minval maxval] > 0), warndlg([parmname ' range values must be positive.']); return; end % display as gamma if necessary
-            handles.parameters.optimization.params_to_optimize.sigma_range = sort([myif(useLibSVM,sigma2gamma(minval),minval) myif(useLibSVM,sigma2gamma(maxval),maxval)]); % convert gamma back to sigma if necessary.
+            handles.parameters.optimization.params_to_optimize.sigma_range = sort([myif(useLibSVM,sigma2gamma(minval),minval) myif(useLibSVM,sigma2gamma(maxval),maxval)]); % conver
         end
 
         handles.parameters.optimization.params_to_optimize.sigma = ~handles.parameters.optimization.params_to_optimize.sigma;
     case 'do_optimize_epsilon_menu'
+        
         if ~handles.parameters.optimization.params_to_optimize.epsilon % then enabling it will prompt for new values...
             minmsg = sprintf('Minimum (default = %0.3f):',handles.parameters.optimization.params_to_optimize.epsilon_range_default(1));
             maxmsg = sprintf('Maximum (default = %0.2f):',handles.parameters.optimization.params_to_optimize.epsilon_range_default(2));
             msg = {minmsg,maxmsg};
             defaultans = {num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(1)),num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(2))};
             answer = inputdlg(msg,'Epsilon Range',1,defaultans);
-            if isempty(answer), return; end % cancel pressed
             if any(cellfun(@isempty,answer)), warndlg('Invalid Epsilon range.'); return; end
             minval = str2num(answer{1}); maxval = str2num(answer{2});
             if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Epsilon range values must be numbers.'); return; end
@@ -257,24 +257,27 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     % Optimization misc choices
     case 'optimization_iterations_menu_option'
         answer = inputdlg('Enter a new number of iterations:','Number of optimization iterations',1,{num2str(handles.parameters.optimization.iterations)});
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 0 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer.');
-        else % update the parameter value.
-            handles.parameters.optimization.iterations = str;
+        if ~isempty(answer)
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.optimization.iterations = str;
+            end
         end
     case 'griddivs_optimization_menu_option'
         answer = inputdlg('Enter a new number of grid divisions:','Number of optimization grid divisions',1,{num2str(handles.parameters.optimization.grid_divisions)});
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 0 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer.');
-        else % update the parameter value.
-            handles.parameters.optimization.grid_divisions = str;
-        end    
+        if ~isempty(answer)
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.optimization.grid_divisions = str;
+            end
+        end
+    
     % Optimization search strategy choice
     case 'random_search_menu_option'
         handles.parameters.optimization.search_strategy = 'Random Search';
@@ -631,31 +634,31 @@ else
 end
 
 function cost_menu_Callback(hObject, eventdata, handles)
-    msg = sprintf('Enter new parameter value for Cost/BoxConstraint (default = %0.1f)',handles.parameters.svr_defaults.cost);
+    msg = sprintf('Enter new parameter value for cost (default = %0.1f)',handles.parameters.svr_defaults.cost);
+    % add min and max range - dev1
     answer = inputdlg(msg,'Cost Parameter',1,{num2str(handles.parameters.cost)});
-    if isempty(answer), return; end % cancel pressed
-    numval = str2num(answer{1}); %#ok<*ST2NM>
-    if isnumeric(numval) && ~isempty(numval)
-        handles.parameters.cost = numval;
-        handles.parameters.is_saved = 0;
-        guidata(hObject, handles);
-        handles = PopulateGUIFromParameters(handles);
+    if ~isempty(answer)
+        numval = str2num(answer{1}); %#ok<*ST2NM>
+        if isnumeric(numval) && ~isempty(numval)
+            handles.parameters.cost = numval;
+            handles.parameters.is_saved = 0;
+            guidata(hObject, handles);
+            handles = PopulateGUIFromParameters(handles);
+        end
     end
    
 function gamma_menu_Callback(hObject, eventdata, handles)
-    useLibSVM = handles.parameters.useLibSVM; % for convenience.
-    parmname = myif(useLibSVM,'Gamma','Sigma'); % depending on what algorithm the user is using.
-    defaultval = handles.parameters.svr_defaults.sigma; 
-    msg = sprintf('Enter new parameter value for %s (default = %0.1f)',parmname,myif(useLibSVM,sigma2gamma(defaultval),defaultval)); % convert to gamma if necessary
-    oldval = handles.parameters.sigma;
-    answer = inputdlg(msg,[parmname ' Parameter'],1,{num2str(myif(useLibSVM,sigma2gamma(oldval),oldval))}); % convert to gamma if necessary
-    if isempty(answer), return; end % cancel pressed
-    numval = str2num(answer{1});
-    if isnumeric(numval) && ~isempty(numval)
-        handles.parameters.sigma = myif(useLibSVM,gamma2sigma(numval),numval); % store as sigma, so convert input gamma to sigma if necessary...
-        handles.parameters.is_saved = 0;
-        guidata(hObject, handles);
-        handles = PopulateGUIFromParameters(handles);
+    msg = sprintf('Enter new parameter value for sigma (default = %0.1f)',handles.parameters.svr_defaults.sigma);
+    % add min and max range - dev1
+    answer = inputdlg(msg,'Sigma Parameter',1,{num2str(handles.parameters.sigma)});
+    if ~isempty(answer)
+        numval = str2num(answer{1});
+        if isnumeric(numval) && ~isempty(numval)
+            handles.parameters.sigma = numval;
+            handles.parameters.is_saved = 0;
+            guidata(hObject, handles);
+            handles = PopulateGUIFromParameters(handles);
+        end
     end
     
 function open_batch_job_Callback(hObject, eventdata, handles)
@@ -773,7 +776,7 @@ function current_optimization_menu_option_Callback(hObject, eventdata, handles)
 
 function parameters_menu_Callback(hObject, eventdata, handles)
     do_opt = handles.parameters.optimization.do_optimize; % for convenience
-
+    
     if do_opt && handles.parameters.optimization.params_to_optimize.cost
         label = ['Cost: optimize (' num2str(handles.parameters.optimization.params_to_optimize.cost_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.cost_range(2)) ')'];
         set(handles.cost_menu,'label',label,'enable','off');
@@ -781,17 +784,13 @@ function parameters_menu_Callback(hObject, eventdata, handles)
         set(handles.cost_menu,'label',['Cost: ' num2str(handles.parameters.cost) myif(handles.parameters.svr_defaults.cost == handles.parameters.cost,' (default)','')],'enable','on');
     end
 
-    useLibSVM = handles.parameters.useLibSVM; % for convenience.
-    parmname = myif(useLibSVM,'Gamma','Sigma'); % depending on what algorithm the user is using.
     if do_opt && handles.parameters.optimization.params_to_optimize.sigma
-        oldmin = handles.parameters.optimization.params_to_optimize.sigma_range(1);
-        oldmax = handles.parameters.optimization.params_to_optimize.sigma_range(2);
-        label = [parmname ': optimize (' num2str(myif(useLibSVM,sigma2gamma(oldmin),oldmin)) ' - ' num2str(myif(useLibSVM,sigma2gamma(oldmax),oldmax)) ')'];
+        % dev1 -- add Gamma if libsvm is true...
+        label = ['Sigma: optimize (' num2str(handles.parameters.optimization.params_to_optimize.sigma_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.sigma_range(2)) ')'];
         set(handles.gamma_menu,'label',label,'enable','off');
-    else 
-        cursigma = handles.parameters.sigma; % Display as gamma if use libSVM
-        cursigma = myif(useLibSVM,sigma2gamma(cursigma),cursigma); % Display as gamma if use libSVM
-        set(handles.gamma_menu,'label',[parmname ': ' num2str(cursigma) myif(handles.parameters.svr_defaults.sigma == handles.parameters.sigma,' (default)','')],'enable','on'); % Display as gamma if use libSVM
+    else
+        % dev1 -- add Gamma if libsvm is true...
+        set(handles.gamma_menu,'label',['Sigma: ' num2str(handles.parameters.sigma) myif(handles.parameters.svr_defaults.sigma == handles.parameters.sigma,' (default)','')],'enable','on');
     end
     
     if do_opt && handles.parameters.optimization.params_to_optimize.epsilon
@@ -809,13 +808,13 @@ function parameters_menu_Callback(hObject, eventdata, handles)
     
 function epsilon_menu_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
-    
 function standardize_menu_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
     
 %% Objective function...
 function objective_function_menu_option_Callback(hObject, eventdata, handles)
     set(get(hObject,'Children'),'Checked','off') % uncheck all child menus
+    % For now let's just do Resubstitution Loss...
     set([handles.predictbehavior_optimize_menu_choice handles.correlation_optimize_menu_choice],'enable','off')
     switch handles.parameters.optimization.objective_function
         case 'Predict Behavior'
@@ -849,14 +848,10 @@ function parameters_to_optimize_menu_Callback(hObject, eventdata, handles)
         label = ['Cost (' num2str(handles.parameters.optimization.params_to_optimize.cost_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.cost_range(2)) ')'];
         set(handles.do_optimize_cost_menu,'label',label,'checked','on')
     end
-    
-    useLibSVM = handles.parameters.useLibSVM; % for convenience.
-    parmname = myif(useLibSVM,'Gamma','Sigma'); % depending on what algorithm the user is using, show gamma vs sigma...
-    curmin = handles.parameters.optimization.params_to_optimize.sigma_range(1); % convert to sigma if necessary...
-    curmax = handles.parameters.optimization.params_to_optimize.sigma_range(2); % convert to sigma if necessary...
-    label = [parmname ' (' num2str(myif(useLibSVM,sigma2gamma(curmin),curmin)) ' - ' num2str(myif(useLibSVM,sigma2gamma(curmax),curmax)) ')'];  % convert to sigma if necessary...
-    set(handles.do_optimize_gamma_menu,'label',label,'checked',myif(handles.parameters.optimization.params_to_optimize.sigma,'on','off'))
-    
+    if handles.parameters.optimization.params_to_optimize.sigma
+        label = ['Sigma (' num2str(handles.parameters.optimization.params_to_optimize.sigma_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.sigma_range(2)) ')'];
+        set(handles.do_optimize_gamma_menu,'label',label,'checked','on')
+    end
     if handles.parameters.optimization.params_to_optimize.epsilon
         label = ['Epsilon (' num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(1)) ' - ' num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(2)) ')'];
         set(handles.do_optimize_epsilon_menu,'label',label,'checked','on')
@@ -866,6 +861,7 @@ function parameters_to_optimize_menu_Callback(hObject, eventdata, handles)
         label = 'Standardize (yes/no)';
         set(handles.do_optimize_standardize_menu,'label',label,'checked','on')
     end
+    
     
     %set(handles.do_optimize_epsilon_menu,'enable','on')
      
