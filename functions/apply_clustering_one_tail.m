@@ -34,7 +34,12 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
         T.clusterP = nan(size(T,1),1);
         for r = 1 : size(T,1)
             cur_nvox = T.nvox(r);
-            T.clusterP(r) = sum(cur_nvox < sorted_clusters)/numel(sorted_clusters);
+
+            % get cluster p value, but limit how extreme it can be (i.e. not p = 0)
+            possible_cluster_pvals = [1:numel(sorted_clusters)]./numel(sorted_clusters);
+            num_clusters_gt_cur_clust = sum(cur_nvox < sorted_clusters);
+            T.clusterP(r) = possible_cluster_pvals(1+num_clusters_gt_cur_clust);
+            %T.clusterP(r) = sum(cur_nvox < sorted_clusters)/numel(sorted_clusters); % < this can give a p of 0
         end
         U = [T(:,1) T(:,end) T(:,2:end-1)]; % Reorder columns
         U.maxintinv = U.maxint; % inverted max p values.
@@ -60,7 +65,7 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
         
     % Perform clusterwise thresholding on our p_inv file we read in... use this for masking
     variables.clusterresults.clusterthresh = sorted_clusters(thresh_index)-1;
-    out_map = remove_scatter_clusters(volume_to_cluster, variables.clusterresults.clusterthresh);
+    %out_map = remove_scatter_clusters(volume_to_cluster, variables.clusterresults.clusterthresh);
 
     %% Write output
     
@@ -89,9 +94,11 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     % All clusters, clusterwise thresholded with cluster p-values - not inverted
     variables.files_created.all_cluster_cluster_pvals = fullfile(variables.output_folder.clusterwise,'All clusts cluster pvals.nii');
     tmp = zeros(size(cimg));
+    
     for c = 1 : numel(T.clusterP) % i.e. all cluster indices...
         tmp(cimg==c) = T.clusterP(c); 
     end
+    
     variables.vo.fname = variables.files_created.all_cluster_cluster_pvals;
     svrlsmgui_write_vol(variables.vo, tmp);
     
@@ -104,7 +111,6 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     variables.vo.fname = variables.files_created.all_cluster_cluster_pvals_inv;
     svrlsmgui_write_vol(variables.vo, tmp);
     
-    %% NOT OK V
     % Just significant clusters with cluster p values - not inv
     variables.files_created.all_cluster_cluster_pvals = fullfile(variables.output_folder.clusterwise,'Signif clusts cluster pvals.nii');
     tmp = zeros(size(cimg));
@@ -115,7 +121,6 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     variables.vo.fname = variables.files_created.all_cluster_cluster_pvals;
     svrlsmgui_write_vol(variables.vo, tmp);
     
-    %% NOT OK V
     % Just significant clusters with cluster p values - inv
     variables.files_created.all_cluster_cluster_pvals_inv = fullfile(variables.output_folder.clusterwise,'Signif clusts cluster pvals (inv).nii');
     tmp = zeros(size(cimg));
@@ -131,7 +136,7 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
 %     
 %     % Clusterwise thresholded with voxel p-values - inverted
 %     variables.files_created.all_cluster_voxelwise_pvals_inv = fullfile(variables.output_folder.clusterwise,'All clusters voxelwise p values (inv).nii');
-    %% NOT OK V
+
     % Just significant clusters with voxelwise p values - inv
     cimg_only_significant_mask = cimg_only_significant>0; % inclusive mask
     variables.files_created.all_cluster_voxelwise_pvals_inv = fullfile(variables.output_folder.clusterwise,'Signif clusts vox pvals (inv).nii');
@@ -140,7 +145,6 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     variables.vo.fname = variables.files_created.all_cluster_voxelwise_pvals_inv;    
     svrlsmgui_write_vol(variables.vo, p_inv);
     
-    %% NOT OK V
     % Just significant clusters with voxelwise p values - not inv
     variables.files_created.all_cluster_voxelwise_pvals = fullfile(variables.output_folder.clusterwise,'Signif clusts vox pvals.nii');
     variables.vo.fname = variables.files_created.all_cluster_voxelwise_pvals;
@@ -148,4 +152,3 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     p_notinv(~cimg_only_significant_mask) = 0;    
     p_notinv(cimg_only_significant_mask) = 1-p_notinv(cimg_only_significant_mask); % this should work.
     svrlsmgui_write_vol(variables.vo, p_notinv);
-    

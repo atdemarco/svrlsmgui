@@ -2,12 +2,19 @@ function [] = WritePredictBehaviorReport(parms)
     fprintf(parms.fileID,'<hr>');
     fprintf(parms.fileID,'<h2>Behavioral predictions</h2>');
 
+    %% Is there a record of saving this info?
+    if ~isfield(parms.files_created,'hyperparameter_quality')
+        fprintf(parms.fileID,'It appears that behavioral predictions were not computed.');
+        return
+    end
+
     %% Load the fitted model
     tmp = load(parms.files_created.hyperparameter_quality);
     models = tmp.hyperparameter_quality.behavioral_predictions;
     %nSVs = models.Mdl.IsSupportVector;
     
-    XVMdl = models.XVMdl;
+    %XVMdl = models.XVMdl;
+    try
     behavior_name = parms.behavioralmodeldata.Properties.VariableNames{1};
     
     predicted_field = [behavior_name '_predicted'];
@@ -20,7 +27,8 @@ function [] = WritePredictBehaviorReport(parms)
     t.lesion_vol = parms.behavioralmodeldata.LesionVolInternal; % this should always be calculated...?
     
     %% calculate predicted behavior and transform it back into the original units...
-    predicted_behavior= kfoldPredict(XVMdl);
+    %predicted_behavior= kfoldPredict(XVMdl);
+    predicted_behavior = models.XVMdl_predicted(:); % turn into column vector
     t.(predicted_field) = (predicted_behavior / parms.original_behavior_transformation.maxmultiplier) - parms.original_behavior_transformation.minoffset;
 
     %if was_lesion_vol_corrected % we can look at it with and without lesion volume correction...
@@ -75,6 +83,9 @@ function [] = WritePredictBehaviorReport(parms)
     imwrite(pred_im.cdata,fullfile(parms.picturedir,predfname));
     imstr = 'Predicted behavior and observed behavior.';
     imtxt = ['<img src="images/' predfname '" alt="' imstr '">'];
+    catch
+        imtxt = 'ERROR HERE - no lesion correction info stored (Cause it wasnt conducted)';
+    end
     fprintf(parms.fileID,'%s',imtxt);
     fprintf(parms.fileID,'<br><br>'); % break before next section
 
@@ -102,8 +113,7 @@ function [] = WritePredictBehaviorReport(parms)
 %         warning('The specified output directory does not exist, so no output was saved.')
 %     end
 
-function prepped = prep4output(mdl)
-    prepped = evalc('disp(mdl)'); %evalc (c=capture)
-    prepped = strrep(prepped,newline,'<br>'); % == char(10)
-    
-
+% function prepped = prep4output(mdl)
+%     prepped = evalc('disp(mdl)'); %evalc (c=capture)
+%     prepped = strrep(prepped,newline,'<br>'); % == char(10)
+%     

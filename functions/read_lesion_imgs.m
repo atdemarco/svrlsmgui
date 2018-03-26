@@ -5,13 +5,18 @@ for ni= 1 : numel(variables.SubjectID)
     fname = [variables.SubjectID{ni}, '.nii'];
     fullfname = fullfile(parameters.lesion_img_folder, fname);
     svrlsm_waitbar(parameters.waitbar,ni / length(variables.SubjectID),sprintf('Reading lesion file %s...',fname));
+    % in the future, make the line above not interpret underscores (_) in file names as subscript character...
     if ~exist(fullfname,'file') % this should not happen since we've checked for missing files already...
         error('Cannot find lesion image file: %s\n', fullfname); 
     end
     vo = spm_vol(fullfname); % The true voxel intensities of the jth image are given by: val*V.pinfo(1,j) + V.pinfo(2,j)
     tmp = spm_read_vols(vo);
     tmp(isnan(tmp)) = 0; % Denan the image.
-    tmp = tmp > 0;  % Binarize
+    
+    if parameters.imagedata.do_binarize
+        tmp = tmp > 0;  % Binarize if desired...
+    end
+    
     Ldat(:,:,:,ni) = uint8(tmp);
     variables.lesion_vol(ni,1) = sum(tmp(:));
     check_for_interrupt(parameters)

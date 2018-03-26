@@ -8,83 +8,105 @@ function variables = optimalParameterReport(parameters,variables)
 
     % 1. reproducibility index and
     % 2. prediction accuracy
+    % 3. mean absolute difference...
 
-    if parameters.useLibSVM
-        error('Currently, optimalParameterReport() only supports MATLAB''s SVR machinery.')
-    end
-    
-    hyperparameter_quality.pred_accuracy = computePredictionAccuracy(parameters,variables);
+    [hyperparameter_quality.pred_accuracy, ...
+     hyperparameter_quality.mean_abs_diff] = computePredictionAccuracy(parameters,variables);
+ 
     hyperparameter_quality.repro_index = computeReproducibilityIndex(parameters,variables);
     hyperparameter_quality.behavioral_predictions = computerBehavioralPrediction(parameters,variables); % this will be used for our WritePredictBehaviorReport in summary output.
     
-    %% save the results so we can use them later
+    %% Save the results so we can use them later
     fname = 'hyperparameter_quality.mat';
     fpath = fullfile(variables.output_folder.hyperparameterinfo,fname);   
     save(fpath,'hyperparameter_quality')
-    
     variables.files_created.hyperparameter_quality = fpath;
     variables.hyperparameter_quality = hyperparameter_quality;
-    
-    
     
 function behavioral_predictions = computerBehavioralPrediction(parameters,variables)
     behavdata = variables.one_score; % for clarity extract these.
     lesiondata = variables.lesion_dat;
-    
-    nfolds = 5; % Zhang et al., 2014
-%    partition = cvpartition(behavdata,'k',nfolds); % parameters.optimization.crossval.nfolds); % if 'repartition' is enabled, then repartition at each iteration.
-    % Decide whether we'll use optimized parameters or not...
-    cost = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.cost, parameters.optimization.best.cost, parameters.cost);
-    sigma = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.sigma, parameters.optimization.best.sigma, parameters.sigma); % no longer derive from sigma
-    epsilon = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.epsilon, parameters.optimization.best.epsilon, parameters.epsilon);
-    standardize = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.standardize, parameters.optimization.best.standardize, parameters.standardize); 
 
-    Mdl = fitrsvm(lesiondata,behavdata,'ObservationsIn','rows','KernelFunction','rbf', 'KernelScale',sigma,'BoxConstraint',cost,'Standardize',standardize,'Epsilon',epsilon);
-%    percent_obs_are_SVs(N) = sum(Mdl.IsSupportVector) / numel(Mdl.IsSupportVector);
-    XVMdl = crossval(Mdl,'Kfold',nfolds); % this is a 5-fold
-%    predicted = kfoldPredict(XVMdl);
+    %nfolds = 5; % Zhang et al., 2014
+    nfolds = parameters.hyperparameter_quality.report.nfolds;
+
+    hyperparms = hyperparmstruct(parameters);
     
-    behavioral_predictions.Mdl = Mdl;
-    behavioral_predictions.XVMdl = XVMdl;
-    
+    svrlsm_waitbar(parameters.waitbar,0,'Hyperparameter optimization: Storing behavioral predictions.');
+    if parameters.useLibSVM
+        libsvmstring = get_libsvm_spec(hyperparms.cost,hyperparms.gamma,hyperparms.epsilon); % we may need to re-apply standardization...?
+        crossvalinds = crossvalind('KFold', variables.SubNum, nfolds);
+        lesiondata=sparse(lesiondata);
+        m = svmtrain(behavdata, lesiondata, libsvmstring); %#ok<SVMTRAIN> -- use all data
+        behavioral_predictions.Mdl = m;
+        for curfold=1:nfolds
+            infold = crossvalinds == curfold;
+            outoffold = crossvalinds ~= curfold;
+            m = svmtrain(behavdata(outoffold), lesiondata(outoffold,:), libsvmstring); %#ok<SVMTRAIN>
+            behavioral_predictions.XVMdl_predicted(infold) = svmpredict(behavdata(infold), lesiondata(infold,:), m, '-q'); % predict OOF observations based on cur fold data.
+        end
+        behavioral_predictions.XVMdl = [];
+        
+    else % Run with MATLAB machinery.
+        Mdl = fitrsvm(lesiondata,behavdata,'ObservationsIn','rows','KernelFunction','rbf', 'KernelScale',hyperparms.sigma,'BoxConstraint',hyperparms.cost,'Standardize',hyperparms.standardize,'Epsilon',hyperparms.epsilon);
+        XVMdl = crossval(Mdl,'KFold',nfolds); % this is a 5-fold
+
+        behavioral_predictions.Mdl = Mdl;
+        behavioral_predictions.XVMdl = XVMdl;
+        behavioral_predictions.XVMdl_predicted = kfoldPredict(XVMdl);
+    end
+    svrlsm_waitbar(parameters.waitbar,0,'');
     
 % 1. reproducibility index
 %    - solve the SVRLSM N times for a random subset of 80% of subjects (Zhang et al used 85 of 106 pts for each rerun)
 %    - compute pairwise correlations between all the resulting SVR-B maps
 %    - mean of the correlation coefficients is the  REPRODUCIBILITY INDEX
+
 function repro_index = computeReproducibilityIndex(parameters,variables)
-    % for clarity extract these.
+    % For clarity extract these.
     behavdata = variables.one_score;
     lesiondata = variables.lesion_dat;
     
-    N_subsets_to_perform = 40; % Zhang et al., 2015
-    subset_include_percentage = .8; % Zhang et al., 2015
-    
+    % restore to 40 crossval steps once we introduce parallelization -- maybe make it user-configurable
+    %N_subsets_to_perform = 2; % 10; % Zhang et al., 2015
+    %subset_include_percentage = .8; % Zhang et al., 2015
+    subset_include_percentage = parameters.hyperparameter_quality.report.repro_ind_subset_pct;
+    N_subsets_to_perform = parameters.hyperparameter_quality.report.n_replications;
+
     nsubs = numel(behavdata);
     nholdin = round(subset_include_percentage*nsubs); % how many subjects should be in each subset?
 
-    % Decide whether we'll use optimized parameters or not...
-    cost = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.cost, parameters.optimization.best.cost, parameters.cost);
-    sigma = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.sigma, parameters.optimization.best.sigma, parameters.sigma); % no longer derive from sigma
-    standardize = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.standardize, parameters.optimization.best.standardize, parameters.standardize);
-    epsilon = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.epsilon, parameters.optimization.best.epsilon, parameters.epsilon);
-
+    hyperparms = hyperparmstruct(parameters);
+    
     N_subset_results = cell(1,N_subsets_to_perform); % save the correlation coefficients in this vector, then average them
     percent_obs_are_SVs = nan(1,N_subsets_to_perform); % count the number of SVs...
     
+    svrlsm_waitbar(parameters.waitbar,0,'Hyperparameter optimization: Measuring reproducibility index.');
     for N = 1 : N_subsets_to_perform
+        svrlsm_waitbar(parameters.waitbar,N/N_subsets_to_perform);
         includesubs = randperm(nsubs,nholdin); % each column contains a unique permutation
-        Mdl = fitrsvm(lesiondata(includesubs,:),behavdata(includesubs,:),'ObservationsIn','rows','KernelFunction','rbf', 'KernelScale',sigma,'BoxConstraint',cost,'Standardize',standardize,'Epsilon',epsilon);
-        percent_obs_are_SVs(N) = sum(Mdl.IsSupportVector) / numel(Mdl.IsSupportVector);
-        w = Mdl.Alpha.'*Mdl.SupportVectors;
+        
+        if parameters.useLibSVM % do libsvm...
+            libsvmstring = get_libsvm_spec(hyperparms.cost,hyperparms.gamma,hyperparms.epsilon); % we may need to re-apply standardization...?
+            lesiondata=sparse(lesiondata);
+            m = svmtrain(behavdata(includesubs), lesiondata(includesubs,:), libsvmstring); %#ok<SVMTRAIN>
+            percent_obs_are_SVs(N) = m.totalSV / variables.SubNum; % should we instead use: sum(m.sv_coef == parameters.cost)) % (this is the number of bounded SVs)
+            w = m.sv_coef'*m.SVs;
+        else % do with MATLAB
+            Mdl = fitrsvm(lesiondata(includesubs,:),behavdata(includesubs,:),'ObservationsIn','rows','KernelFunction','rbf', 'KernelScale',hyperparms.sigma,'BoxConstraint',hyperparms.cost,'Standardize',hyperparms.standardize,'Epsilon',hyperparms.epsilon);
+            percent_obs_are_SVs(N) = sum(Mdl.IsSupportVector) / numel(Mdl.IsSupportVector);
+            w = Mdl.Alpha.'*Mdl.SupportVectors;
+        end
+        
         if N == 1  % compute initial beta_scale to reuse...
             beta_scale = 10 / prctile(abs(w),parameters.svscaling); % parameters.svscaling is e.g, 100 or 99 or 95
-        end 
+        end
+        
         w = w'*beta_scale; % the beta here is kind of irrelevant because it just scales the data, and correlation is insensitive to scaling...
         N_subset_results{N} = w; % save the w-map...
     end
     
-    % now for each pair of w maps in N_subset_results{:}, compute a correlation coefficient...
+    % Now for each pair of w maps in N_subset_results{:}, compute a correlation coefficient...
     C = nchoosek(1:numel(N_subset_results),2); % rows of pairwise indices to correlate...
     repro_index_correlation_results = nan(size(C,1),1); % reseve space...
     for row = 1 : size(C,1)
@@ -99,37 +121,60 @@ function repro_index = computeReproducibilityIndex(parameters,variables)
     repro_index.percent_obs_are_SVs = percent_obs_are_SVs; % number of support vectors...
     
 % 2. prediction accuracy
-%    - mean correlation coefficient between predixcted scores and testing
-%    scores with 40 5-fold cross-validations.
-function pred_accuracy = computePredictionAccuracy(parameters,variables)
+%    - mean correlation coefficient between predixcted scores and testing scores with 40 5-fold cross-validations.
+function [pred_accuracy,mean_abs_diff] = computePredictionAccuracy(parameters,variables)
     behavdata = variables.one_score; % for clarity extract these.
     lesiondata = variables.lesion_dat;
     
-    N_crossvals_to_perform = 40; % Zhang et al., 2015
-    nfolds = 5; % Zhang et al., 2014
-%    partition = cvpartition(behavdata,'k',nfolds); % parameters.optimization.crossval.nfolds); % if 'repartition' is enabled, then repartition at each iteration.
-    % Decide whether we'll use optimized parameters or not...
-    cost = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.cost, parameters.optimization.best.cost, parameters.cost);
-    sigma = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.sigma, parameters.optimization.best.sigma, parameters.sigma); % no longer derive from sigma
-    epsilon = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.epsilon, parameters.optimization.best.epsilon, parameters.epsilon);
-    standardize = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.standardize, parameters.optimization.best.standardize, parameters.standardize); 
+    % restore to 40 crossval steps once we introduce parallelization -- maybe make it user-configurable
+    %N_crossvals_to_perform = 2; % 10; % Zhang et al., 2015
+    % nfolds = 5; % Zhang et al., 2014
 
-    N_crossval_results = nan(1,N_crossvals_to_perform); % save the correlation coefficients in this vector, then average them
+    nfolds  = parameters.hyperparameter_quality.report.nfolds;
+    N_crossvals_to_perform = parameters.hyperparameter_quality.report.n_replications;
+    
+    hyperparms = hyperparmstruct(parameters);
+
+    N_crossval_correl_results = nan(1,N_crossvals_to_perform); % save the correlation coefficients in this vector, then average them
+    N_crossval_MAD_results = nan(1,N_crossvals_to_perform); % average mean absolute difference between predicted and real.
     percent_obs_are_SVs = nan(1,N_crossvals_to_perform); % count the number of SVs...
     
-    for N = 1 : N_crossvals_to_perform
-        Mdl = fitrsvm(lesiondata,behavdata,'ObservationsIn','rows','KernelFunction','rbf', 'KernelScale',sigma,'BoxConstraint',cost,'Standardize',standardize,'Epsilon',epsilon);
-        percent_obs_are_SVs(N) = sum(Mdl.IsSupportVector) / numel(Mdl.IsSupportVector);
-        XVMdl = crossval(Mdl,'Kfold',nfolds); % this is a 5-fold
-        predicted = kfoldPredict(XVMdl);
-        corrvals = corrcoef(predicted,behavdata); % compute the correlation...
-        r = corrvals(2,1); % grab the r
-        N_crossval_results(N) = r; % save.
+    if parameters.useLibSVM % try to save time by only doing this once...
+        lesiondata=sparse(lesiondata);
     end
     
-    pred_accuracy.data = N_crossval_results; % can plot a distribution if we like...
-    pred_accuracy.mean = mean(N_crossval_results);
-    pred_accuracy.std = std(N_crossval_results);
+    svrlsm_waitbar(parameters.waitbar,0,'Hyperparameter optimization: Measuring prediction accuracy.');
+    
+    predicted = nan(variables.SubNum,1); % reserve space.
+    for N = 1 : N_crossvals_to_perform
+        svrlsm_waitbar(parameters.waitbar,N/N_crossvals_to_perform);
+        if parameters.useLibSVM
+            libsvmstring = get_libsvm_spec(hyperparms.cost,hyperparms.gamma,hyperparms.epsilon); % we may need to re-apply standardization...?
+            crossvalinds = crossvalind('KFold', variables.SubNum, nfolds);
+            for curfold=1:nfolds
+                infold = crossvalinds == curfold;
+                outoffold = crossvalinds ~= curfold;
+                m = svmtrain(behavdata(outoffold), lesiondata(outoffold,:), libsvmstring); %#ok<SVMTRAIN>
+                predicted(infold) = svmpredict(behavdata(infold), lesiondata(infold,:), m, '-q'); % predict OOF observations based on cur fold data.
+            end
+        else
+            Mdl = fitrsvm(lesiondata,behavdata,'ObservationsIn','rows','KernelFunction','rbf', 'KernelScale',hyperparms.sigma,'BoxConstraint',hyperparms.cost,'Standardize',hyperparms.standardize,'Epsilon',hyperparms.epsilon);
+            percent_obs_are_SVs(N) = sum(Mdl.IsSupportVector) / numel(Mdl.IsSupportVector);
+            XVMdl = crossval(Mdl,'Kfold',nfolds); % this is a 5-fold
+            predicted = kfoldPredict(XVMdl);
+        end
+        corrvals = corrcoef(predicted,behavdata); % compute the correlation...
+        r = corrvals(2,1); % grab the r
+        N_crossval_correl_results(N) = r; % save.
+        N_crossval_MAD_results(N) = mean(abs(predicted-behavdata));
+    end
+    svrlsm_waitbar(parameters.waitbar,0,'');
+    pred_accuracy.data = N_crossval_correl_results; % can plot a distribution if we like...
+    pred_accuracy.mean = mean(N_crossval_correl_results);
+    pred_accuracy.std = std(N_crossval_correl_results);
     pred_accuracy.percent_obs_are_SVs = percent_obs_are_SVs; % number of support vectors...
     
-    
+    mean_abs_diff.data = N_crossval_MAD_results; % can plot a distribution if we like... redundant w pred_accuracy
+    mean_abs_diff.mean = mean(N_crossval_MAD_results);
+    mean_abs_diff.std = std(N_crossval_MAD_results);
+    mean_abs_diff.percent_obs_are_SVs = percent_obs_are_SVs; % number of support vectors... redundant w pred_accuracy

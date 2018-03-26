@@ -319,7 +319,7 @@ end
 % Determine what output to summary depending on whether CFWER was chosen.
 if parms.summary.cfwer_diagnostics 
     if parms.DoPerformPermutationTesting && parms.do_CFWER
-        PrintCFWERReport(parms);
+        WriteCFWERReport(parms);
     end
 end
 

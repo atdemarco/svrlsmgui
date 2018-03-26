@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 05-Mar-2018 17:54:31
+% Last Modified by GUIDE v2.5 12-Mar-2018 12:13:34
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -98,6 +98,73 @@ function handles = UpdateCurrentAnalysis(handles,hObject)
     changemade = true; % default
 
 switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what field it goes to -- and to validate
+    case 'hyperparm_quality_report_options'
+        set(handles.hyperparm_qual_n_folds,'Label',['Folds: ' num2str(handles.parameters.hyperparameter_quality.report.nfolds)])
+        set(handles.repro_index_subset_percentage,'Label',['Subset %: ' num2str(handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct)])
+        set(handles.hyperparm_qual_n_replications,'Label',['Replications: ' num2str(handles.parameters.hyperparameter_quality.report.n_replications)])
+    case 'hyperparm_qual_n_folds'
+        answer = inputdlg(sprintf('Enter the number of folds for hyperparameter quality testing:'), ...
+            'Number of folds', 1,{num2str(handles.parameters.hyperparameter_quality.report.nfolds)});
+        if isempty(answer), return; end % cancel pressed
+        str = str2num(answer{1});
+        if isempty(str) || str <= 1 || ~isint(str)
+            changemade=false;
+            warndlg('Input must be a positive integer greater than 1.');
+        else % update the parameter value.
+            handles.parameters.hyperparameter_quality.report.nfolds = str;
+        end
+    case 'repro_index_subset_percentage'
+        answer = inputdlg('Enter the % of sample to use for computing w-map reproducibility index [0-1]:', ...
+            'Sample percent', 1,{num2str(handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct)});
+        if isempty(answer), return; end % cancel pressed
+        str = str2num(answer{1});
+        if isempty(str) || str <= 0 || str >= 1 % ~isint(str)
+            changemade=false;
+            warndlg('Input must be a value between 0 and 1 (i.e. 0 and 100%).');
+        else % update the parameter value.
+            handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct = str;
+        end
+    case 'hyperparm_qual_n_replications'
+        answer = inputdlg(sprintf('Enter the number of replications for hyperparameter quality testing:'), ...
+            'Number of replications', 1,{num2str(handles.parameters.hyperparameter_quality.report.n_replications)});
+        if isempty(answer), return; end % cancel pressed
+        str = str2num(answer{1});
+        if isempty(str) || str <= 1 || ~isint(str)
+            changemade=false;
+            warndlg('Input must be a positive integer greater than 1.');
+        else % update the parameter value.
+            handles.parameters.hyperparameter_quality.report.n_replications = str;
+        end
+    case 'image_data_options_parent_menu'
+        set(handles.do_binarize_data_menu_option,'Checked',myif(handles.parameters.imagedata.do_binarize,'on','off'))
+    case 'do_binarize_data_menu_option'
+        handles.parameters.imagedata.do_binarize = ~handles.parameters.imagedata.do_binarize;
+    case 'set_resolution_parent_menu_option'
+        set(handles.manual_analysis_resolution_menu,'Label',['Manual: ' num2str(handles.parameters.imagedata.resample_to) ' mm'], ...
+            'checked',myif(handles.parameters.imagedata.do_resample,'on','off'));
+        set(handles.do_not_resample_images_menu,'Checked',myif(handles.parameters.imagedata.do_resample,'off','on'));
+        set(handles.manual_analysis_resolution_menu,'Enable','off') % Until we finish implementation.
+    case 'do_not_resample_images_menu'
+        handles.parameters.imagedata.do_resample = false; % turn resampling off.
+    case 'manual_analysis_resolution_menu'
+        answer = inputdlg(sprintf('Enter the size in mm for voxels to be resampled to.'), ...
+            'Resample size (mm)', 1,{num2str(handles.parameters.imagedata.resample_to)});
+        if isempty(answer), return; end % cancel pressed
+        str = str2num(answer{1});
+        if isempty(str) || str <= 0 || ~isint(str)
+            changemade=false;
+            warndlg('Input must be a positive integer in millimeters.');
+        else % update the parameter value.
+            handles.parameters.imagedata.do_resample = true;
+            handles.parameters.imagedata.resample_to = str;
+        end
+    case 'open_lesion_folder_button'
+        OpenDirectoryInNativeWindow(handles.parameters.lesion_img_folder)
+    case 'open_score_file_button'
+        msgbox('Open in system viewer.')
+        % finish me -- gotta load score file up in native file viewer..
+    case 'open_output_folder_button'
+        OpenDirectoryInNativeWindow(handles.parameters.analysis_out_path)
     case 'ica_lesion_decompose_option'
         handles.parameters.beta.do_ica_on_lesiondata = ~handles.parameters.beta.do_ica_on_lesiondata;
     case 'requirements_menu'
@@ -703,8 +770,7 @@ function computesensitivitymapcheckbox_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
 function analysisnameeditbox_Callback(hObject, eventdata, handles)
 handles = UpdateCurrentAnalysis(handles,hObject);
-%function save_raw_permutation_data_Callback(hObject, eventdata, handles)
-%    handles = UpdateCurrentAnalysis(handles,hObject);
+
 function permutation_unthresholded_checkbox_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
 function permutation_voxelwise_checkbox_Callback(hObject, eventdata, handles)
@@ -932,3 +998,10 @@ set(get(handles.requirements_menu,'children'),'enable','off')
 % --------------------------------------------------------------------
 function beta_options_menu_Callback(hObject, eventdata, handles)
 set(handles.ica_lesion_decompose_option,'checked',myif(handles.parameters.beta.do_ica_on_lesiondata,'on','off'))
+
+
+% --- Executes on button press in open_output_folder_button.
+% function open_output_folder_button_Callback(hObject, eventdata, handles)
+% % hObject    handle to open_output_folder_button (see GCBO)
+% % eventdata  reserved - to be defined in a future version of MATLAB
+% % handles    structure with handles and user data (see GUIDATA)

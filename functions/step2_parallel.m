@@ -9,9 +9,9 @@ function [parameters,variables,thresholds] = step2_parallel(handles,parameters,v
     nperms = parameters.PermNumVoxelwise;
     outpath = variables.output_folder.clusterwise;
 
-%     pos_thresh_index = thresholds.pos_thresh_index;
-%     neg_thresh_index = thresholds.neg_thresh_index;
-      onetail_thresh_index = thresholds.onetail_cutoff_index; % for use with compare_real_beta() 
+     pos_thresh_index = thresholds.pos_thresh_index;
+     neg_thresh_index = thresholds.neg_thresh_index;
+     onetail_thresh_index = thresholds.onetail_cutoff_index; % for use with compare_real_beta() 
     
     % two_tailed_thresh_index = thresholds.two_tailed_thresh_index;
     % two_tailed_thresh_index_neg = thresholds.two_tailed_thresh_index_neg;
@@ -26,7 +26,7 @@ function [parameters,variables,thresholds] = step2_parallel(handles,parameters,v
         this_job_start_index = ((j-1)*batch_job_size) + 1;
         this_job_end_index = min(this_job_start_index + batch_job_size-1,total_cols); % need min so we don't go past valid indices
         job_indices = this_job_start_index:this_job_end_index;
-        f(j) = parfeval(p,@parallel_step2_batch_fcn,2,job_indices,all_perm_data,total_cols,tail,ori_beta_vals,onetail_thresh_index,L,nperms,do_CFWER,outpath);
+        f(j) = parfeval(p,@parallel_step2_batch_fcn,2,job_indices,all_perm_data,total_cols,tail,ori_beta_vals,onetail_thresh_index,L,nperms,do_CFWER,outpath,neg_thresh_index,pos_thresh_index);
     end
     
     alphas = cell(1,njobs); %reserve space - note we want to accumulate in a row here
@@ -83,28 +83,28 @@ function [parameters,variables,thresholds] = step2_parallel(handles,parameters,v
     end
     
 %% For each voxel, calculate the beta cutoff and p-value based on our permutation data - also, convert to pvalue volumes if CFWER is requested.
-function [alphas,betamapcutoffs] = parallel_step2_batch_fcn(this_job_cols,all_perm_data,total_cols,tail,ori_beta_vals,onetail_thresh_index,L,nperms,do_CFWER,outpath)
+function [alphas,betamapcutoffs] = parallel_step2_batch_fcn(this_job_cols,all_perm_data,total_cols,tail,ori_beta_vals,onetail_thresh_index,L,nperms,do_CFWER,outpath,neg_thresh_index,pos_thresh_index)
     alphas = nan(1,numel(this_job_cols)); % pre-allocate spac
     betamapcutoffs = nan(1,numel(this_job_cols)); % pre-allocate spac
     for jobcolind = 1:numel(this_job_cols) % this is for each voxel in the brain, cutting across permutations
         col = this_job_cols(jobcolind);
         curcol = extractSlice(all_perm_data,col,L);
         observed_beta = ori_beta_vals(col); % original observed beta value.
-        %[curcol_sorted] = sort(curcol); % Smallest values at the left/top
+        curcol_sorted = sort(curcol); % Smallest values at the left/top
         
         %% Calculate P values for the single *observed beta map* relative to the null permutation beta volumes.
         switch tail
-            case {'pos','neg'}
-                [alphas(jobcolind),betamapcutoffs(jobcolind)] = compare_real_beta(observed_beta,curcol,tail,onetail_thresh_index); % we can do both tails without the switch as long as it's one-tailed.
+             case {'pos','neg'}
+                 [alphas(jobcolind),betamapcutoffs(jobcolind)] = compare_real_beta(observed_beta,curcol,tail,onetail_thresh_index); % we can do both tails without the switch as long as it's one-tailed.
 %             case 'pos' % high scores bad
 %                 % 'ascend' is the default assort behavior.
-%                 %alphas(jobcolind) = sum(observed_beta < curcol_sorted)/nperms;
-%                 [alphas(jobcolind),betamapcutoffs(jobcolind)] = compare_real_beta(observed_beta,curcol,tail,onetail_thresh_index);
-%                % betamapcutoffs(jobcolind) = curcol_sorted(pos_thresh_index); % so the 9500th at p of 0.05 on 10,000 permutations
+%                 alphas(jobcolind) = sum(observed_beta < curcol_sorted)/nperms;
+%                 %[alphas(jobcolind),betamapcutoffs(jobcolind)] = compare_real_beta(observed_beta,curcol,tail,onetail_thresh_index);
+%                 betamapcutoffs(jobcolind) = curcol_sorted(pos_thresh_index); % so the 9500th at p of 0.05 on 10,000 permutations
 %             case 'neg' % high scores good
-%                 %alphas(jobcolind) = sum(observed_beta > curcol_sorted)/nperms;
-%                 [alphas(jobcolind),betamapcutoffs(jobcolind)] = compare_real_beta(observed_beta,curcol,tail,onetail_thresh_index);
-%                % betamapcutoffs(jobcolind) = curcol_sorted(neg_thresh_index); % so the 500th at p of 0.05 on 10,000 permutations
+%                 alphas(jobcolind) = sum(observed_beta > curcol_sorted)/nperms;
+%                 %[alphas(jobcolind),betamapcutoffs(jobcolind)] = compare_real_beta(observed_beta,curcol,tail,onetail_thresh_index);
+%                 betamapcutoffs(jobcolind) = curcol_sorted(neg_thresh_index); % so the 500th at p of 0.05 on 10,000 permutations
             case 'two' % two-tailed...
                 warning('Check that these tails are right after code refactor') % ad 2/14/18
 % %                 two_tailed_beta_map_cutoff_pos(col) = curcol_sorted(two_tailed_thresh_index); % 250...

@@ -3,9 +3,9 @@ function parameters = ValidateSVRLSMParameters(parameters)
 % prevents you from needing to specify all parameters, since it will fill
 % in missing ones
 
-if parameters.method.mass_univariate
-    error('Mass univariate LSM is not supported yet')
-end
+% if parameters.method.mass_univariate
+%     warndlg('Mass univariate LSM is not supported yet')
+% end
 
 required_parms = {}; %{'parmsfile'};
 for p = 1 : numel(required_parms)

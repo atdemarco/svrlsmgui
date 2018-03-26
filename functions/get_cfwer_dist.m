@@ -53,6 +53,8 @@ function variables = get_cfwer_dist(handles,parameters,variables)
         %% Figure out the "actual v" we will draw on for this null volume.
         switch parameters.tailshort % tail
             case {'pos','neg'}
+%                 cfwerinfo.requested_v_index
+%                 col
                 cfwerinfo.p_of_requested_v(col) = cur_perm_image_sorted_vals(cfwerinfo.requested_v_index);
                 cfwerinfo.n_found_p_of_requested_v(col) = numel(find(cur_perm_image_sorted_vals == cfwerinfo.p_of_requested_v(col))); % is there only 1 of this p value in our list (i.e. do we have adequate 'distributional resolution' to be sure of our rank here?)
                 %disp('|')

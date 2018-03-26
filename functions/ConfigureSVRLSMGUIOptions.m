@@ -1,7 +1,8 @@
 function handles = ConfigureSVRLSMGUIOptions(handles)
-    handles.options.lesionvolumecorrection = {'Regress on Behavior','Regress on Lesion','Regress on Both','DTLVC','None'};
-    handles.options.old_hypodirection = {'One-tailed (positive)','One-tailed (negative)','Two-tailed'}; % before 2/7/18
-    handles.options.hypodirection = {'High scores are bad','High scores are good','Two-tailed'};
+%     handles.options.lesionvolumecorrection = {'Regress on Behavior','Regress on Lesion','Regress on Both','DTLVC','None'};
+%     handles.options.old_hypodirection = {'One-tailed (positive)','One-tailed (negative)','Two-tailed'}; % before 2/7/18
+%     handles.options.hypodirection = {'High scores are bad','High scores are good','Two-tailed'};
+    handles.options = lsmtb_options;% this should be made obsolete...
     set(handles.lesionvolumecorrectiondropdown,'String',handles.options.lesionvolumecorrection)
     set(handles.hypodirectiondropdown,'String',handles.options.hypodirection)
 
@@ -11,7 +12,8 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
         handles.chooseoutputfolderbutton handles.chooselesionfolderbutton handles.choosescorefilebutton ...
         handles.clusterwisepeditbox handles.cfwer_p_value_editbox handles.cluster_voxelwise_p_editbox handles.npermutationseditbox ...
         handles.cfwer_v_value_editbox handles.permutationtestingcheckbox handles.do_cfwer_checkbox handles.lesionvolumecorrectiondropdown ...
-        handles.hypodirectiondropdown handles.scorenamepopupmenu];
+        handles.hypodirectiondropdown handles.scorenamepopupmenu ...
+        handles.open_output_folder_button handles.open_lesion_folder_button handles.open_score_file_button];
     
     set(add_generic_callback_objs,'Callback',@(hObject,eventdata)svrlsmgui('UpdateCurrentAnalysis',guidata(hObject),hObject));
     
@@ -24,8 +26,14 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
                      get(handles.parameters_to_optimize_menu,'children') ;
                      get(handles.crossvalidation_parent_menu,'children') ;
                      get(handles.parent_cache_menu,'children') ;
-                     handles.optimization_is_verbose_menu ; 
-                     get(handles.beta_options_menu,'children')]; % beta options
+                     handles.optimization_is_verbose_menu ;
+                     get(handles.beta_options_menu,'children');
+                     handles.image_data_options_parent_menu;
+                     get(handles.image_data_options_parent_menu,'children');
+                     get(handles.set_resolution_parent_menu_option,'children');
+                     handles.hyperparm_quality_report_options;
+                     get(handles.hyperparm_quality_report_options,'children')
+                     ];
     
     % MenuSelectedFcn is not an available callback in older matlabs, so accomodate that
     menucallbackname = 'MenuSelectedFcn';
@@ -47,10 +55,19 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
         'horizontalalignment','center','verticalalignment','middle','parent',handles.progressaxes,'tag','progress_text');
     
     %% Try to put image on the interrupt button...
+    functions_dir = fileparts(which(mfilename));
     try
-        stopicon = fullfile(fileparts(which(mfilename)),'other','stop.png');
+        stopicon = fullfile(functions_dir,'other','stop.png');
         x=imresize(imread(stopicon), [22 22]);
         set(handles.interrupt_button,'CData',x)
     catch
         warndlg('Incomplete installation? Not able to locate some of the helper files for SVRLSMGUI. Some aspects of this software may not function.')
+    end
+    
+    %% Try to put image on the open buttons...
+    try
+        openicon = fullfile(functions_dir,'other','external-link-symbol2.png');
+        x=repmat(imresize(imread(openicon), [16 16]),[1 1 3]);
+        set([handles.open_output_folder_button handles.open_lesion_folder_button handles.open_score_file_button],'CData',x)
+        % todo: make the white backgrounds transparent...
     end

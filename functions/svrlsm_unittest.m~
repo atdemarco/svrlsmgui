@@ -1,0 +1,56 @@
+function svrlsm_unittest
+% function to make sure all the basic functions are working right after
+% changes... using a known dataset with stimulated scores...
+
+% things to check:
+% 1. pos and neg tails
+% 2. regular cluster correct and cfwer correct
+% 3. optim and non optim
+% 4. libsvm svr, matlab svr, and mass univariate
+% 5. parallel and nonparallel
+% lesionvol correction?
+% do use cache?
+
+
+
+
+parameters = GetDefaultParameters;
+
+parameters.analysis_name
+parameters.analysis_out_path
+parameters.do_make_summary = false; % we'll test this in the future...
+parameters.analysis_root
+parameters.lesion_img_folder
+parameters.score_name
+parameters.score_file
+
+parameters.cfwer_v_value = 1000; %mm3
+
+%for lesionvolcorr = {'Regress on Both','None'} % parameters.lesionvolcorrection
+for parallel = [true false]
+    for optim = [true false]
+        for cfwer = [true false]
+            for method = {'svr_matlab','svr_libsvm','muvlsm'}
+                for tails = {'High scores are good','High scores are bad'}
+                    parameters.do_CFWER = cfwer;
+                    parameters.tails = tails{1};
+                    
+                    switch method{1}
+                        case 'svr_matlab'
+                            parameters.method.mass_univariate = 0;
+                            parameters.useLibSVM = 0;
+                        case 'svr_libsvm'
+                            parameters.method.mass_univariate = 0;
+                            parameters.useLibSVM = 1;
+                        case 'muvlsm'
+                            parameters.method.mass_univariate = 1;
+                    end
+                    if parameters.method.mass_univariate && parameters.optimization.do_optimize
+                        continue % skip this, since we already have or will run this "non-optimized"
+                    end
+                    success = RunAnalysisNoGUI(parameters);
+                end
+            end
+        end
+    end
+end

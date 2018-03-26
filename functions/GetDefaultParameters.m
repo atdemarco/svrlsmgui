@@ -1,5 +1,14 @@
-function parameters = GetDefaultParameters(handles)
+function parameters = GetDefaultParameters(varargin) % (handles)
     % To add: make this a "default" .mat file, configurable in preferences...
+    parameters.gui_version = 0.0;  % default.
+    parameters.populated_to_gui = false; % default to false.
+    if nargin > 0
+%        if ishandle(varargin{1})
+            parameters.populated_to_gui = true; %handles = varargin{1}; % called figure gui.
+%        else
+%            error('unknown input argument... should be figure handle or nothing')
+%        end
+    end
     
     parameters.method.mass_univariate = false; % if true, use mass univariate LSM, otherwise use SVR
     
@@ -11,8 +20,10 @@ function parameters = GetDefaultParameters(handles)
 %     end
 
     parameters.svscaling = 100; % defaults to max (100th percentile) - added 9/29/17
-    
-    parameters.tails = handles.options.hypodirection{2}; % high scores good.
+
+    options = lsmtb_options; % should be made obsolete some time soon!
+    %parameters.tails = handles.options.hypodirection{2}; % high scores good.
+    parameters.tails = options.hypodirection{2}; % high scores good.
     parameters.datetime_run = []; % when the analysis was run.
     parameters.datetime_save = []; % when the analysis was run.
     parameters.analysis_is_completed = 0;
@@ -20,8 +31,11 @@ function parameters = GetDefaultParameters(handles)
     parameters.parallelize = true; % do not parallelize...
 	
     mypath = fileparts(which('svrlsmgui'));
+    parameters.analysis_name = 'Unnamed';
+    parameters.is_saved = 0;
     
-    parameters.analysis_root = fullfile(mypath,'output');
+    %parameters.analysis_root = fullfile(mypath,'output');
+    parameters.analysis_out_path = fullfile(mypath,'output'); % parameters.analysis_root; % is this a good default?
     parameters.score_file = fullfile(mypath,'default','PNT.csv');
     parameters.score_name = 'Sim_ROI_123';
     parameters.lesion_img_folder = fullfile(mypath,'default','lesion_imgs');
@@ -45,12 +59,13 @@ function parameters = GetDefaultParameters(handles)
     parameters.svr_defaults.epsilon = parameters.epsilon;
     parameters.svr_defaults.standardize = parameters.standardize;
 
-    parameters.lesionvolcorrection = handles.options.lesionvolumecorrection{3}; % both
+    %parameters.lesionvolcorrection = handles.options.lesionvolumecorrection{3}; % both
+    parameters.lesionvolcorrection = options.lesionvolumecorrection{3}; % both
 
-    parameters.beta_map = 1; 
-    parameters.sensitivity_map = 1; 
+    %parameters.beta_map = 1; 
+    %parameters.sensitivity_map = 1; 
 
-    parameters.invert_p_map_flag = 1; % Inverse p-map, i.e., use 1-p instead of p for display on MRIcron.
+    %parameters.invert_p_map_flag = 1; % Inverse p-map, i.e., use 1-p instead of p for display on MRIcron.
     parameters.control_variable_names = {}; % None at first ...  
 
     parameters.lesion_thresh = 10; % The least lesion subject number for a voxel to be considered in the following analysis. 
@@ -59,13 +74,10 @@ function parameters = GetDefaultParameters(handles)
     parameters.PermNumVoxelwise = 10000;
     parameters.PermNumClusterwise = 10000;
 
+    % todo: make these apply to specific covariates (i.e. a boolean vector instead of the scalar for each)
     parameters.apply_covariates_to_behavior = 0;
     parameters.apply_covariates_to_lesion = 0;
 
-    parameters.analysis_name = 'Unnamed';
-    parameters.analysis_out_path = parameters.analysis_root; % is this a good default?
-    parameters.is_saved = 0;
-    
     % output summary options
     parameters.do_make_summary = 1; % handles.summary_create_summary
     parameters.summary.narrative = true; % handles.summary_narrative_summary
@@ -119,7 +131,19 @@ function parameters = GetDefaultParameters(handles)
     parameters.optimization.crossval.nfolds_default = parameters.optimization.crossval.nfolds;
     parameters.optimization.crossval.repartition = true; % repartition at each iteration
     
+    % Hyperparameter quality report
+    parameters.hyperparameter_quality.report.nfolds = 5;
+    parameters.hyperparameter_quality.report.repro_ind_subset_pct = .8; % 80%
+    parameters.hyperparameter_quality.report.n_replications = 10; % how many times to repeat ...
+    
+    % What to do with the lesion data when we read it in.
+    parameters.imagedata.do_binarize = true; % binarize image data in read_lesion_imgs (should be off for vbmish things)
+    parameters.imagedata.do_resample = false;
+    parameters.imagedata.resample_to = 2; % 2mm iso if do_resample is true;
+    
     % ICA Beta stuff...
     parameters.beta.do_ica_on_lesiondata = false;
     
-    handles = UpdateProgress(handles,'Retrieved default parameters...',1); %#ok<*NASGU>
+    if parameters.populated_to_gui % note that varargin{1} == "handles"
+        UpdateProgress(varargin{1},'Retrieved default parameters...',1); %#ok<*NASGU> %handles = UpdateProgress(varargin{1},'Retrieved default parameters...',1); %#ok<*NASGU>
+    end

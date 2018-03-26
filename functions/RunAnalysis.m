@@ -13,9 +13,11 @@ handles.parameters = ValidateSVRLSMParameters(handles.parameters);  % fill in an
 handles.parameters.time = [];
 handles.parameters.time.starttime = datestr(now);
 
+
 handles.parameters.datetime_run = date; % when the analysis was run. 
 handles.parameters.PermNumClusterwise = handles.parameters.PermNumVoxelwise; % override the user so that these two values are the same.
-    
+
+
 tic; % this is what we'll use to time the execution of the analysis...
 
 handles.parameters.baseoutputdir = fullfile(handles.parameters.analysis_out_path,handles.parameters.analysis_name,handles.parameters.datetime_run);
@@ -71,6 +73,7 @@ handles = UpdateProgress(handles,'Reading behavioral scores...',1);
 variables = read_behavior_score(parameters);
 
 %% Set up our output directory names
+% I attempted to shorten these on 3/16/18 because I think MRIcron has a limit to how long a path can be when you try to read in a file... ?
 variables.output_folder.analysis = fullfile(handles.parameters.analysis_out_path,handles.parameters.analysis_name);
 folderstring = [parameters.score_name ', ' lower(parameters.tails)];
 variables.output_folder.base = fullfile(variables.output_folder.analysis,handles.parameters.datetime_run,folderstring);
@@ -79,13 +82,13 @@ variables.output_folder.hyperparameterinfo = fullfile(variables.output_folder.ba
 variables.output_folder.cache = fullfile(variables.output_folder.base,'cache');
 variables.output_folder.ica = fullfile(variables.output_folder.base,'ica');
 
-folderstring = sprintf('Voxelwise p%s based on %d permutations',strrep(num2str(parameters.voxelwise_p),'0.',''),parameters.PermNumVoxelwise);
+folderstring = sprintf('Voxwise p%s (%d perms)',strrep(num2str(parameters.voxelwise_p),'0.',''),parameters.PermNumVoxelwise);
 variables.output_folder.voxelwise = fullfile(variables.output_folder.base,folderstring);
-folderstring = sprintf('Clusterwise p%s based on %d permutations',strrep(num2str(parameters.clusterwise_p),'0.',''),parameters.PermNumClusterwise);
+folderstring = sprintf('Clustwise p%s (%d perms)',strrep(num2str(parameters.clusterwise_p),'0.',''),parameters.PermNumClusterwise);
 variables.output_folder.clusterwise = fullfile(variables.output_folder.voxelwise,folderstring);
 
 if parameters.do_CFWER
-    folderstring = sprintf('CFWER p%s at v%d based on %d permutations',strrep(num2str(parameters.cfwer_p_value),'0.',''),parameters.cfwer_v_value,parameters.PermNumClusterwise);
+    folderstring = sprintf('CFWER p%s at v%d (%d perms)',strrep(num2str(parameters.cfwer_p_value),'0.',''),parameters.cfwer_v_value,parameters.PermNumClusterwise);
     variables.output_folder.cfwer = fullfile(variables.output_folder.base,folderstring);
     
     % Overwrite voxelwise and clusterwise directory names used for regular non-cfwer output
@@ -149,6 +152,8 @@ else
     handles = UpdateProgress(handles,'Disk space should be adequate for estimated storage necessary.',1);
 end
 
+% < In future, check here if we have enough RAM to hold the svr models in memory. 
+
 %% Decide what we have to covary out of the behavioral data (one score) and the lesion data
 switch handles.parameters.lesionvolcorrection
     case 'Regress on Behavior'
@@ -166,10 +171,10 @@ switch handles.parameters.lesionvolcorrection
     case 'DTLVC'
         include_lesionvol_in_behavioral_nuisance_model = 0;
         include_lesionvol_in_brain_nuisance_model = 0;
-        handles = UpdateProgress(handles,sprintf('Applying DTLVC transformation to lesion data voxel values.'),1);
+        handles = UpdateProgress(handles,sprintf('Applying dTLVC transformation to lesion data voxel values.'),1);
         variables.lesion_dat = variables.lesion_dat ./ repmat(sqrt(variables.lesion_vol),1,size(variables.lesion_dat,2));
     otherwise
-        error('Unknown lesion vol correction string.')
+        error('Unknown lesion volume correction string.')
 end
 
 %% Store values so later we can determine if one_score is correlated with lesion volume prior to any correction
@@ -235,6 +240,12 @@ if any(behavioral_nuisance_model_options)
 else
     handles = UpdateProgress(handles,sprintf('No behavior nuisance model will be constructed.'),1);
 end
+
+% Make sure we have enough info in our behavioral model data table so we can do diagnostics, no matter the lesion vol control used
+% if ~isfield(handles.parameters.behavioralmodeldata,'LesionVolInternal')
+%     LesionVolInternal = variables.lesion_vol(:);
+%     handles.parameters.behavioralmodeldata = [handles.parameters.behavioralmodeldata table(LesionVolInternal)]; % add lesion vol...
+% end
 
 check_for_interrupt(parameters)
     
@@ -322,6 +333,7 @@ parameters.original_behavior_transformation.maxmultiplier = maxmultiplier;
 
 %% ICA Decompose Lesion data if requested - pre-alpha...
 if parameters.beta.do_ica_on_lesiondata
+    error('Not supported at the moment.')
     handles = UpdateProgress(handles,'ICA decomposing lesion data... this is pre-alpha, do not use it.',1);    
     [parameters,variables] = svrlsm_prepare_ica(parameters,variables);
 end
@@ -364,17 +376,19 @@ else
     end
     
     % Compute a parameter report in terms of its optimality.... based on Zhang et al 2014.
-    if ~parameters.useLibSVM
-        handles = UpdateProgress(handles,'Measuring quality of hyperparameters...',1);
+%     if ~parameters.useLibSVM
+         handles = UpdateProgress(handles,'Measuring quality of hyperparameters...',1);
         variables = optimalParameterReport(parameters,variables);
-    else % we can't do it...
-        handles = UpdateProgress(handles,'Skipping hyperparameter quality measurement (no libSVM)...',1);
-    end
+%     else % we can't do it...
+%         handles = UpdateProgress(handles,'Skipping hyperparameter quality measurement (no libSVM)...',1);
+%     end
 end
+
+%svrinteract(variables); % interactive hyperparm tuning...
 
 %% Compute the real, single beta map of the observed data.
 handles = UpdateProgress(handles,'Computing beta map...',1);
-[beta_map, variables] = get_beta_map(parameters, variables);
+[beta_map, variables] = get_beta_map(parameters, variables); % either mu or svr
 
 check_for_interrupt(parameters)
 

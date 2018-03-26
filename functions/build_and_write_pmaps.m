@@ -13,6 +13,8 @@ function [thresholded,variables] = write_p_maps_pos_tail(parameters,variables,th
         parameters.voxelwise_p = variables.cfwerinfo.cfwer_single_pval_answer;
     end
 
+    write_z = true;
+    
     %% Create and write the un-inverted versions...
     thresholded.thresholded_pos = zeros(variables.vo.dim(1:3)); % make a zeros template....
     thresholded.thresholded_pos(variables.m_idx) = thresholds.one_tail_pos_alphas;
@@ -27,14 +29,16 @@ function [thresholded,variables] = write_p_maps_pos_tail(parameters,variables,th
     
     % calculate z map
     zmap = zeros(variables.vo.dim(1:3));
-    zmap(variables.m_idx) = p2z(thresholds.one_tail_neg_alphas); % so we don't try to convert 0 values in the rest of the brain volume...
-
     
-    % write out unthresholded positive Z map
-    variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded Z map.nii');
-    svrlsmgui_write_vol(variables.vo, zmap);
-    variables.files_created.unthresholded_zmap = variables.vo.fname;
+    if write_z 
+        zmap(variables.m_idx) = p2z(thresholds.one_tail_pos_alphas); % so we don't try to convert 0 values in the rest of the brain volume...
 
+        % write out unthresholded positive Z map
+        variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded Z map.nii');
+        svrlsmgui_write_vol(variables.vo, zmap);
+        variables.files_created.unthresholded_zmap = variables.vo.fname;
+    end
+    
     % Now write out the thresholded P-map for the positive tail
     variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded P map.nii');
     zero_these_vox = thresholded.thresholded_pos > parameters.voxelwise_p;
@@ -42,12 +46,14 @@ function [thresholded,variables] = write_p_maps_pos_tail(parameters,variables,th
     svrlsmgui_write_vol(variables.vo, thresholded.thresholded_pos);
     variables.files_created.thresholded_pmap = variables.vo.fname;
     
-    % write out thresholded positive Z map
-    variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded Z map.nii');
-    zmap(zero_these_vox) = 0; % apply the mask we calculated like 20 lines ago
-    svrlsmgui_write_vol(variables.vo, zmap);
-    variables.files_created.thresholded_zmap = variables.vo.fname;
-
+    if write_z 
+        % write out thresholded positive Z map
+        variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded Z map.nii');
+        zmap(zero_these_vox) = 0; % apply the mask we calculated like 20 lines ago
+        svrlsmgui_write_vol(variables.vo, zmap);
+        variables.files_created.thresholded_zmap = variables.vo.fname;
+    end
+    
     %% Create and write the inverted versions.
     thresholded.thresholded_pos = zeros(variables.vo.dim(1:3)); % make a zeros template....
     thresholded.thresholded_pos(variables.m_idx) = 1 - thresholds.one_tail_pos_alphas;
@@ -69,6 +75,8 @@ function [thresholded,variables] = write_p_maps_neg_tail(parameters,variables,th
         parameters.voxelwise_p = variables.cfwerinfo.cfwer_single_pval_answer;
     end
     
+    write_z = true;
+    
     %% Create and write the non-inverted versions.
     thresholded.thresholded_neg = zeros(variables.vo.dim(1:3)); % make a zeros template....        
     thresholded.thresholded_neg(variables.m_idx) = thresholds.one_tail_neg_alphas;
@@ -80,13 +88,16 @@ function [thresholded,variables] = write_p_maps_neg_tail(parameters,variables,th
 
     % calculate z map
     zmap = zeros(variables.vo.dim(1:3));
-    zmap(variables.m_idx) = p2z(thresholds.one_tail_neg_alphas); % so we don't try to convert 0 values in the rest of the brain volume...
+    
+    if write_z 
+        zmap(variables.m_idx) = p2z(thresholds.one_tail_neg_alphas); % so we don't try to convert 0 values in the rest of the brain volume...
 
-    % write out unthresholded negative Z map
-    variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded Z map.nii');
-    svrlsmgui_write_vol(variables.vo, zmap);
-    variables.files_created.unthresholded_zmap = variables.vo.fname;
-
+        % write out unthresholded negative Z map
+        variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Unthresholded Z map.nii');
+        svrlsmgui_write_vol(variables.vo, zmap);
+        variables.files_created.unthresholded_zmap = variables.vo.fname;
+    end
+    
     % write out thresholded negative p map
     variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded P map.nii');
     zero_these_vox = thresholded.thresholded_neg > parameters.voxelwise_p;
@@ -94,11 +105,13 @@ function [thresholded,variables] = write_p_maps_neg_tail(parameters,variables,th
     svrlsmgui_write_vol(variables.vo, thresholded.thresholded_neg);
     variables.files_created.thresholded_pmap = variables.vo.fname;
 
-    % write out thresholded negative Z map
-    variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded Z map.nii');
-    zmap(zero_these_vox) = 0; % apply the mask we calculated like 20 lines ago
-    svrlsmgui_write_vol(variables.vo, zmap);
-    variables.files_created.thresholded_zmap = variables.vo.fname;
+    if write_z 
+        % write out thresholded negative Z map
+        variables.vo.fname = fullfile(variables.output_folder.voxelwise,'Voxelwise thresholded Z map.nii');
+        zmap(zero_these_vox) = 0; % apply the mask we calculated like 20 lines ago
+        svrlsmgui_write_vol(variables.vo, zmap);
+        variables.files_created.thresholded_zmap = variables.vo.fname;
+    end
     
     %% Create and write the inverted versions (P maps, not Z maps)
     thresholded.thresholded_neg = zeros(variables.vo.dim(1:3)); % make a zeros template....        

@@ -22,7 +22,12 @@ function handles = PopulateGUIFromParameters(handles)
         return
         % in the future, try to guess which is the subject list volumn...
     end
-        
+    
+    % If file names parse as  all numbers, convert to cells...
+    if isnumeric(handles.scorefiledata.RegistryCode)
+        handles.scorefiledata.RegistryCode = cellfun(@strtrim,cellstr(char(num2str(handles.scorefiledata.RegistryCode))),'uni',false);
+    end
+
     handles.scorefile.subjectrows = find(~cellfun(@isempty,handles.scorefiledata.RegistryCode));
     handles.scorefile.nsubs_in_scorefile = numel(handles.scorefile.subjectrows);
 
