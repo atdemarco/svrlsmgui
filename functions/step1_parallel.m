@@ -114,7 +114,7 @@ function parallel_step1_batch_fcn_lessoverhead(tmp)
             else % use matlab's...
                 m = fitrsvm(tmp.lesiondata,trial_score,'KernelFunction','rbf', tmp.matlab_svr_parms{:}); %m = fitrsvm(tmp.lesiondata,trial_score,'ObservationsIn','rows', 'KernelFunction','rbf', tmp.matlab_svr_parms{:}); % alpha = m.Alpha'; % SVs = m.SupportVectors;
             end % alpha = m.(myif(parameters.useLibSVM,'sv_coef','Alpha'))'; % note dynamic field reference % SVs = m.(myif(parameters.useLibSVM,'SVs','SupportVectors')); % note dynamic field reference % pmu_beta_map = tmp.beta_scale * alpha * SVs; % these contain results for this permutation for all l_idx indices 
-            pmu_beta_map = tmp.beta_scale * m.(myif(parameters.useLibSVM,'sv_coef','Alpha'))' * m.(myif(parameters.useLibSVM,'SVs','SupportVectors')); % beta_scale * alpha' * SVs
+            pmu_beta_map = tmp.beta_scale * m.(myif(tmp.useLibSVM,'sv_coef','Alpha'))' * m.(myif(tmp.useLibSVM,'SVs','SupportVectors')); % beta_scale * alpha' * SVs
         end
         
         tmp_map = zeros(tmp.dims); % make a zeros template....        
