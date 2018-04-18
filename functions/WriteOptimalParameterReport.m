@@ -14,14 +14,16 @@ function WriteOptimalParameterReport(parms)
 
 %     optim_data.hyperparameter_quality.pred_accuracy
 %     optim_data.hyperparameter_quality.repro_index.data
+    if ~isfield(optim_data,'hyperparameter_quality')
+        fprintf(parms.fileID,'It appears that something went wrong when saving hyperparameter quality information. This is likely a known bug and will be fix in the very near future.');
+        return
+    end
     
     if parms.useLibSVM
         didconverge = '<unclear with libSVM>';
         allparms = optim_data.hyperparameter_quality.behavioral_predictions.Mdl.Parameters;
- %         mdlparms.KernelScale
-%         mdlparms.BoxConstraint
-%         mdlparms.Epsilon = 
     else
+        
         converged = optim_data.hyperparameter_quality.behavioral_predictions.Mdl.ConvergenceInfo.Converged;
         didconverge = myif(converged,'did','did not');
         mdlparms = optim_data.hyperparameter_quality.behavioral_predictions.Mdl.ModelParameters;

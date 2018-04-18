@@ -16,7 +16,8 @@ function WriteSummaryNarrative(parms)
     else runfromgui = ' not '; end 
 
     % parms.excluded_subjects - has three fields depending on why subject was excluded
-    excluded_names = [parms.excluded_subjects.no_behavior parms.excluded_subjects.no_lesion parms.excluded_subjects.novoxels];
+    % added 4/18/18 - forced concatenation of excluded_names on cell array rows with (:)'
+    excluded_names = [parms.excluded_subjects.no_behavior(:)' parms.excluded_subjects.no_lesion(:)' parms.excluded_subjects.novoxels(:)'];
     excluded_names(cellfun(@isempty,excluded_names)) = []; % remove empties...
     nexcluded = numel(excluded_names);
     excluded_names = strjoin(excluded_names,', ');

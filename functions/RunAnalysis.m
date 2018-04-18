@@ -13,10 +13,8 @@ handles.parameters = ValidateSVRLSMParameters(handles.parameters);  % fill in an
 handles.parameters.time = [];
 handles.parameters.time.starttime = datestr(now);
 
-
 handles.parameters.datetime_run = date; % when the analysis was run. 
 handles.parameters.PermNumClusterwise = handles.parameters.PermNumVoxelwise; % override the user so that these two values are the same.
-
 
 tic; % this is what we'll use to time the execution of the analysis...
 
