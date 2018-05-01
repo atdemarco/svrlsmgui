@@ -76,4 +76,4 @@ function prompt_str = get_step1_prog_string(PermIdx,parameters)
     remain_time_h = floor(remain_time/3600);
     remain_time_m = floor((remain_time - remain_time_h*3600)/60);
     remain_time_s = floor(remain_time - remain_time_h*3600 - remain_time_m*60);
-    prompt_str = sprintf('Permutation %d/%d: Est. remaining time: %dh %dh %ds', PermIdx, parameters.PermNumVoxelwise, remain_time_h, remain_time_m,remain_time_s);
+    prompt_str = sprintf('Permutation %d/%d: Est. remaining time: %dh %dm %ds', PermIdx, parameters.PermNumVoxelwise, remain_time_h, remain_time_m,remain_time_s);

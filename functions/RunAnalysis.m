@@ -376,6 +376,7 @@ else
     % Compute a parameter report in terms of its optimality.... based on Zhang et al 2014.
 %     if ~parameters.useLibSVM
          handles = UpdateProgress(handles,'Measuring quality of hyperparameters...',1);
+%          warning('disabled')
         variables = optimalParameterReport(parameters,variables);
 %     else % we can't do it...
 %         handles = UpdateProgress(handles,'Skipping hyperparameter quality measurement (no libSVM)...',1);

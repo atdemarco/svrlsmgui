@@ -19,7 +19,7 @@ function variables = optimalParameterReport(parameters,variables)
     %% Save the results so we can use them later
     fname = 'hyperparameter_quality.mat';
     fpath = fullfile(variables.output_folder.hyperparameterinfo,fname);   
-    save(fpath,'hyperparameter_quality')
+    save(fpath,'hyperparameter_quality','-v7.3') % if it's bigger than 2 GB we need v7.3 anyway...
     variables.files_created.hyperparameter_quality = fpath;
     variables.hyperparameter_quality = hyperparameter_quality;
     

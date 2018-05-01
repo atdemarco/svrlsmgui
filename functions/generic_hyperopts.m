@@ -46,12 +46,16 @@ function results = generic_hyperopts(parameters,variables)
    
        % 'OutputFcn',@optim_outputfun); % verbose is either 0 or 2...
    
+%         disp('OptimizeHyperparameters')
+%         params
+%         disp('HyperparameterOptimizationOptions')
+%         hyperoptoptions
    Mdl = fitrsvm(lesiondata,behavdata,'KernelFunction','rbf', 'OptimizeHyperparameters',params, 'HyperparameterOptimizationOptions', hyperoptoptions);
 
    results = Mdl.HyperparameterOptimizationResults;
 %    
-%    assignin('base','results',results)
-%    assignin('base','Mdl',Mdl)
+%     assignin('base','results',results)
+%     assignin('base','Mdl',Mdl)
 %    
 %    
 function optimizeropts = resolveoptimizeropts(parameters)
@@ -64,6 +68,9 @@ function optimizeropts = resolveoptimizeropts(parameters)
         case 'Random Search'
             optimchoice = 'randomsearch';
     end
+    
+%     parameters.optimization.crossval.do_crossval = true
+%     warning('forcing repartinioning on for testing')
     
     repartitionopt = myif(parameters.optimization.crossval.do_crossval, ...
         {'Repartition',parameters.optimization.crossval.repartition},{});
