@@ -30,16 +30,12 @@ function variables = apply_clustering_one_tail(parameters,variables,real_beta_ma
     [cimg, variables.clusterresults.ctab, variables.clusterresults.peaks,saved] = cluster(fname,thresh,1);
     delete(saved.image); % since this saves in the wrong location and we re-generate this output anyway...
     if ~isempty(variables.clusterresults.ctab) % Calculate clusterwise P value for each cluster.
-        T=readtable(saved.table);
-        T.clusterP = nan(size(T,1),1);
-        for r = 1 : size(T,1)
-            cur_nvox = T.nvox(r);
-
-            % get cluster p value, but limit how extreme it can be (i.e. not p = 0)
-            possible_cluster_pvals = [1:numel(sorted_clusters)]./numel(sorted_clusters);
-            num_clusters_gt_cur_clust = sum(cur_nvox < sorted_clusters);
-            T.clusterP(r) = possible_cluster_pvals(1+num_clusters_gt_cur_clust);
-            %T.clusterP(r) = sum(cur_nvox < sorted_clusters)/numel(sorted_clusters); % < this can give a p of 0
+        T=readtable(saved.table); % read in the table we saved
+        T.clusterP = nan(size(T,1),1); % reserve space
+        possible_cluster_pvals = (1:numel(sorted_clusters))./numel(sorted_clusters);
+        for r = 1 : size(T,1) % get cluster p value, but limit how extreme it can be (i.e. not p = 0)
+            num_clusters_gt_cur_clust = max(1,sum(T.nvox(r) < sorted_clusters)); % if 0, then choose the smallest resolved p value (index 1)
+            T.clusterP(r) = possible_cluster_pvals(num_clusters_gt_cur_clust); % old --> T.clusterP(r) = sum(cur_nvox < sorted_clusters)/numel(sorted_clusters); % < this can give a p of 0
         end
         U = [T(:,1) T(:,end) T(:,2:end-1)]; % Reorder columns
         U.maxintinv = U.maxint; % inverted max p values.

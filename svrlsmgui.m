@@ -55,7 +55,7 @@ function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
         handles.parameters = GetDefaultParameters(handles);
         handles = PopulateGUIFromParameters(handles);
     elseif ~handles.details.spm 
-        handles = UpdateProgress(handles,'SPM functions not available. Download and/or add SPM to the MATLAB path and relaunch the SVRLSMGUI.',1);
+        handles = UpdateProgress(handles,'SPM12 functions not available. Download and/or add SPM12 to the MATLAB path and relaunch the SVRLSMGUI.',1);
         handles = DisableAll(handles);
     elseif ~handles.details.stats_toolbox && ~handles.details.libsvm
         handles = UpdateProgress(handles,'No SVR algorithm available. Install Statistics Toolbox in MATLAB or compile and install libSVM and relaunch the GUI.',1);

@@ -90,14 +90,14 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     parameters.summary.hyperparameter_optimization_record = true; % handles.summary_paramoptimization
     parameters.summary.parameter_assessment = true; % handles.summary_parameterassessment
     parameters.summary.lesion_overlap = true; %handles.summary_lesionoverlap
-    parameters.summary.predictions = true; % write out predictions with r squared and whatnot
+    parameters.summary.predictions = false; % write out predictions with r squared and whatnot
 
     % debug save output options
     parameters.SavePreThresholdedPermutations = 0;
     parameters.SavePostVoxelwiseThresholdedPermutations = 0;
     parameters.SavePostClusterwiseThresholdedPermutations = 0;
     parameters.SavePermutationData = 0; % leave the giant bin file?
-    parameters.do_use_cache_when_available = true; % don't regenerate the big binary files if we have them around.
+    parameters.do_use_cache_when_available = false; % don't regenerate the big binary files if we have them around.
     % now the permutation data for the cfwer...
     parameters.SavePermutationPData = 0; % giant bin file for the cfwer
     parameters.SaveNullPMapsPreThresholding = 0;

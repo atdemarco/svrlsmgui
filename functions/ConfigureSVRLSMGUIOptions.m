@@ -43,6 +43,9 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
     end
     
     set(generic_menus,menucallbackname,@(hObject,eventdata)svrlsmgui('UpdateCurrentAnalysis',guidata(hObject),hObject))
+
+    % disable things not ready for prime time...
+    set([handles.parent_cache_menu handles.beta_options_menu],'enable','off' )
     
     %% Populate the progress bar.
     curvature = .2;
