@@ -203,8 +203,8 @@ if any(behavioral_nuisance_model_options)
             end
         case '0  1'
             handles = UpdateProgress(handles,sprintf('Behavior nuisance model will include lesion size but not behavioral covariate(s).'),1);
-            modelspec = [modelspec ' LesionVolInternal'];
-            tmp.LesionVolInternal = variables.lesion_vol;
+            modelspec = [modelspec ' LesionVol']; % LesionVolInternal
+            tmp.LesionVol = variables.lesion_vol; % LesionVolInternal
         case '1  1'
             handles = UpdateProgress(handles,sprintf('Behavior nuisance model will include both behavioral covariate(s) and lesion size.'),1);
             for c = 1 : numel(handles.parameters.control_variable_names)
@@ -212,8 +212,8 @@ if any(behavioral_nuisance_model_options)
                 modelspec = [modelspec '+' curcovariate]; %#ok<AGROW>
                 tmp.(curcovariate) = variables.scorefiledata.(curcovariate);
             end
-            modelspec = [modelspec '+ LesionVolInternal'];
-            tmp.LesionVolInternal = variables.lesion_vol;
+            modelspec = [modelspec '+ LesionVol']; % LesionVolInternal
+            tmp.LesionVol = variables.lesion_vol; % LesionVolInternal
     end
 
     % Clean up and actually run the model. Save the results back to one_score field.
@@ -260,7 +260,7 @@ if any(brain_nuisance_model_options)
             end
         case '0  1'
             handles = UpdateProgress(handles,sprintf('Lesion data nuisance model will include lesion size but not behavioral covariates.'),1);
-            tmp.LesionVolInternal = variables.lesion_vol(:);
+            tmp.LesionVol = variables.lesion_vol(:); % LesionVolInternal
         case '1  1'
             handles = UpdateProgress(handles,sprintf('Lesion data nuisance model will include both behavioral covariate(s) and lesion size.'),1);
             for c = 1 : numel(handles.parameters.control_variable_names)
@@ -282,7 +282,7 @@ end
 
 if ~isfield(handles,'options')
     handles.options.lesionvolumecorrection = {'Regress on Behavior','Regress on Lesion','Regress on Both','DTLVC','None'};
-    handles.options.hypodirection = {'One-tailed (positive)','One-tailed (negative)','Two-tailed'}; % this is ok even though it's old labeling
+    handles.options.hypodirection = {'One-tailed (positive)','One-tailed (negative)'}; % ,'Two-tailed'}; % this is ok even though it's old labeling
 end
 
 check_for_interrupt(parameters)
@@ -329,12 +329,12 @@ parameters.original_behavior_transformation.maxmultiplier = maxmultiplier;
 %     disp('** Regular normalize step disabled for testing..')
 % end
 
-%% ICA Decompose Lesion data if requested - pre-alpha...
-if parameters.beta.do_ica_on_lesiondata
-    error('Not supported at the moment.')
-    handles = UpdateProgress(handles,'ICA decomposing lesion data... this is pre-alpha, do not use it.',1);    
-    [parameters,variables] = svrlsm_prepare_ica(parameters,variables);
-end
+% %% ICA Decompose Lesion data if requested - pre-alpha...
+% if parameters.beta.do_ica_on_lesiondata
+%     error('Not supported at the moment.')
+%     handles = UpdateProgress(handles,'ICA decomposing lesion data... this is pre-alpha, do not use it.',1);    
+%     [parameters,variables] = svrlsm_prepare_ica(parameters,variables);
+% end
 
 %% Optimize hyperparameters if requested
 parameters.optimization.best.sigma = nan; % placeholders regardless of whether we are optimizing.

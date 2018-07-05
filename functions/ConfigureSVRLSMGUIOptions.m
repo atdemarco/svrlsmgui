@@ -6,6 +6,10 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
     set(handles.lesionvolumecorrectiondropdown,'String',handles.options.lesionvolumecorrection)
     set(handles.hypodirectiondropdown,'String',handles.options.hypodirection)
 
+    % We disable this because it doesn't produce reliable results at the moment...
+    set(handles.optimize_menu,'enable','off')
+    set(handles.summary_paramoptimization,'checked','off','enable','off')
+    
     %% Add generic callbacks
     add_generic_callback_objs = [handles.lesionthresholdeditbox handles.addcovariate handles.removecovariate  ...
         handles.applycovariatestobehaviorcheckbox handles.applycovariatestolesioncheckbox ...

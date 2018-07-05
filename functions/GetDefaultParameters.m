@@ -87,7 +87,7 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     parameters.summary.cfwer_diagnostics = true; % handles.summary_cfwerdiagnostics
     parameters.summary.variable_diagnostics = true; % handles.model_variablediagnostics
     parameters.summary.cluster_stability = true; % handles.summary_clusterstability
-    parameters.summary.hyperparameter_optimization_record = true; % handles.summary_paramoptimization
+    parameters.summary.hyperparameter_optimization_record = false; % handles.summary_paramoptimization
     parameters.summary.parameter_assessment = true; % handles.summary_parameterassessment
     parameters.summary.lesion_overlap = true; %handles.summary_lesionoverlap
     parameters.summary.predictions = false; % write out predictions with r squared and whatnot
@@ -98,6 +98,7 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     parameters.SavePostClusterwiseThresholdedPermutations = 0;
     parameters.SavePermutationData = 0; % leave the giant bin file?
     parameters.do_use_cache_when_available = false; % don't regenerate the big binary files if we have them around.
+    
     % now the permutation data for the cfwer...
     parameters.SavePermutationPData = 0; % giant bin file for the cfwer
     parameters.SaveNullPMapsPreThresholding = 0;

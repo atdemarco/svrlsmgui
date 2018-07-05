@@ -21,7 +21,8 @@ if strcmpi(fname(end-2:end),'.gz') % it's a gzipped file
     didunzip = true;
     origfname = fname;
     fname = fname(1:end-3);
-    unix_ec(['gunzip -c ' origfname]); % -c keeps the original file - we'll delete the unzipped version at the end
+%    unix_ec(['gunzip -c ' origfname]); % -c keeps the original file - we'll delete the unzipped version at the end
+    unix(['gunzip -c ' origfname]); % -c keeps the original file - we'll delete the unzipped version at the end
 end
     
     

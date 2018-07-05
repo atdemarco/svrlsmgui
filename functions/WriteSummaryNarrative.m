@@ -31,7 +31,6 @@ function WriteSummaryNarrative(parms)
     pval = pval(2,1);
 
     %% Assemble narrative summary...
-
     % Hypothesis direction and behavior variable name
     descr = ['This analysis named ''' parms.analysis_name ''' tested the hypothesis (' lower(parms.tails) ') that there is a relationship between lesion status and the behavior score ''' parms.score_name '''.'];
     descr = [ descr ' ' num2str(nsubs) ' subjects were listed for inclusion, and ' num2str(nexcluded) ' were excluded due to missing behavioral data, lesion data, or for having no voxels inside the minimum lesion cutoff mask (' excluded_names ').'];
@@ -39,17 +38,21 @@ function WriteSummaryNarrative(parms)
     nice_p = @(pval) myif(pval < .001,'p < .001',strrep(sprintf('p = %.2f', pval),' 0.',' .')); % enforce no leading unnecessary 0 
     nice_r = @(rho) strrep(sprintf('r = %.2f', rho),' 0.',' .'); % enforce no leading unnecessary 0 
     
-    if pval < 0.05
-        descr = [ descr ' Prior to any correction, the behavior under investigation is significantly correlated with lesion volume across the patient group, (' nice_r(rho) ', ' nice_p(pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
-    elseif pval < .1
-        descr = [ descr ' Prior to any correction, the behavior under investigation is marginally correlated with lesion volume across the patient group, (' nice_r(rho) ', ' nice_p(pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
-    else
-        descr = [ descr ' Prior to any correction, the behavior under investigation is not significantly correlated with lesion volume across the patient group, (' nice_r(rho) ', ' nice_p(pval) '), suggesting a lesion volume control may not be necessary for the analysis.'];
-    end
+%     if pval < 0.05
+%         descr = [ descr ' Prior to any correction, the behavior under investigation is significantly correlated with lesion volume across the patient group, (' nice_r(rho) ', ' nice_p(pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
+%     elseif pval < .1
+%         descr = [ descr ' Prior to any correction, the behavior under investigation is marginally correlated with lesion volume across the patient group, (' nice_r(rho) ', ' nice_p(pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
+%     else
+%         descr = [ descr ' Prior to any correction, the behavior under investigation is not significantly correlated with lesion volume across the patient group, (' nice_r(rho) ', ' nice_p(pval) '), suggesting a lesion volume control may not be necessary for the analysis.'];
+%     end
 
+    % descr = [ descr ' Prior to any correction, the behavior under investigation relates to lesion volume at ' nice_r(rho) '.'];  % removed
+    
     % Was it corrected for lesion volume?
-    if strcmp(parms.lesionvolcorrection,'None'), descr = [descr ' Data was not corrected for lesion volume.'];
-    else descr = [descr ' Data was corrected for lesion volume via ' parms.lesionvolcorrection '.']; 
+    if strcmp(parms.lesionvolcorrection,'None')
+        descr = [descr ' Data was not corrected for lesion volume.'];
+    else
+        descr = [descr ' Data was corrected for lesion volume via ' parms.lesionvolcorrection '.'];
     end
 
     % What were the covariates - were they used?
@@ -74,19 +77,19 @@ function WriteSummaryNarrative(parms)
             descr = [descr ' ' num2str(n_behav_covariates) ' behavioral ' waswere ' specified (' strjoin(parms.control_variable_names,', ') ') and covaried out of the lesion data in a nuisance model. No nuisance model was applied to the behavioral outcome variable ''' parms.score_name '''.'];
         end
 
-        % After the inclusion of behavioral covariates, 
-        if isfield(parms,'behavioralmodeldata') && ~isempty(parms.behavioralmodeldata) % earlier versions don't have this (added 0.08, 9/25/17)
+        % When no lesion size correction is included but there is at least one behavioral covariate, report the post-nuisance-model r between lesion size and primary behavior
+        if strcmp(parms.lesionvolcorrection,'None') && isfield(parms,'behavioralmodeldata') && ~isempty(parms.behavioralmodeldata) % earlier versions don't have this (added 0.08, 9/25/17)
             post_correction_one_score = parms.behavioralmodeldata.([parms.score_name '_corrected']);
             % is lesion volume and one_score correlated after correction?
             [rho,pval] = corrcoef(post_correction_one_score(:),parms.lesion_vol(:));
             rho = rho(2,1);
             pval = pval(2,1);
 
-            descr = [ descr ' Following correction with the behavioral nuisance model, the behavioral score under investigation is correlated with lesion volume across the patient group at ' nice_r(rho) ', ' nice_p(pval) '.'];
+            descr = [ descr ' Following correction with the behavioral nuisance model, the behavioral score under investigation is correlated with lesion volume across the patient group at ' nice_r(rho) '.']; % ', ' nice_p(pval) '.'];
         end
 
     else % no covariates.
-        descr = [descr ' No behavioral covariates were specified, so no nuisance model was applied to the behavioral score or the lesion data prior to SVR.'];
+        descr = [descr ' No other covariates were specified.']; % , so no nuisance model was applied to the behavioral score or the lesion data prior to SVR
     end
 
     % Was permutation testing performed?

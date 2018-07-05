@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 12-Mar-2018 12:13:34
+% Last Modified by GUIDE v2.5 05-Jul-2018 13:19:21
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -342,6 +342,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         else % update the parameter value.
             handles.parameters.optimization.grid_divisions = str;
         end    
+        
     % Optimization search strategy choice
     case 'random_search_menu_option'
         handles.parameters.optimization.search_strategy = 'Random Search';
@@ -984,8 +985,10 @@ function output_summary_menu_Callback(hObject, eventdata, handles)
         set(get(hObject,'children'),'enable','off')
         set(handles.summary_create_summary,'enable','on')
     end
+    disabled_objs = [handles.summary_paramoptimization handles.summary_prediction_menu];
+    set(disabled_objs,'checked','off','enable','off') % since this is disabled in this first release
+    
 
-% --------------------------------------------------------------------
 function requirements_menu_Callback(hObject, eventdata, handles)
 %set(get(handles.requirements_menu,'children'),'checked',false)
 set(handles.spm12_installed_menu,'checked',myif(handles.details.spm,'on','off')) % this will not specifically detect spm12 though!
@@ -995,13 +998,5 @@ set(handles.stats_toolbox_installed_menu,'checked',myif(handles.details.stats_to
 set(handles.matlab_version_installed_menu,'checked','on') % what's the requirement?
 set(get(handles.requirements_menu,'children'),'enable','off')
 
-% --------------------------------------------------------------------
 function beta_options_menu_Callback(hObject, eventdata, handles)
 set(handles.ica_lesion_decompose_option,'checked',myif(handles.parameters.beta.do_ica_on_lesiondata,'on','off'))
-
-
-% --- Executes on button press in open_output_folder_button.
-% function open_output_folder_button_Callback(hObject, eventdata, handles)
-% % hObject    handle to open_output_folder_button (see GCBO)
-% % eventdata  reserved - to be defined in a future version of MATLAB
-% % handles    structure with handles and user data (see GUIDATA)

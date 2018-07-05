@@ -62,7 +62,7 @@ variables.clusterresults.clusterthresh = -1; % update me -- this is undefined fo
 %% Write files containing cluster indices 
 
 % All cluster indices, regardless of significance
-variables.files_created.all_cluster_indices = fullfile(variables.output_folder.cfwer,'All clusters indices.nii');
+variables.files_created.all_cluster_indices = fullfile(variables.output_folder.cfwer,'All clusts indices.nii');
 variables.vo.fname = variables.files_created.all_cluster_indices;
 svrlsmgui_write_vol(variables.vo, cimg);
 
@@ -77,7 +77,7 @@ svrlsmgui_write_vol(variables.vo, cimg);
 %% Write files containing cluster-level p-values
 
 % All clusters, clusterwise thresholded with cluster p-values - not inverted
-variables.files_created.all_cluster_cluster_pvals = fullfile(variables.output_folder.cfwer,'All clusters cluster p values.nii');
+variables.files_created.all_cluster_cluster_pvals = fullfile(variables.output_folder.cfwer,'All clusts clust pvals.nii');
 tmp = zeros(size(cimg));
 for c = 1 : numel(T.clusterP) % i.e. all cluster indices...
     tmp(cimg==c) = T.clusterP(c); 
@@ -86,7 +86,7 @@ variables.vo.fname = variables.files_created.all_cluster_cluster_pvals;
 svrlsmgui_write_vol(variables.vo, tmp);
 
 % All clusters, clusterwise thresholded with cluster p-values - inverted
-variables.files_created.all_cluster_cluster_pvals_inv = fullfile(variables.output_folder.cfwer,'All clusters cluster p values (inv).nii');
+variables.files_created.all_cluster_cluster_pvals_inv = fullfile(variables.output_folder.cfwer,'All clusts clust pvals (inv).nii');
 tmp = zeros(size(cimg));
 for c = 1 : numel(T.clusterP) % i.e. all cluster indices...
     tmp(cimg==c) = 1-T.clusterP(c); % invert the p-value
@@ -129,3 +129,10 @@ svrlsmgui_write_vol(variables.vo, tmp);
 % p_notinv(~cimg_only_significant_mask) = 0;    
 % p_notinv(cimg_only_significant_mask) = 1-p_notinv(cimg_only_significant_mask); % this should work.
 % svrlsmgui_write_vol(variables.vo, p_notinv);
+
+%% Write out cluster-thresholded Z maps as well. - added 5/4/18 
+% variables.files_created.cluster_thresholded_zmap = fullfile(variables.output_folder.clusterwise,'Signif clusts vox Zvals.nii');
+% variables.vo.fname = variables.files_created.cluster_thresholded_zmap;
+% zvolume = spm_read_vols(spm_vol(variables.files_created.thresholded_zmap)); % read in our voxelwise Z volume that's already thresholded voxelwise, although that doesn't matter tremendously.
+% zvolume(~cimg_only_significant_mask) = 0; % zero out voxels with Z values that don't fall in the significant region range...
+% svrlsmgui_write_vol(variables.vo, zvolume);
