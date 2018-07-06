@@ -4,6 +4,8 @@ function WriteCorrelationDiagnostics(parms)
         fprintf(parms.fileID,'<h2>Behavioral nuisance model diagnostics</h2>');
         if isempty(parms.behavioralmodeldata)
             fprintf(parms.fileID,'%s','No behavioral nuisance model was included, so no diagnostics to display.');
+        elseif any(strcmp(varfun(@class,parms.behavioralmodeldata,'OutputFormat','cell'),'cell')) % if any categorical covariates, then don't print this because it's not supported yet.
+            fprintf(parms.fileID,'%s','At least one behavioral covariate was categorical. This scatterplot output does not currently support categorical covariates, so this output was not written.<br>');
         else
             fprintf(parms.fileID,'%s','Correlation plot of variables included in behavioral nuisance model, including the primary behavioral predictor of interest:<br>');
             rawdata=table2array(parms.behavioralmodeldata);

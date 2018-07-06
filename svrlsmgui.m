@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 05-Jul-2018 13:19:21
+% Last Modified by GUIDE v2.5 06-Jul-2018 11:37:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -161,8 +161,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'open_lesion_folder_button'
         OpenDirectoryInNativeWindow(handles.parameters.lesion_img_folder)
     case 'open_score_file_button'
-        msgbox('Open in system viewer.')
-        % finish me -- gotta load score file up in native file viewer..
+        openFileInSystemViewer(handles.parameters.score_file)
     case 'open_output_folder_button'
         OpenDirectoryInNativeWindow(handles.parameters.analysis_out_path)
     case 'ica_lesion_decompose_option'
@@ -425,7 +424,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
             changemade = false;
        end
     case 'chooselesionfolderbutton'
-        folder_name = uigetdir(pwd,'Choose a folder containing lesion files for this analysis.');
+        folder_name = uigetdir(handles.parameters.lesion_img_folder,'Choose a folder containing lesion files for this analysis.');
         if folder_name % if folder_name == 0 then cancel was clicked.
             [~,attribs] = fileattrib(folder_name); % we need read access from here.
             if attribs.UserRead
@@ -438,7 +437,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
             changemade = false;
         end
     case 'choosescorefilebutton'
-        [FileName,PathName] = uigetfile('*.csv','Select a file with behavioral scores.');
+        [FileName,PathName] = uigetfile(fullfile(fileparts(handles.parameters.score_file),'*.csv'),'Select a file with behavioral scores.');
         if FileName
             scorefile_name =  fullfile(PathName,FileName);
             handles.parameters.score_file = scorefile_name;
@@ -447,7 +446,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
             changemade = false;
         end
     case 'chooseoutputfolderbutton'
-        folder_name = uigetdir(pwd,'Choose a folder in which to save this analysis.');
+        folder_name = uigetdir(handles.parameters.analysis_out_path,'Choose a folder in which to save this analysis.');
         if folder_name
             [~,attribs] = fileattrib(folder_name); % we need read/write access from here.
             if attribs.UserRead && attribs.UserWrite
@@ -1000,3 +999,31 @@ set(get(handles.requirements_menu,'children'),'enable','off')
 
 function beta_options_menu_Callback(hObject, eventdata, handles)
 set(handles.ica_lesion_decompose_option,'checked',myif(handles.parameters.beta.do_ica_on_lesiondata,'on','off'))
+
+
+% --- Executes on button press in open_score_file_button.
+function open_score_file_button_Callback(hObject, eventdata, handles)
+% hObject    handle to open_score_file_button (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in choosescorefilebutton.
+function choosescorefilebutton_Callback(hObject, eventdata, handles)
+% hObject    handle to choosescorefilebutton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in chooseoutputfolderbutton.
+function chooseoutputfolderbutton_Callback(hObject, eventdata, handles)
+% hObject    handle to chooseoutputfolderbutton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in chooselesionfolderbutton.
+function chooselesionfolderbutton_Callback(hObject, eventdata, handles)
+% hObject    handle to chooselesionfolderbutton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)

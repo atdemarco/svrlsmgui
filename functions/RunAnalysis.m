@@ -103,7 +103,7 @@ handles.parameters.output_folders = variables.output_folder;
 %% Read lesion images...
 handles = UpdateProgress(handles,'Reading lesion images...',1);
 
-% remove people with non-existent lesion data
+% Remove people with non-existent lesion data
 has_no_lesion = cellfun(@(x) exist(fullfile(parameters.lesion_img_folder,[x '.nii']),'file'),variables.SubjectID) == 0;
 n_without_lesions=sum(has_no_lesion);
 variables.excluded.no_lesion = variables.SubjectID(has_no_lesion); % for summary.
@@ -224,7 +224,6 @@ if any(behavioral_nuisance_model_options)
         handles = UpdateProgress(handles,sprintf('Skipping running an empty behavioral nuisance model.'),1);
     else
         mdl = fitlm(t,modelspec,'intercept',true);
-        
         variables.one_score = mdl.Residuals.Raw(:); % save raw residuals (residualized behavioral data) for analysis.
         variables.one_score = variables.one_score + repmat(mdl.Coefficients.Estimate(1),size(variables.one_score)); % 8/7/17 -- add estimated intercept back in.
         handles = UpdateProgress(handles,sprintf('Behavior nuisance model complete.'),1);
@@ -267,11 +266,30 @@ if any(brain_nuisance_model_options)
                 curcovariate = handles.parameters.control_variable_names{c};
                 tmp.(curcovariate) = variables.scorefiledata.(curcovariate);
             end
-            tmp.LesionVolInternal = variables.lesion_vol(:);
+            tmp.LesionVol = variables.lesion_vol(:); % LesionVolInternal
     end
     
     % Run the model and save the results back to the lesion_dat matrix
-    variables.lesion_nuisance_model = struct2array(tmp); % make into regular ol' data columns...
+
+    % Convert fields (covariate names) in tmp variable to an array
+    % - this supports categorical variables now using dummyvar(grp2idx(x))
+    variables.lesion_nuisance_model = [];
+    fields = fieldnames(tmp);
+    for f = 1 : numel(fields)
+        curfieldname = fields{f};
+        curdata = tmp.(curfieldname);
+        switch class(curdata)
+            case 'cell' % meaning it's categorical...
+                dummyvarcoded = dummyvar(grp2idx(curdata));
+                variables.lesion_nuisance_model(:,end+1:end+size(dummyvarcoded,2)) = dummyvarcoded; % append
+            otherwise % treat it as numbers...
+                variables.lesion_nuisance_model(:,end+1) = curdata; % append
+        end
+    end
+    
+    % original code:
+    %variables.lesion_nuisance_model = struct2array(tmp); % make into regular ol' data columns...
+    
     handles = UpdateProgress(handles,sprintf('Beginning lesion nuisance model with covariates: %s',strjoin(fieldnames(tmp)')),1);
     variables = continuize_lesions(variables,parameters); % will automatically use the field .lesion_nuisance_model
     variables.lesion_dat = variables.lesion_dat2;
@@ -301,7 +319,8 @@ else
     minoffset = 0;
     maxmultiplier = 1;    
 end
-% we'll use these in summary output function WritePredictBehaviorReport()
+
+% We'll use these in summary output function WritePredictBehaviorReport()
 parameters.original_behavior_transformation.minoffset = minoffset;
 parameters.original_behavior_transformation.maxmultiplier = maxmultiplier;
 
@@ -404,7 +423,6 @@ if parameters.DoPerformPermutationTesting
     else    
         % Evaluate clustering results
         variables = evaluate_clustering_results(handles,variables,parameters);
-        
         handles = UpdateProgress(handles,sprintf('Results of analysis:'),1);
         handles = UpdateProgress(handles,sprintf('%d voxels survive voxelwise threshold (P < %g, %d perms).',variables.clusterresults.survivingbetavals,parameters.voxelwise_p,parameters.PermNumVoxelwise),1);
         handles = UpdateProgress(handles,sprintf('%d of %d clusters survive clusterwise threshold (P < %g, k > %d voxels, %d perms).',variables.clusterresults.survivingclusters,variables.clusterresults.totalclusters,parameters.clusterwise_p,variables.clusterresults.clusterthresh,parameters.PermNumClusterwise),1);

@@ -40,7 +40,9 @@ if parameters.parallelize
     
       Bouts = cell2mat(Bouts); % combine afterward
       lesiondataout = cell2mat(lesiondataout); % combine afterward
+
 else % not parallelized.
+    
     svrlsm_waitbar(parameters.waitbar,0,'Running lesion nuisance model...')
     for vox = 1 : size(variables.lesion_dat,2) 
         if ~mod(vox,100), svrlsm_waitbar(parameters.waitbar,vox/size(variables.lesion_dat,2)); end 

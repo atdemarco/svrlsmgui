@@ -73,8 +73,11 @@ if ~isempty(sub_idx)
         variables.excluded.novoxels{ni} = variables.SubjectID{cursub_index}; % < ok in original code
         variables.scorefiledata(cursub_index,:) = []; % < (not in original svrlsm code)
         variables.SubjectID(cursub_index) = [];  % < ok in original code
-        if ~isempty(variables.covariates)  % < (not in original svrlsm code)
-            variables.covariates(cursub_index,:) = []; % remove whole rows;  % < (not in original svrlsm code)
+%         if ~isempty(variables.covariates)  % < (not in original svrlsm code)
+%             variables.covariates(cursub_index,:) = []; % remove whole rows;  % < (not in original svrlsm code)
+%         end
+        if ~isempty(variables.covariatestable)  % < as of 6/7/18 we use covariables table to support nominal variables
+            variables.covariatestable(cursub_index,:) = []; 
         end
     end
 end
