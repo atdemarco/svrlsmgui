@@ -64,8 +64,10 @@ function results = svrlsm_bayesopt(parameters,variables)
 
 %     % Start with this partition -- it will be replaced each call to the objective function if Repartition is 'true'
     parameters.initialPartition = cvpartition(behavdata,'k',parameters.optimization.crossval.nfolds);
-% assignin('base','lesiondata',lesiondata)
-% error('s')
+    
+    % assignin('base','lesiondata',lesiondata)
+    % error('s')
+    
     minfn = @(x)combined_bayesopt_objective_functions3(x,sparse(lesiondata),behavdata,parameters);
 
     results = bayesopt(minfn,[sigma box epsilon standardize], ... 

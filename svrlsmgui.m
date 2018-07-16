@@ -46,6 +46,19 @@ end
 function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     handles.output = hObject; % Choose default command line output for svrlsmgui
     
+    % Do we need to add the functions subdirectory to the path?
+    pathCell = regexp(path, pathsep, 'split');
+    myPath = fileparts(mfilename('fullpath'));
+    if ~any(strcmp(myPath,pathCell))
+        addpath(myPath)
+    end
+    
+    functionsPath = fullfile(myPath,'functions');
+    if ~any(strcmp(functionsPath,pathCell))
+        addpath(functionsPath)
+    end
+    
+
     handles = ConfigureSVRLSMGUIOptions(handles);
     
     handles.details = CheckIfNecessaryFilesAreInstalled(handles);
