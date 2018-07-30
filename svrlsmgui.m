@@ -60,7 +60,6 @@ function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     
 
     handles = ConfigureSVRLSMGUIOptions(handles);
-    
     handles.details = CheckIfNecessaryFilesAreInstalled(handles);
     
     if handles.details.stats_toolbox && handles.details.spm && handles.details.libsvm
@@ -82,7 +81,9 @@ function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
         handles.parameters = GetDefaultParameters(handles);
         handles = PopulateGUIFromParameters(handles);
     end
-    
+
+    handles.parameters.parallelize = handles.details.can_parallelize; % override default
+
     % 0.02 - trying to clean it up to run on a variety of systems - 4/24/17
     % 0.03 - first version to be used by other individuals officially - 5/1/17
     % 0.04 - 5/2/17
