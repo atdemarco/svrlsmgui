@@ -50,7 +50,8 @@ function details = CheckIfNecessaryFilesAreInstalled(handles)
     end
     
     % can we parallelize?
-    if ~isempty(ver('distcomp')) && license('test','Distrib_Computing_Toolbox') && feature('numcores') > 1
+    %if ~isempty(ver('distcomp')) && license('test','Distrib_Computing_Toolbox') && (feature('numcores') > 1)
+    if isstruct(ver('distcomp')) && license('test','Distrib_Computing_Toolbox') && (feature('numcores') > 1)
         handles = UpdateProgress(handles,'Parallelization available: Distributed Computing Toolbox installed, licensed, and > 1 core.',1);
         details.can_parallelize = true;
     else
