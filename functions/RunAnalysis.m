@@ -310,6 +310,9 @@ check_for_interrupt(parameters)
 do_this_part = true;
 if do_this_part
     handles = UpdateProgress(handles,'Standardizing behavioral to be predicted to 0-100 range.',1);
+    if isa(variables.one_score,'cell')
+        error('Currently the primary outcome of SVRLSMGUI cannot be categorical.')
+    end
     minoffset = min(variables.one_score(:)); % Accommodate negative numbers...
     variables.one_score = minoffset + variables.one_score; % bring all vals >=0
     maxscaleval = 100;
