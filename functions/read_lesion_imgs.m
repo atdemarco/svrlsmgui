@@ -25,8 +25,7 @@ svrlsm_waitbar(parameters.waitbar,0,'');
 
 variables.vo = vo;
 variables.vo.name = 'NULL.nii';
-%variables.vo.dt = [4,0]; 
-variables.vo.dt = [64,0];
+variables.vo.dt = [64,0]; %variables.vo.dt = [4,0];
 
 %% get a mask based on overlapping map and given mask image
 
@@ -38,11 +37,6 @@ variables.m_idx = find(mask_map >= parameters.lesion_thresh);  % index of voxels
 % if verbose
 %     disp(['Report from read_lesion_imgs.m - numel l_idx = ' num2str(numel(variables.l_idx)) '... numel m_idx = ' num2str(numel(variables.m_idx))])
 % end
-
-% % Write out mask_map to check that these numbers make sense...
-% variables.vo.fname = fullfile(variables.output_folder.base,['All lesion overlap n=' num2str(size(Ldat,4)) '.nii']);
-% svrlsmgui_write_vol(variables.vo, mask_map);
-% variables.files_created.all_lesion_overlap = variables.vo.fname;
 
 % Write out a mask of voxels that exceed the minimum lesion threshold requested
 variables.vo.fname = fullfile(variables.output_folder.base,['Minimum lesion mask n=' num2str(parameters.lesion_thresh) '.nii']);
@@ -61,29 +55,21 @@ sub_idx = find(exclude_sub_bool); % these indices have no voxels in our output m
 variables.exclude_idx = sub_idx;
 variables.SubNum = variables.SubNum - length(sub_idx);
 variables.excluded.novoxels={}; % even if nobody will be excluded.
-if ~isempty(sub_idx)
-    for ni = 1 : length(sub_idx)
-        cursub_index = sub_idx(ni); 
-        % I believe there was a bug here in the original svrlsm code where 
-        % ni was used as an index instead of cursub_index aka sub_idx(ni)
-        % for removing some of the variables.(asdf) fields below:
-        variables.lesion_dat(cursub_index,:) = []; % < here 
-        variables.one_score(cursub_index) = []; % < here 
-        variables.lesion_vol(cursub_index) = []; % < and here 
-        variables.excluded.novoxels{ni} = variables.SubjectID{cursub_index}; % < ok in original code
-        variables.scorefiledata(cursub_index,:) = []; % < (not in original svrlsm code)
-        variables.SubjectID(cursub_index) = [];  % < ok in original code
-%         if ~isempty(variables.covariates)  % < (not in original svrlsm code)
-%             variables.covariates(cursub_index,:) = []; % remove whole rows;  % < (not in original svrlsm code)
-%         end
-        if ~isempty(variables.covariatestable)  % < as of 6/7/18 we use covariables table to support nominal variables
-            variables.covariatestable(cursub_index,:) = []; 
-        end
+
+% This section updated on 8/8/18, the loop had an error, so it was vectorized
+if ~isempty(sub_idx) % Then there are some subjects to remove from the analysis
+    variables.lesion_dat(sub_idx,:) = [];
+    variables.one_score(sub_idx) = [];
+    variables.lesion_vol(sub_idx) = [];
+    variables.excluded.novoxels(1:numel(sub_idx)) = variables.SubjectID(sub_idx);
+    variables.scorefiledata(sub_idx,:) = [];
+    variables.SubjectID(sub_idx) = [];
+    if ~isempty(variables.covariatestable) % < as of 6/7/18 we use covariables table to support nominal variables
+        variables.covariatestable(sub_idx,:) = [];
     end
 end
 
-% Recompute map after subject removal and write out mask_map to check that these numbers make sense...
-% This was moved below the subject removal on 2/24/18
+% Recompute map after subject removal and write out mask_map to check that these numbers make sense... this was moved below the subject removal on 2/24/18
 mask_map = sum(Ldat(:,:,:,~exclude_sub_bool), 4); % non excluded subjects.
 variables.vo.fname = fullfile(variables.output_folder.base,['All lesion overlap n=' num2str(numel(variables.SubjectID)) '.nii']);
 svrlsmgui_write_vol(variables.vo, mask_map);

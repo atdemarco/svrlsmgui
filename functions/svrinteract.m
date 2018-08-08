@@ -64,12 +64,25 @@ handles.opts.zslice = 25;
 
 tmp = 10 .* randn(handles.variables.vo.dim(1:3));
 
-handles.I = imagesc(tmp(:,:,20),'parent',handles.axes1,[-10 10]);
+if (numel(handles.variables.vo.dim) > 3) && (handles.variables.vo.dim(4) > 1) % then it's 4D % handles.variables.vo.dim(4) > 1 % then it's 4d...
+    handles.ndims = 4;
+else
+    handles.ndims = 3;
+end
 
+if handles.ndims == 4
+    handles.I = imagesc(tmp(:,:,20),'parent',handles.axes1,[-50 50]);
+else % it's 3d...
+    handles.I = imagesc(tmp(:,:,20),'parent',handles.axes1,[-10 10]);
+end
 
 handles.montage_zslices = 5:10:(size(tmp,3)-1);
 
- montage(tmp, 'Indices',handles.montage_zslices,'DisplayRange', [-10 10],'parent',handles.axes1);
+if handles.ndims == 4
+    montage(tmp, 'Indices',handles.montage_zslices,'DisplayRange', [-50 50],'parent',handles.axes1);
+else
+    montage(tmp, 'Indices',handles.montage_zslices,'DisplayRange', [-10 10],'parent',handles.axes1);
+end
  colormap jet;
  colorbar(handles.axes1)
 
@@ -82,7 +95,6 @@ handles.pred = plot(1:numel(handles.variables.one_score),zeros(1,numel(handles.v
 
 % Update handles structure
 guidata(hObject, handles);
-
 
 paint_current(hObject,handles)
 
@@ -97,30 +109,53 @@ function paint_current(hObject,handles)
     set(handles.zslice,'string',num2str(handles.opts.zslice)); 
     set(handles.crossval_nfolds_editbox,'string',num2str(handles.opts.nfolds)); 
     
+    if handles.ndims == 4 % then use linear kernel
+    Mdl = fitrsvm(handles.variables.lesion_dat,handles.variables.one_score,'KernelFunction','linear',... % 'rbf', ...
+        'KernelScale',handles.opts.ks,'BoxConstraint',handles.opts.box,'Standardize', ...
+        handles.opts.stand,'Epsilon',handles.opts.ep);
+    else % rbf
     Mdl = fitrsvm(handles.variables.lesion_dat,handles.variables.one_score,'KernelFunction','rbf', ...
         'KernelScale',handles.opts.ks,'BoxConstraint',handles.opts.box,'Standardize', ...
         handles.opts.stand,'Epsilon',handles.opts.ep);
-
+    end
     w = Mdl.Alpha.'*Mdl.SupportVectors;
     handles.variables.beta_scale = 10/max(abs(w));
-    tmp = zeros(handles.variables.vo.dim(1:3));
-    beta_map = tmp;
-
-    tmp(handles.variables.l_idx) = w'*handles.variables.beta_scale; % return all lesion data to its l_idx indices.
-    beta_map(handles.variables.m_idx) = tmp(handles.variables.m_idx); % m_idx -> m_idx
-
-    %set(handles.I,'cdata',beta_map(:,:,handles.opts.zslice));
-    %montage(beta_map, 'Indices',handles.montage_zslices,'DisplayRange', [-10 10],'parent',handles.axes1);
     
-    %handles.montage_zslices = 5:10:(size(tmp,3)-1);
-    %handles.variables.lesion_dat
-    
-    beta_map_bin = beta_map~=0;
-    
-    relslices = find(squeeze(sum(squeeze(sum(beta_map_bin,1)),1)));
-    handles.montage_zslices = min(relslices):2:max(relslices);
+    if handles.ndims == 4
+        disp('4D data input...')
+        tmp = zeros(handles.variables.vo.dim(1:4)); % THIS IS DIFFERENT FOR 4D DATA
+        beta_map = tmp;
+        tmp(handles.variables.l_idx) = w'*handles.variables.beta_scale; % return all lesion data to its l_idx indices.
+        beta_map(handles.variables.m_idx) = tmp(handles.variables.m_idx); % m_idx -> m_idx
+        
+        beta_map = sum(beta_map,4); % THIS IS DIFFERENT FOR 4D DATA
+        beta_map_bin = beta_map~=0;
 
-    montage(beta_map,'indices',handles.montage_zslices, 'DisplayRange', [-10 10],'parent',handles.axes1);
+        relslices = find(squeeze(sum(squeeze(sum(beta_map_bin,1)),1)));
+        handles.montage_zslices = min(relslices):2:max(relslices);
+        montage(beta_map,'indices',handles.montage_zslices, 'DisplayRange', [-20 20],'parent',handles.axes1);
+    else
+        disp('3D data input...')
+        tmp = zeros(handles.variables.vo.dim(1:3));
+        beta_map = tmp;
+
+        tmp(handles.variables.l_idx) = w'*handles.variables.beta_scale; % return all lesion data to its l_idx indices.
+        beta_map(handles.variables.m_idx) = tmp(handles.variables.m_idx); % m_idx -> m_idx
+
+        %set(handles.I,'cdata',beta_map(:,:,handles.opts.zslice));
+        %montage(beta_map, 'Indices',handles.montage_zslices,'DisplayRange', [-10 10],'parent',handles.axes1);
+
+        %handles.montage_zslices = 5:10:(size(tmp,3)-1);
+        %handles.variables.lesion_dat
+
+        beta_map_bin = beta_map~=0;
+
+        relslices = find(squeeze(sum(squeeze(sum(beta_map_bin,1)),1)));
+        handles.montage_zslices = min(relslices):2:max(relslices);
+        montage(beta_map,'indices',handles.montage_zslices, 'DisplayRange', [-10 10],'parent',handles.axes1);
+
+    end
+
 
     colormap jet;
     colorbar(handles.axes1)
