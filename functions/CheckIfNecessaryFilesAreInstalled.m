@@ -49,9 +49,11 @@ function details = CheckIfNecessaryFilesAreInstalled(handles)
         details.stats_toolbox = 0;
     end
     
-    % can we parallelize?
-    %if ~isempty(ver('distcomp')) && license('test','Distrib_Computing_Toolbox') && (feature('numcores') > 1)
-    if isstruct(ver('distcomp')) && license('test','Distrib_Computing_Toolbox') && (feature('numcores') > 1)
+    % Can we parallelize?
+    %if ~isempty(ver('distcomp')) && license('test','Distrib_Computing_Toolbox') && (feature('numcores') > 1) - Buxbaum group found ~isempty(ver('distcomp')) didn't work for them? 
+    %if isstruct(ver('distcomp')) && license('test','Distrib_Computing_Toolbox') && (feature('numcores') > 1) % Josh found that isstruct(ver('distcomp')) fails.
+    v = ver;
+    if any(strcmp({v.Name},'Parallel Computing Toolbox')) && (feature('numcores') > 1) % 8/23/18 - check for toolbox with new first argument (the v.Name)
         handles = UpdateProgress(handles,'Parallelization available: Distributed Computing Toolbox installed, licensed, and > 1 core.',1);
         details.can_parallelize = true;
     else
