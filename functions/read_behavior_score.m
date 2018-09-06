@@ -16,7 +16,8 @@ function variables = read_behavior_score(parameters)
         else % collect the covariate values... 
             % as of 7/6/18, we use .covariatestable to support nominal variables.
             %variables.covariates = [variables.covariates data.(curVarName)]; % append a column
-            variables.covariatestable = addvars(variables.covariatestable,data.(curVarName),'NewVariableNames',curVarName);
+            %variables.covariatestable = addvars(variables.covariatestable,data.(curVarName),'NewVariableNames',curVarName); 
+            variables.covariatestable.(curVarName) = data.(curVarName); % added this on 9/6/18 to avoid addvars() call which is only available in MATLAB 2018a
         end
     end
 
