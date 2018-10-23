@@ -275,7 +275,7 @@ if any(brain_nuisance_model_options)
     % - this supports categorical variables now using dummyvar(grp2idx(x))
     variables.lesion_nuisance_model = [];
     fields = fieldnames(tmp);
-    variables.lesionNuisanceModelFields = {}; % 10/23/18
+    variables.lesNuisanceModelFiel = fields; 
     for f = 1 : numel(fields)
         curfieldname = fields{f};
         curdata = tmp.(curfieldname);
@@ -283,12 +283,8 @@ if any(brain_nuisance_model_options)
             case 'cell' % meaning it's categorical...
                 dummyvarcoded = dummyvar(grp2idx(curdata));
                 variables.lesion_nuisance_model(:,end+1:end+size(dummyvarcoded,2)) = dummyvarcoded; % append
-                for v = 1 : size(dummyvarcoded,2) % each dummy column ... so we can write out covariate values.
-                    variables.lesionNuisanceModelFields{end+1} = [curfieldname num2str(v)]; % 10/23/18
-                end
             otherwise % treat it as numbers...
                 variables.lesion_nuisance_model(:,end+1) = curdata; % append
-                variables.lesionNuisanceModelFields{end+1} = curfieldname; % 10/23/18
         end
     end
     
@@ -300,24 +296,10 @@ if any(brain_nuisance_model_options)
     variables.lesion_dat = variables.lesion_dat2;
     handles = UpdateProgress(handles,sprintf('Lesion nuisance model complete.'),1);
     
-    % Save covariate maps 10/23/18
+    % Save covariate maps? 10/23/18
     doSaveCovMaps = true;
     if doSaveCovMaps
-        % handles = SaveCovariateMaps(variables); % added 10/23/18
-        %disp('saving cov maps')
-        %assignin('base','variables',variables)
-        mkdir(variables.output_folder.covariates)
-        for c = 2 : size(variables.lesion_nuisance_model_betas,1) % since the 1st is constant... 
-            % numel(variables.lesionNuisanceModelFields) 
-            %curcovname = ['cov' num2str(c)];  %variables.lesionNuisanceModelFields{c};
-            curcovname =  variables.lesionNuisanceModelFields{c-1}; % since we start counting from 2 (to exclude intercept)
-            covfilename = [curcovname ' (betas).nii'];
-            out_map = zeros(variables.vo.dim);
-            out_map(variables.l_idx) = variables.lesion_nuisance_model_betas(c,:); % pull row of data.
-            variables.vo.fname = fullfile(variables.output_folder.covariates,covfilename); % clusteredoutfname; % fullfile(variables.output_folder.clusterwise,'Thresholded by cluster size (betas).nii');
-            svrlsmgui_write_vol(variables.vo, out_map);
-        end
-        %error('done saving covs')
+        handles = SaveCovariateMaps(variables); % added 10/23/18
     end
 else
     handles = UpdateProgress(handles,sprintf('No lesion data nuisance model will be employed.'),1);

@@ -38,8 +38,8 @@ if parameters.parallelize
         svrlsm_waitbar(parameters.waitbar,j/njobs) % update waitbar progress...
     end
     
-      Bouts = cell2mat(Bouts); % combine afterward
-      lesiondataout = cell2mat(lesiondataout); % combine afterward
+    Bouts = cell2mat(Bouts); % combine afterward
+    lesiondataout = cell2mat(lesiondataout); % combine afterward
 
 else % not parallelized.
     
