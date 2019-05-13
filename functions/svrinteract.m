@@ -159,7 +159,9 @@ function paint_current(hObject,handles)
 
     colormap jet;
     colorbar(handles.axes1)
-  
+
+    disp(['Proportion is support vectors = ' num2str(sum(Mdl.IsSupportVector)/numel(Mdl.IsSupportVector))])
+
     if handles.opts.nfolds == 1 % no crossval
         predicted = Mdl.predict(handles.variables.lesion_dat);
     else
