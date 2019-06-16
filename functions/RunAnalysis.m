@@ -7,6 +7,8 @@ end
 
 try
 
+rng(1,'twister'); % Set our random seed
+
 handles.parameters = ValidateSVRLSMParameters(handles.parameters);  % fill in any missing parms
 
 %% Validate parameters - in future move to other function

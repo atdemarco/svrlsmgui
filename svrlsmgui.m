@@ -157,7 +157,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         set(handles.manual_analysis_resolution_menu,'Label',['Manual: ' num2str(handles.parameters.imagedata.resample_to) ' mm'], ...
             'checked',myif(handles.parameters.imagedata.do_resample,'on','off'));
         set(handles.do_not_resample_images_menu,'Checked',myif(handles.parameters.imagedata.do_resample,'off','on'));
-        set(handles.manual_analysis_resolution_menu,'Enable','off') % Until we finish implementation.
+        %set(handles.manual_analysis_resolution_menu,'Enable','on') % Until we finish implementation.
     case 'do_not_resample_images_menu'
         handles.parameters.imagedata.do_resample = false; % turn resampling off.
     case 'manual_analysis_resolution_menu'

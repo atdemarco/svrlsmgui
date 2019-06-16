@@ -14,7 +14,7 @@ function [handles,parameters] = step1_parallel(handles,parameters,variables)
     %% If we got here then we need to generate the permutation data
     
     %% Cute way to create the permuted behavioral data... each column is one permutation.
-    permdata = variables.one_score(cell2mat(cellfun(@(x) randperm(x)',repmat({numel(variables.one_score)},1,parameters.PermNumVoxelwise),'uni',false)));
+        permdata = variables.one_score(cell2mat(cellfun(@(x) randperm(x)',repmat({numel(variables.one_score)},1,parameters.PermNumVoxelwise),'uni',false)));
     outpath = variables.output_folder.clusterwise;
     totalperms = parameters.PermNumVoxelwise;
     hyperparms = hyperparmstruct(parameters);

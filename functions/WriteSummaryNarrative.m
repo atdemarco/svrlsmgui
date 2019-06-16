@@ -35,6 +35,17 @@ function WriteSummaryNarrative(parms)
     descr = ['This analysis named ''' parms.analysis_name ''' tested the hypothesis (' lower(parms.tails) ') that there is a relationship between lesion status and the behavior score ''' parms.score_name '''.'];
     descr = [ descr ' ' num2str(nsubs) ' subjects were listed for inclusion, and ' num2str(nexcluded) ' were excluded due to missing behavioral data, lesion data, or for having no voxels inside the minimum lesion cutoff mask (' excluded_names ').'];
 
+    % add note about data being binarized, resampled, etc, as necessary.
+    if parms.imagedata.do_binarize 
+        descr = [descr ' Each lesion volume was binarized prior to the analysis.'];
+    end
+
+    if parms.imagedata.do_resample 
+        descr = [descr ' Each lesion volume was resampled to ' num2str(parms.imagedata.resample_to) ' mm³ voxels prior to analysis.'];
+    end
+
+    
+    % define some convenient anonymous functions
     nice_p = @(pval) myif(pval < .001,'p < .001',strrep(sprintf('p = %.2f', pval),' 0.',' .')); % enforce no leading unnecessary 0 
     nice_r = @(rho) strrep(sprintf('r = %.2f', rho),' 0.',' .'); % enforce no leading unnecessary 0 
     

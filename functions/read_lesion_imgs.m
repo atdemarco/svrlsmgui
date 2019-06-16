@@ -7,8 +7,9 @@ for ni= 1 : numel(variables.SubjectID)
     svrlsm_waitbar(parameters.waitbar,ni / length(variables.SubjectID),sprintf('Reading lesion file %s...',fname));
     % in the future, make the line above not interpret underscores (_) in file names as subscript character...
     if ~exist(fullfname,'file') % this should not happen since we've checked for missing files already...
-        error('Cannot find lesion image file: %s\n', fullfname); 
+        error('Cannot find lesion image file: %s\n', fullfname);
     end
+    
     vo = spm_vol(fullfname); % The true voxel intensities of the jth image are given by: val*V.pinfo(1,j) + V.pinfo(2,j)
     tmp = spm_read_vols(vo);
     tmp(isnan(tmp)) = 0; % Denan the image.
@@ -17,7 +18,21 @@ for ni= 1 : numel(variables.SubjectID)
         tmp = tmp > 0;  % Binarize if desired...
     end
     
-    Ldat(:,:,:,ni) = uint8(tmp);
+    % Does user want to resample the images prior to analysis?
+    if parameters.imagedata.do_resample % implemented June 16 2019 - ad
+        %cur_image_dims = vo.dim;
+        %cur_vox_size = abs(diag(vo.mat(1:end-1,:)))'; % the first 3 elements of the diagonal... 
+        new_vox_size = parameters.imagedata.resample_to .* ones(1,3); % make the new mm into a 1x3... 
+        
+        bb = spm_get_bbox(vo);
+        vo.mat = spm_matrix([bb(1,:) 0 0 0 new_vox_size])*spm_matrix([-1 -1 -1]);
+        vo.dim = ceil(vo.mat \ [bb(2,:) 1]' - 0.1)';
+        vo.dim = vo.dim(1:3);
+        new_image_dims = vo.dim;  %round(cur_image_dims .* (cur_vox_size ./ new_vox_size));
+        tmp = imresize3(uint8(tmp),new_image_dims,'nearest'); % don't interpolate any new values
+    end
+    
+    Ldat(:,:,:,ni) = uint8(tmp); %#ok<AGROW>
     variables.lesion_vol(ni,1) = sum(tmp(:));
     check_for_interrupt(parameters)
 end

@@ -69,6 +69,8 @@ switch hdr.datatype
         precision = 'float32';
     case 64 % DT_DOUBLE
         precision = 'double';
+    case 512 % DT_UINT16
+        precision = 'uint16'; % added for itksnap files 10/11/17 AD
     otherwise
         error('Unsupported data type; datatype = %d\n', h.datatype);
 end
