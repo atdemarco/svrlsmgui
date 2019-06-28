@@ -131,11 +131,18 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     parameters.optimization.crossval.nfolds = 5;
     parameters.optimization.crossval.nfolds_default = parameters.optimization.crossval.nfolds;
     parameters.optimization.crossval.repartition = true; % repartition at each iteration
-    
+
     % Hyperparameter quality report
     parameters.hyperparameter_quality.report.nfolds = 5;
     parameters.hyperparameter_quality.report.repro_ind_subset_pct = .8; % 80%
     parameters.hyperparameter_quality.report.n_replications = 10; % how many times to repeat ...
+    
+    % Cross-validation of svrlsm map data - i.e. compute folds and average them when producing the svr-B map - added June 2019
+    parameters.crossval.do_crossval = false; % by default do not do crossvalidated output...
+    parameters.crossval.method = 'kfold';
+    parameters.crossval.nfolds = 5;
+    parameters.crossval.nfolds_default = parameters.crossval.nfolds;
+    %parameters.crossval.repartition = true; % repartition at each iteration?
     
     % What to do with the lesion data when we read it in.
     parameters.imagedata.do_binarize = true; % binarize image data in read_lesion_imgs (should be off for vbmish things)

@@ -114,6 +114,14 @@ function WriteSummaryNarrative(parms)
     % Date run, what svr software was used, what gamma and cost was- -- and parallelization
     descr = [descr [' The analysis was run on ' parms.datetime_run ' using ' svmtype '''s SVR procedures (' parall 'parallelized, ' runfromgui 'run from the GUI), with parameters gamma = ' num2str(parms.gamma) ' and cost = ' num2str(parms.cost) '.' ]];
 
+    %% Was crossvalidation conducted on the svr map output?
+    if parms.crossval.do_crossval
+        cxvalstring = [' SVR-&beta; maps were generated using ' num2str(parms.crossval.nfolds) '-fold cross-validation.'];
+    else
+        cxvalstring = ' SVR-&beta; maps were not generated using any cross-validation.';
+    end
+    descr = [descr cxvalstring];
+        
     % Hyperparameter report.
     hyperparm_report = ['Hyperparameter optimization was ' optim ' utilized.'];
     if parms.optimization.do_optimize

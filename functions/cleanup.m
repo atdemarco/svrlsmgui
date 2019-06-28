@@ -4,7 +4,6 @@ function [handles,parameters,variables] = cleanup(handles,parameters,variables)
     % Clean up as necessary
     if ~parameters.SavePermutationData
         fclose('all');
-
         delete(parameters.outfname_big); % try to delete the giant binary file with the permutation beta values
         if exist(parameters.outfname_big,'file') % if it still exists...
             fileInfo = dir(parameters.outfname_big); 

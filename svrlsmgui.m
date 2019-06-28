@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 06-Jul-2018 11:37:06
+% Last Modified by GUIDE v2.5 16-Jun-2019 18:15:22
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -112,6 +112,26 @@ function handles = UpdateCurrentAnalysis(handles,hObject)
     changemade = true; % default
 
 switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what field it goes to -- and to validate
+    case 'no_map_crossvalidation' % turns off crossvalidation...
+        handles.parameters.crossval.do_crossval = false;
+    case 'kfold_map_crossvalidation'
+        if handles.parameters.useLibSVM
+            changemade=false;
+            msgbox('Map crossvalidation not currently supported for libSVM - please switch implementation to MATLAB and try again.')
+            return
+        end
+        answer = inputdlg(sprintf('Enter the numbers of folds for crossvalidation.'), ...
+             'Number of folds', 1,{num2str(handles.parameters.crossval.nfolds)});
+         if isempty(answer), return; end % cancel pressed
+         str = str2num(answer{1});
+         if isempty(str) || str <= 0 || ~isint(str)
+             changemade=false;
+             warndlg('Input must be a positive integer.');
+         else % update the parameter value.
+            handles.parameters.crossval.do_crossval = true;
+            handles.parameters.crossval.method = 'kfold';
+            handles.parameters.crossval.nfolds = str;
+         end
     case 'hyperparm_quality_report_options'
         set(handles.hyperparm_qual_n_folds,'Label',['Folds: ' num2str(handles.parameters.hyperparameter_quality.report.nfolds)])
         set(handles.repro_index_subset_percentage,'Label',['Subset %: ' num2str(handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct)])
@@ -380,6 +400,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
 	% Which SVR algorithm to use
     case 'use_lib_svm'
         handles.parameters.useLibSVM = 1;
+        handles.parameters.crossval.do_crossval = false; % not currently supported for libsvm...
     case 'use_matlab_svr'
         handles.parameters.useLibSVM = 0;        
     case 'save_pre_thresh'
@@ -1014,30 +1035,29 @@ set(get(handles.requirements_menu,'children'),'enable','off')
 function beta_options_menu_Callback(hObject, eventdata, handles)
 set(handles.ica_lesion_decompose_option,'checked',myif(handles.parameters.beta.do_ica_on_lesiondata,'on','off'))
 
+function crossvalidate_map_parent_menu_Callback(hObject, eventdata, handles)
+    set(get(hObject,'children'),'checked','off')
+%     parameters.crossval.do_crossval = false; % by default do not do crossvalidated output...
+%     parameters.crossval.method = 'kfold';
+%     parameters.crossval.nfolds = 5;
+%     parameters.crossval.nfolds_default = parameters.crossval.nfolds;
+    set(handles.kfold_map_crossvalidation,'label',['K-Fold: ' num2str(handles.parameters.crossval.nfolds) ' folds' myif(handles.parameters.optimization.crossval.nfolds == handles.parameters.crossval.nfolds_default,' (default)','')])
+    if ~handles.parameters.crossval.do_crossval
+        set(handles.no_map_crossvalidation,'checked','on')
+        %set(handles.do_repartition_menu_option,'enable','off')
+    else
+%         if handles.parameters.optimization.crossval.repartition 
+%             set(handles.do_repartition_menu_option,'checked','on','enable','on')
+%         end
+        if strcmp(handles.parameters.crossval.method,'kfold')
+            set(handles.kfold_map_crossvalidation,'checked','on')
+        else
+            error('Unknown crossvalidation option string.')
+        end
+    end
 
-% --- Executes on button press in open_score_file_button.
-function open_score_file_button_Callback(hObject, eventdata, handles)
-% hObject    handle to open_score_file_button (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+function no_map_crossvalidation_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
 
-
-% --- Executes on button press in choosescorefilebutton.
-function choosescorefilebutton_Callback(hObject, eventdata, handles)
-% hObject    handle to choosescorefilebutton (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes on button press in chooseoutputfolderbutton.
-function chooseoutputfolderbutton_Callback(hObject, eventdata, handles)
-% hObject    handle to chooseoutputfolderbutton (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes on button press in chooselesionfolderbutton.
-function chooselesionfolderbutton_Callback(hObject, eventdata, handles)
-% hObject    handle to chooselesionfolderbutton (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+function kfold_map_crossvalidation_Callback(hObject, eventdata, handles)
+handles = UpdateCurrentAnalysis(handles,hObject);
