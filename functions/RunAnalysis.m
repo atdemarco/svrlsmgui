@@ -5,8 +5,8 @@ else
     handles.parameters.runfromgui = 1;
 end
 
-try
 
+try
 rng(1,'twister'); % Set our random seed
 
 handles.parameters = ValidateSVRLSMParameters(handles.parameters);  % fill in any missing parms
@@ -151,7 +151,6 @@ if ~results.enough_space
 else
     handles = UpdateProgress(handles,'Disk space should be adequate for estimated storage necessary.',1);
 end
-
 % < In future, check here if we have enough RAM to hold the svr models in memory. 
 
 %% Decide what we have to covary out of the behavioral data (one score) and the lesion data
@@ -247,7 +246,7 @@ end
 % end
 
 check_for_interrupt(parameters)
-    
+
 %% Construct and run voxelwise lesion data nuisance model
 brain_nuisance_model_options = [handles.parameters.apply_covariates_to_lesion include_lesionvol_in_brain_nuisance_model];
 if any(brain_nuisance_model_options)
@@ -326,8 +325,9 @@ else
 end
 
 if ~isfield(handles,'options')
-    handles.options.lesionvolumecorrection = {'Regress on Behavior','Regress on Lesion','Regress on Both','DTLVC','None'};
-    handles.options.hypodirection = {'One-tailed (positive)','One-tailed (negative)'}; % ,'Two-tailed'}; % this is ok even though it's old labeling
+    %handles.options.lesionvolumecorrection = {'Regress on Behavior','Regress on Lesion','Regress on Both','DTLVC','None'};
+    %handles.options.hypodirection = {'One-tailed (positive)','One-tailed (negative)'}; % ,'Two-tailed'}; % this is ok even though it's old labeling
+    handles.options = lsmtb_options; % This should fix this, right?
 end
 
 check_for_interrupt(parameters)
@@ -458,6 +458,7 @@ if parameters.DoPerformPermutationTesting
         handles = UpdateProgress(handles,sprintf('%d of %d clusters survive clusterwise threshold (P < %g, k > %d voxels, %d perms).',variables.clusterresults.survivingclusters,variables.clusterresults.totalclusters,parameters.clusterwise_p,variables.clusterresults.clusterthresh,parameters.PermNumClusterwise),1);
     end
 end
+
 handles.parameters.original_behavior_transformation = parameters.original_behavior_transformation; 
 handles.parameters.optimization = parameters.optimization;
 handles.parameters.files_created = variables.files_created;
@@ -468,15 +469,13 @@ tosave = handles.parameters;
 
 %% Finish the analysis...
 try delete(parmsfile); end %#ok<TRYNC>
-save(tosave.parmsfile,'tosave'); % write the file again so we know the analysis completed
-success = 1;
+    save(tosave.parmsfile,'tosave'); % write the file again so we know the analysis completed
+    success = 1;
+    check_for_interrupt(parameters)
 
-check_for_interrupt(parameters)
-
-handles = UpdateProgress(handles,sprintf('Starting summary file...'),1);
-htmlout = SummarizeAnalysis(tosave.parmsfile); % if desired...
-handles = UpdateProgress(handles,myif(isempty(htmlout),'Done, no summary file requested.','Done writing summary file...'),1);
-
+    handles = UpdateProgress(handles,sprintf('Starting summary file...'),1);
+    htmlout = SummarizeAnalysis(tosave.parmsfile); % if desired...
+    handles = UpdateProgress(handles,myif(isempty(htmlout),'Done, no summary file requested.','Done writing summary file...'),1);
 catch ME % If the analysis encounters an error of some sort...
       success = 0; % failure.
       svrlsm_waitbar(parameters.waitbar,0,''); % clear this.

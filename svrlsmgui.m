@@ -771,15 +771,32 @@ function open_batch_job_Callback(hObject, eventdata, handles)
         curs=s(f);
         curfname = fname{curs};
         curfile = fullfile(folder_name,curfname);
-        try % so one or more can fail without stopping them all.
+%         try % so one or more can fail without stopping them all.
             handles = UpdateProgress(handles,['Batch: Starting file ' curfname '...'],1);
-            success = RunAnalysisNoGUI(curfile);
-            handles = UpdateProgress(handles,['Batch: Finished file ' curfname '.'],1);            
-        catch
-            msg = ['A batch job specified by file ' fname{curs} ' encountered an error and was aborted.'];
-            warning(msg)
-        end
+            [success,handles] = RunAnalysisNoGUI(curfile,handles); % second parm, handles, allows access to gui elements, etc.
+            handles = UpdateProgress(handles,['Batch: Finished file ' curfname '.'],1);
+            
+            switch success
+                case 1 % success
+                    handles.parameters.analysis_is_completed = 1; % Completed...
+                    handles = UpdateProgress(handles,['Batch: Finished file successfully ' curfname '.'],1);
+                case 0 % failure
+                    handles.parameters.analysis_is_completed = 2; % Error...
+                    %handles = UpdateProgress(handles,'Analysis encountered an error and did not complete...',1);
+                    handles = UpdateProgress(handles,['Batch: Analysis encountered an error and did not complete: ' curfname '.'],1);
+                    if isfield(handles,'interrupt_button')
+                        set(handles.interrupt_button,'enable','off') % disable.
+                    end
+                    rethrow(handles.error)
+            end
+
+%         catch
+%             disp('return from open_batch_job in svrlsmgui() with error')
+%             msg = ['A batch job specified by file ' fname{curs} ' encountered an error and was aborted.'];
+%             warning(msg)
+%         end
     end
+    
     handles = UpdateProgress(handles,'Batch: All batch jobs done.',1);            
 
 function figure1_CloseRequestFcn(hObject, eventdata, handles)
@@ -1057,7 +1074,7 @@ function crossvalidate_map_parent_menu_Callback(hObject, eventdata, handles)
     end
 
 function no_map_crossvalidation_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+    handles = UpdateCurrentAnalysis(handles,hObject);
 
 function kfold_map_crossvalidation_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+    handles = UpdateCurrentAnalysis(handles,hObject);
