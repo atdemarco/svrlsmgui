@@ -1,14 +1,11 @@
 function handles = ConfigureSVRLSMGUIOptions(handles)
-%     handles.options.lesionvolumecorrection = {'Regress on Behavior','Regress on Lesion','Regress on Both','DTLVC','None'};
-%     handles.options.old_hypodirection = {'One-tailed (positive)','One-tailed (negative)','Two-tailed'}; % before 2/7/18
-%     handles.options.hypodirection = {'High scores are bad','High scores are good','Two-tailed'};
     handles.options = lsmtb_options;% this should be made obsolete...
     set(handles.lesionvolumecorrectiondropdown,'String',handles.options.lesionvolumecorrection)
     set(handles.hypodirectiondropdown,'String',handles.options.hypodirection)
 
-    % We disable this because it doesn't produce reliable results at the moment...
-    set(handles.optimize_menu,'enable','off')
-    set(handles.summary_paramoptimization,'checked','off','enable','off')
+    % We disable this because it doesn't produce reliable results at the moment... re-enabled on 11/6/19 by AD
+    %set(handles.optimize_menu,'enable','off')
+    %set(handles.summary_paramoptimization,'checked','off','enable','off')
     
     %% Add generic callbacks
     add_generic_callback_objs = [handles.lesionthresholdeditbox handles.addcovariate handles.removecovariate  ...
