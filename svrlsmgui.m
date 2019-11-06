@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 16-Jun-2019 18:15:22
+% Last Modified by GUIDE v2.5 04-Nov-2019 12:48:03
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -867,6 +867,7 @@ function correlation_optimize_menu_choice_Callback(hObject, eventdata, handles)
     
 function resubloss_optimize_menu_choice_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
+
 function predictbehavior_optimize_menu_choice_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
 
@@ -1037,7 +1038,7 @@ function output_summary_menu_Callback(hObject, eventdata, handles)
         set(handles.summary_create_summary,'enable','on')
     end
     disabled_objs = [handles.summary_paramoptimization handles.summary_prediction_menu];
-    set(disabled_objs,'checked','off','enable','off') % since this is disabled in this first release
+    set(disabled_objs,'checked','off','enable','off') % since this is disabled in this first release 
     
 
 function requirements_menu_Callback(hObject, eventdata, handles)

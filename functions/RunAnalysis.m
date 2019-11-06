@@ -7,8 +7,7 @@ end
 
 
 try
-rng(1,'twister'); % Set our random seed
-
+    
 handles.parameters = ValidateSVRLSMParameters(handles.parameters);  % fill in any missing parms
 
 %% Validate parameters - in future move to other function
@@ -132,6 +131,10 @@ handles = UpdateProgress(handles,msg,1);
 
 handles = UpdateProgress(handles,'Successfully read behavioral scores and lesion images...',1);
 handles = UpdateProgress(handles,sprintf('Running analysis for ''%s''...', parameters.score_name),1);
+
+%% Setting random seed now moved down in code so parameters struct is declared and populated some
+rng('default') % try to fix bug reported by user - AD 11/6/19
+rng(1,'twister'); % Set our random seed
 
 %% Save the pre-analysis parameters files. Will be replaced after analysis concludes.
 %% Record subjects in the analysis, and those who were excluded due to missing data...
