@@ -566,6 +566,33 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         else % update the parameter value.
             handles.parameters.cfwer_p_value = str;
         end
+     case 'analysismask_menu_option_parent'
+         if strcmp(handles.parameters.analysis_mask_file,'')
+             maskstring = 'Select mask...';
+         else
+             maskstring = handles.parameters.analysis_mask_file;
+         end
+         handles.datamask_to_use_menu_option.Text = maskstring;
+         
+         if handles.parameters.use_analysis_mask % then populate the menu item and set the checkbox...
+             handles.do_not_apply_datamask_menu_option.Checked = false;
+             handles.datamask_to_use_menu_option.Checked = true;
+         else % don't use mask.
+             handles.do_not_apply_datamask_menu_option.Checked = true;
+             handles.datamask_to_use_menu_option.Checked = false;
+         end
+         
+    case 'do_not_apply_datamask_menu_option'
+         handles.parameters.use_analysis_mask = false;
+         changemade = true;
+    case 'datamask_to_use_menu_option'
+        disp('a')
+        handles.parameters.use_analysis_mask = true;
+        [FileName,PathName] = uigetfile('*.nii','Select a mask file within which to run the analysis.');
+        filepath = fullfile(PathName,FileName);
+        if ~exist(filepath,'file'), return; end
+        handles.parameters.analysis_mask_file = filepath; 
+        changemade = true;
     otherwise
         warndlg(['Unknown callback object ' get(gcbo,'tag') ' - has someone modified the code?'])
 end

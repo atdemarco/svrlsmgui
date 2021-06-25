@@ -1,4 +1,17 @@
-function [variables] = read_lesion_imgs(parameters, variables)
+function variables = read_lesion_imgs(parameters, variables)
+% if parameters.use_analysis_mask
+%     disp('I am incomplete')
+%     if ~exist(parameters.analysis_mask_file,'file') 
+%         error('Cannot find analysis mask file: %s\n', parameters.analysis_mask_file);
+%     end
+%     vo = spm_vol(parameters.analysis_mask_file); % The true voxel intensities of the jth image are given by: val*V.pinfo(1,j) + V.pinfo(2,j)
+%     tmp = spm_read_vols(vo);
+%     tmp(isnan(tmp)) = 0; % Denan 
+% 	tmp = tmp > 0;  % Binarize
+%     variables.AnalysisMask = tmp; % store;
+%     disp('tile on 4th dim of the data is 4d')
+% end
+
 %% Read the lesion data and get the lesion volume of each subject
 variables.lesion_vol = zeros(size(variables.one_score));
 for ni= 1 : numel(variables.SubjectID)
@@ -29,10 +42,10 @@ for ni= 1 : numel(variables.SubjectID)
         vo.dim = ceil(vo.mat \ [bb(2,:) 1]' - 0.1)';
         vo.dim = vo.dim(1:3);
         new_image_dims = vo.dim;  %round(cur_image_dims .* (cur_vox_size ./ new_vox_size));
-        tmp = imresize3(uint8(tmp),new_image_dims,'nearest'); % don't interpolate any new values
+        tmp = imresize3(single(tmp),new_image_dims,'nearest'); % don't interpolate any new values -- % used to cast to uint8 until Jun 25, 2021
     end
     
-    Ldat(:,:,:,ni) = uint8(tmp); %#ok<AGROW>
+    Ldat(:,:,:,ni) = single(tmp); %#ok<AGROW> % used to case to uint8 until Jun 25, 2021
     variables.lesion_vol(ni,1) = sum(tmp(:));
     check_for_interrupt(parameters)
 end
@@ -43,8 +56,13 @@ variables.vo.name = 'NULL.nii';
 variables.vo.dt = [64,0]; %variables.vo.dt = [4,0];
 
 %% get a mask based on overlapping map and given mask image
+% June 25, 2021 updated this binarize behavior
+if parameters.imagedata.do_binarize
+    mask_map = sum(Ldat, 4); % classic behavior
+else
+    mask_map = sum(Ldat~=0, 4); % now give a credit of "1" (i.e. true) for values at any voxel that isn't 0. this will prevent naughty masking behavior on continously valued (i.e. non-binarized) data - bug reported by Dr. Lorca puls - thanks Diego!
+end
 
-mask_map = sum(Ldat, 4);
 variables.l_idx = find(mask_map >= 1); % index of voxels with lesion on at least 1 subject
 variables.m_idx = find(mask_map >= parameters.lesion_thresh);  % index of voxels that will be included from result
 

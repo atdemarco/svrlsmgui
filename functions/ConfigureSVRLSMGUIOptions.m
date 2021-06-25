@@ -34,6 +34,7 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
                      get(handles.set_resolution_parent_menu_option,'children');
                      handles.hyperparm_quality_report_options;
                      get(handles.hyperparm_quality_report_options,'children')
+                     get(handles.analysismask_menu_option_parent,'children')
                      ];
     
     % MenuSelectedFcn is not an available callback in older matlabs, so accomodate that
@@ -47,6 +48,8 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
 
     % disable things not ready for prime time...
     set([handles.parent_cache_menu handles.beta_options_menu],'enable','off' )
+    
+    set(handles.analysismask_menu_option_parent,'enable','off') % June 25, 2021 - not ready for prime time yet
     
     %% Populate the progress bar.
     curvature = .2;

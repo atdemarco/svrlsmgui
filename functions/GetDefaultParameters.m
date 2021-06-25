@@ -10,6 +10,10 @@ function parameters = GetDefaultParameters(varargin) % (handles)
 %        end
     end
     
+    % These next two lines are from Nov 2019 for applying a mask to the data
+    parameters.use_analysis_mask = false;
+    parameters.analysis_mask_file = ''; % empty
+    
     parameters.method.mass_univariate = false; % if true, use mass univariate LSM, otherwise use SVR
     
     parameters.useLibSVM = 0; % now try to default to MATLAB ...
