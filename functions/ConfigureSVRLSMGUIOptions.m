@@ -27,7 +27,7 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
                      get(handles.parameters_to_optimize_menu,'children') ;
                      get(handles.crossvalidation_parent_menu,'children') ;
                      get(handles.parent_cache_menu,'children') ;
-                     handles.optimization_is_verbose_menu ;
+                     handles.optimization_is_verbose_menu;
                      get(handles.beta_options_menu,'children');
                      handles.image_data_options_parent_menu;
                      get(handles.image_data_options_parent_menu,'children');
@@ -49,7 +49,7 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
     % disable things not ready for prime time...
     set([handles.parent_cache_menu handles.beta_options_menu],'enable','off' )
     
-    set(handles.analysismask_menu_option_parent,'enable','off') % June 25, 2021 - not ready for prime time yet
+    %set(handles.analysismask_menu_option_parent,'enable','on') % June 25, 2021 - not ready for prime time yet
     
     %% Populate the progress bar.
     curvature = .2;

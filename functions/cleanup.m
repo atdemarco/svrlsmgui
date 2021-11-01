@@ -1,6 +1,5 @@
 function [handles,parameters,variables] = cleanup(handles,parameters,variables)    
     handles = UpdateProgress(handles,'Cleaning up null data...',1);
-    
     % Clean up as necessary
     if ~parameters.SavePermutationData
         fclose('all');

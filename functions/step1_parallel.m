@@ -1,11 +1,12 @@
-function [handles,parameters] = step1_parallel(handles,parameters,variables)
+function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,variables)
     % This is where we'll save our GBs of permutation data output...
     parameters.outfname_big = fullfile(variables.output_folder.clusterwise,['pmu_beta_maps_N_' num2str(parameters.PermNumVoxelwise) '.bin']);
 
     %% Try to use cache to skip this step by relying on cached permutation data
     if can_skip_generating_beta_perms(parameters,variables)
         error('caching disabled, cause it''s not completely supported')
-        handles = UpdateProgress(handles,'Using cached beta map permutation data...',1); return
+        handles = UpdateProgress(handles,'Using cached beta map permutation data...',1); 
+        return
     else
         handles = UpdateProgress(handles,'Computing beta map permutations (parallelized)...',1);
         svrlsm_waitbar(parameters.waitbar,0,'Computing beta permutations (parallelized)...');
@@ -20,18 +21,14 @@ function [handles,parameters] = step1_parallel(handles,parameters,variables)
     hyperparms = hyperparmstruct(parameters);
     
     %% Figure out what parameters we'll be using:
-    if parameters.useLibSVM
-        parameters.step1.libsvmstring = get_libsvm_spec(hyperparms.cost,hyperparms.gamma,hyperparms.epsilon); % Standardization is already applied.
-        tmp.libsvmstring = parameters.step1.libsvmstring;
-    else % use matlab's -- note the cell array we're creating - it's fancy since later we'll parameters.step1.matlab_svr_parms{:}
-        parameters.step1.matlab_svr_parms = [{'BoxConstraint', hyperparms.cost, ...
-            'KernelScale', hyperparms.sigma, ...
-            'Standardize', hyperparms.standardize, ...
-            'Epsilon', hyperparms.epsilon} ...
-            myif(parameters.crossval.do_crossval,{'KFold',parameters.crossval.nfolds},[])]; % this is for the crossvalidation option...
-        tmp.matlab_svr_parms = parameters.step1.matlab_svr_parms;
-        tmp.do_crossval = parameters.crossval.do_crossval; % also save this here too.
-    end
+    % use matlab's -- note the cell array we're creating - it's fancy since later we'll parameters.step1.matlab_svr_parms{:}
+    parameters.step1.matlab_svr_parms = [{'BoxConstraint', hyperparms.cost, ...
+        'KernelScale', hyperparms.sigma, ...
+        'Standardize', hyperparms.standardize, ...
+        'Epsilon', hyperparms.epsilon} ...
+        myif(parameters.crossval.do_crossval,{'KFold',parameters.crossval.nfolds},[])]; % this is for the crossvalidation option...
+    tmp.matlab_svr_parms = parameters.step1.matlab_svr_parms;
+    tmp.do_crossval = parameters.crossval.do_crossval; % also save this here too.
 
     %% parfeval code
     batch_job_size = 100; % this is going to be optimal for different systems/#cores/jobs - set this through gui?
@@ -51,7 +48,6 @@ function [handles,parameters] = step1_parallel(handles,parameters,variables)
     tmp.l_idx = variables.l_idx;
     tmp.totalperms = totalperms;
     tmp.permdata = permdata;
-    tmp.useLibSVM = parameters.useLibSVM;
     tmp.use_mass_univariate = parameters.method.mass_univariate;
 
     %% Schedule the jobs...
@@ -61,13 +57,16 @@ function [handles,parameters] = step1_parallel(handles,parameters,variables)
         this_job_end_index = min(this_job_start_index + batch_job_size-1,nperms); % need min so we don't go past valid indices
         this_job_perm_indices = this_job_start_index:this_job_end_index;
         tmp.this_job_perm_indices = this_job_perm_indices; % update for each set of jobs...
-        f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,0,tmp);
+        %f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,0,tmp);
+        f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,2,tmp);
     end
     
     %% Monitor job progress and allow user to bail, hopefully...
+    predAndLoss = cell(1,njobs); % reserve 
+
     for j = 1 : njobs
         check_for_interrupt(parameters) % allow user to interrupt
-        idx = fetchNext(f);
+        [idx,predAndLoss{j}] = fetchNext(f);
         svrlsm_waitbar(parameters.waitbar,j/njobs) % update waitbar progress...
     end
     
@@ -89,8 +88,10 @@ function [handles,parameters] = step1_parallel(handles,parameters,variables)
     svrlsm_waitbar(parameters.waitbar,0,''); % reset.
     fclose(fileID); % close big file
 
-function parallel_step1_batch_fcn_lessoverhead(tmp)
-    if ~tmp.useLibSVM || tmp.use_mass_univariate, tmp.lesiondata = full(tmp.lesiondata); end % we transfer it as sparse... so we need to full() it for all non-libSVM methods
+function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
+    tmp.lesiondata = full(tmp.lesiondata);  % we transfer it as sparse... so we need to full() it for all non-libSVM methods
+
+    allPredAndLoss = cell(1,numel(tmp.this_job_perm_indices)); % empty, in case we're using e.g. mass univariate
     
     for PermIdx = tmp.this_job_perm_indices % each loop iteration will compute one whole-brain permutation result (regardless of LSM method)
         trial_score = tmp.permdata(:,PermIdx); % extract the row of permuted data.
@@ -102,14 +103,15 @@ function parallel_step1_batch_fcn_lessoverhead(tmp)
                  pmu_beta_map(vox) = R \ (Q' * y);  % equivalent to fitlm's output: lm.Coefficients.Estimate
             end
         else % use an SVR method
-            if tmp.useLibSVM
-                m = svmtrain(trial_score,tmp.lesiondata,tmp.libsvmstring); %#ok<SVMTRAIN> % alpha = m.sv_coef'; % SVs = m.SVs;
-            else % use matlab's...
-                m = fitrsvm(tmp.lesiondata,trial_score,'KernelFunction','rbf', tmp.matlab_svr_parms{:});
-            end
+            
+            m = fitrsvm(tmp.lesiondata,trial_score,'KernelFunction','rbf', tmp.matlab_svr_parms{:});
             
             if ~tmp.do_crossval % then compute the beta map as usual...
-                pmu_beta_map = tmp.beta_scale * m.(myif(tmp.useLibSVM,'sv_coef','Alpha'))' * m.(myif(tmp.useLibSVM,'SVs','SupportVectors'));
+                pmu_beta_map = tmp.beta_scale * m.Alpha' * m.SupportVectors';
+%                 predAndLoss.resubPredict = m.resubPredict;
+%                 predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
+%                 predAndLoss.resubLossEps = m.resubLoss('LossF','eps');
+                
             else % we don't need to do any computations since w should already contain a scaled/averaged model
                 ws = []; % we'll accumulate in here
                 for mm = 1 : numel(m.Trained)
@@ -121,8 +123,16 @@ function parallel_step1_batch_fcn_lessoverhead(tmp)
                 end
                 w = mean(ws,2);
                 pmu_beta_map = w; % here contains an average of the crossvalidated fold models' beta values
+                
+%                 predAndLoss.resubPredict = m.kfoldPredict;
+%                 predAndLoss.resubLossMSE = m.kfoldLoss('LossF','mse');
+%                 predAndLoss.resubLossEps = m.kfoldLoss('LossF','eps');
+                
             end
         end
+        predAndLoss= 'aaa'
+       
+        allPredAndLoss{PermIdx} = predAndLoss;
         
         tmp_map = zeros(tmp.dims); % make a zeros template....        
         tmp_map(tmp.l_idx) = pmu_beta_map; % return the lesion data to their lidx indices...

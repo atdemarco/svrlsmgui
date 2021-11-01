@@ -1,14 +1,12 @@
 function parameters = GetDefaultParameters(varargin) % (handles)
+    parameters.PERMIT_DOUBLE_DISSOCIATIONS = true; % new v 2. this will reveal code chunks that permit double dissociations or not
+    parameters.run_double_dissociation = false; % this wlil be set to true when the
+    parameters.double_dissociation_behaviors = {'',''}; % empty by default
+    
     % To add: make this a "default" .mat file, configurable in preferences...
     parameters.gui_version = 0.0;  % default.
     parameters.populated_to_gui = false; % default to false.
-    if nargin > 0
-%        if ishandle(varargin{1})
-            parameters.populated_to_gui = true; %handles = varargin{1}; % called figure gui.
-%        else
-%            error('unknown input argument... should be figure handle or nothing')
-%        end
-    end
+    if nargin > 0, parameters.populated_to_gui = true; end % called figure gui.
     
     % These next two lines are from Nov 2019 for applying a mask to the data
     parameters.use_analysis_mask = false;
@@ -17,12 +15,6 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     parameters.method.mass_univariate = false; % if true, use mass univariate LSM, otherwise use SVR
     
     parameters.useLibSVM = 0; % now try to default to MATLAB ...
-%     if handles.details.libsvm
-%         parameters.useLibSVM = 1; % 1 = libSVM and 0 = MATLAB
-%     else 
-%         parameters.useLibSVM = 0; % 1 = libSVM and 0 = MATLAB
-%     end
-
     parameters.svscaling = 100; % defaults to max (100th percentile) - added 9/29/17
 
     options = lsmtb_options; % should be made obsolete some time soon!
@@ -50,14 +42,14 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     parameters.cfwer_p_value = .05; % do we want to stick with tihs as default?
 
     % defaults -- can be set manually, but will be overridden if optimization is on.
-    parameters.gamma = 5; % from Zhang et al., 2014 -- libsvm uses this
-    parameters.sigma = gamma2sigma(parameters.gamma); % matlab uses this
+    %parameters.gamma = 5; % from Zhang et al., 2014 -- libsvm uses this
+    gamma = 5; % from Zhang et al., 2014 -- libsvm uses this
+    parameters.sigma = gamma2sigma(gamma); % matlab uses this
     parameters.cost = 30; % from Zhang et al., 2014
     parameters.epsilon = .1; % default from libSVM for epsilon.
     parameters.standardize = true; % default behavior from Zhang et al, 2014
 
     % when current setting equals this, a (default) string will appear in the menu.
-    parameters.svr_defaults.gamma = parameters.gamma;
     parameters.svr_defaults.sigma = parameters.sigma;
     parameters.svr_defaults.cost = parameters.cost;
     parameters.svr_defaults.epsilon = parameters.epsilon;
@@ -91,10 +83,10 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     parameters.summary.cfwer_diagnostics = true; % handles.summary_cfwerdiagnostics
     parameters.summary.variable_diagnostics = true; % handles.model_variablediagnostics
     parameters.summary.cluster_stability = true; % handles.summary_clusterstability
-    parameters.summary.hyperparameter_optimization_record = false; % handles.summary_paramoptimization
+    parameters.summary.hyperparameter_optimization_record = true; % false; % handles.summary_paramoptimization <<< Now true in 2.0
     parameters.summary.parameter_assessment = true; % handles.summary_parameterassessment
     parameters.summary.lesion_overlap = true; %handles.summary_lesionoverlap
-    parameters.summary.predictions = false; % write out predictions with r squared and whatnot
+    parameters.summary.predictions = true; % false; % write out predictions with r squared and whatnot <<< Now true in 2.0
 
     % debug save output options
     parameters.SavePreThresholdedPermutations = 0;
@@ -111,7 +103,7 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     % Hyperparameter Optimization - new as of Feb 2018
     parameters.optimization.do_optimize = false; % default.
     parameters.optimization.verbose_during_optimization = false; % spit out the progress?
-    parameters.optimization.search_strategy = 'Bayes Optimization'; % or 'Grid Search' or 'Random Search'
+    parameters.optimization.search_strategy = 'Grid Search'; % 'Bayes Optimization'; % or 'Grid Search' or 'Random Search' % < Default in <2 was Bayes Opt with 200 iterations... now it's Grid.
     parameters.optimization.objective_function = 'Resubstitution Loss'; % 'Predict Behavior'; % or 'Maximum Correlation'
     parameters.optimization.iterations = 200; % by default allow 200 iterations for optimization.
     parameters.optimization.grid_divisions = 10; % by default, use 10 grid divisions...

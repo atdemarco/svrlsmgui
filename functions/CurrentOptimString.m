@@ -2,21 +2,15 @@ function optim_string = CurrentOptimString(parameters)
     % assemble a string summarizing the current optimization choices
     % obj function (search strategy, # iters/divs)
     switch parameters.optimization.search_strategy 
-        case 'Bayes Optimization'
-            strategy_string = 'bayopt';
-        case 'Grid Search'
-            strategy_string = 'grid';
-        case 'Random Search'
-            strategy_string = 'rand';
-        otherwise
-            error('Unknown search strategy string.')
+        case 'Bayes Optimization', strategy_string = 'bayopt';
+        case 'Grid Search', strategy_string = 'grid';
+        case 'Random Search', strategy_string = 'rand';
+        otherwise, error('Unknown search strategy string.')
     end
 
     switch parameters.optimization.search_strategy 
-        case 'Grid Search'
-            auxstr = ['(' strategy_string ', ' num2str(parameters.optimization.grid_divisions) ' divs)'];
-        otherwise
-            auxstr = ['(' strategy_string ', ' num2str(parameters.optimization.iterations) ' iters)'];
+        case 'Grid Search', auxstr = ['(' strategy_string ', ' num2str(parameters.optimization.grid_divisions) ' divs)'];
+        otherwise, auxstr = ['(' strategy_string ', ' num2str(parameters.optimization.iterations) ' iters)'];
     end
 
     switch parameters.optimization.objective_function

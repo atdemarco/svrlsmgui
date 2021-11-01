@@ -1,6 +1,7 @@
-function [handles,parameters] = step1_notparallel(handles,parameters,variables)
+function [handles,parameters,predAndLoss] = step1_notparallel(handles,parameters,variables)
     % This is where we'll save our GBs of permutation data output...
     parameters.outfname_big = fullfile(variables.output_folder.clusterwise,['pmu_beta_maps_N_' num2str(parameters.PermNumVoxelwise) '.bin']);
+    predAndLoss= {}; % reserve so in case we're not using svr, we have something to return...
     
     %% Try to use cache to skip this step by relying on cached permutation data
     if can_skip_generating_beta_perms(parameters,variables)
@@ -24,27 +25,20 @@ function [handles,parameters] = step1_notparallel(handles,parameters,variables)
             for vox = 1 : size(variables.lesion_dat,2)
                  [Q, R] = qr(trial_score, 0); % use the householder transformations to compute the qr factorization of an n by p matrix x.
                  y = double(variables.lesion_dat(:,vox));% / 10000; % why divide by 10,000?
-                 %betas(vox) = R \ (Q' * y);  % equivalent to fitlm's output: lm.Coefficients.Estimate
                  pmu_beta_map(vox) = R \ (Q' * y);  % equivalent to fitlm's output: lm.Coefficients.Estimate
             end
         else % Estimate via multivariate svr
-            % Which package to use to compute SVR solution
-            if parameters.useLibSVM % then use libSVM
-                hyperparms = hyperparmstruct(parameters);
-                libsvmstring = get_libsvm_spec(hyperparms.cost,hyperparms.gamma,hyperparms.epsilon); % Standardization is already applied.
-                m = svmtrain(trial_score,sparse(variables.lesion_dat),libsvmstring); %#ok<SVMTRAIN>
-            else % use MATLAB
-                if PermIdx == 1, variables.orig_one_score = variables.one_score; end % store this
-                variables.one_score = trial_score; % this is so we can use the same ComputeMatlabSVRLSM function :)
-                [m,w,~] = ComputeMatlabSVRLSM(parameters,variables); % ComputeMatlabSVRLSM will utilize our optimized parameters if available...
-                if PermIdx == parameters.PermNumVoxelwise, variables.one_score = variables.orig_one_score; end % restore this once we're done all our permutations
-            end
+            if PermIdx == 1, variables.orig_one_score = variables.one_score; end % store this
+            variables.one_score = trial_score; % this is so we can use the same ComputeMatlabSVRLSM function :)
+            [m,w,~,predAndLoss] = ComputeMatlabSVRLSM(parameters,variables); % ComputeMatlabSVRLSM will utilize our optimized parameters if available...
+            
+            predAndLoss{PermIdx} = predAndLoss; % store ... we accumulate..
+            
+            if PermIdx == parameters.PermNumVoxelwise, variables.one_score = variables.orig_one_score; end % restore this once we're done all our permutations
 
             % Compute the beta map here (but only if we didn't already compute it already by necessity via crossvalidation)
             if ~parameters.crossval.do_crossval % conditional added to support crossvalidated betamap option in June 2019
-                alpha = m.(myif(parameters.useLibSVM,'sv_coef','Alpha'))'; % note dynamic field reference
-                SVs = m.(myif(parameters.useLibSVM,'SVs','SupportVectors')); % note dynamic field reference
-                pmu_beta_map = variables.beta_scale * alpha * SVs;
+                pmu_beta_map = variables.beta_scale * m.Alpha * m.SupportVectors;
             else % use pre-computed (and averaged) beta map(s) -- this should only be available with svr in matlab specifically (not mass univariate, and not libsvm right now)
                 pmu_beta_map = w; % here contains an average of the crossvalidated fold models' beta values, so we don't have to scale or do anything here, it's already all done in the ComputeMatlabSVRLSM() function
             end

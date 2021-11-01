@@ -1,6 +1,5 @@
 function variables = run_beta_permutations(parameters, variables, beta_map,handles)
     % used to be called 'run_beta_PMU2.m' which was the refactoring of run_beta_PMU.m - the original
-   
     parameters = ShortenTailString(parameters); % set parameters.tailshort to 'pos','neg', or 'two'
     variables.ori_beta_vals = beta_map(variables.m_idx).'; % Store original observed beta values.
 
@@ -13,8 +12,13 @@ function variables = run_beta_permutations(parameters, variables, beta_map,handl
     % this is because m_idx contains voxels that are included in our analysis (meets minimum lesion cutoff)
     % and l_idx contains all voxels with at least one lesion -- all of those voxels (all l_idx are submitted to the svr analysis).
     % but we only save out m_idx indices, and only perform sorting and pval conversionm etc with those m_idx indices
-    [handles,parameters] = step1(handles,parameters,variables);
+    [handles,parameters,predAndLoss] = step1(handles,parameters,variables);
 
+    variables.predAndLoss_perms = predAndLoss; % store so we get them back in our original caller function
+
+    assignin('base','variables',variables)
+    error('a')
+    
     %% Calculate the thresholds (indices, whatnot) based on user settings.
     thresholds = calculate_thresholds(parameters,variables);
 

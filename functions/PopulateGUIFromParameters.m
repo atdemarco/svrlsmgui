@@ -14,13 +14,12 @@ function handles = PopulateGUIFromParameters(handles)
     opts = detectImportOptions(handles.parameters.score_file);
     handles.scorefiledata = readtable(handles.parameters.score_file,opts); % added to support e.g., MAC CSV files 1/31/18
 
-    % tell user if registrycode is not a field
+   %% tell user if registrycode is not a field
     
-    fieldnames = handles.scorefiledata.Properties.VariableNames;
+   fieldnames = handles.scorefiledata.Properties.VariableNames;
     if ~any(strcmp(fieldnames,'RegistryCode'))
         msgbox('Note: The selected CSV file does not appear to have a "RegistryCode" column listing subject lesion files. Please correct this and reload this file, otherwise the analysis will not run.')
-        return
-        % in the future, try to guess which is the subject list volumn...
+        return % in the future, try to guess which is the subject list volumn...
     end
     
     % If file names parse as  all numbers, convert to cells...
@@ -68,7 +67,6 @@ function handles = PopulateGUIFromParameters(handles)
     handles.scorefile.total_lesions_found = sum(handles.scorefile.haslesion_file);
 
     %%
-
     set(handles.lesionfilepresenttextbox,'String',sprintf('%d/%d subjects have lesion files.',handles.scorefile.total_lesions_found,handles.scorefile.nsubs_in_scorefile))
     set(handles.behavioralscorepresenttextbox,'String',sprintf('%d/%d subjects have required scores.',num_subs_that_have_all_variables,handles.scorefile.nsubs_in_scorefile))
 
@@ -78,10 +76,31 @@ function handles = PopulateGUIFromParameters(handles)
     registrycode_column_name = 'RegistryCode';
     registrycode_column = strcmp(registrycode_column_name,tmp);
     tmp(registrycode_column) = []; % remove.
-    % %
+    
+    %%
     
     set([handles.scorenamepopupmenu handles.realcovariateslistbox handles.potentialcovariateslist handles.addcovariate handles.removecovariate],'enable','on')
-    set([handles.scorenamepopupmenu handles.potentialcovariateslist],'String',tmp);
+    
+    %%
+    
+    if handles.parameters.PERMIT_DOUBLE_DISSOCIATIONS
+        set(handles.potentialcovariateslist,'String',tmp);
+        double_dissocation_is_undefined = any(cellfun(@numel,handles.parameters.double_dissociation_behaviors) == 0);
+        if double_dissocation_is_undefined % parameters.run_double_dissociation
+            double_dissociation_string = 'Dissociation: [define...]';
+        else
+            double_dissociation_string = ['Dissociation: ' strjoin(handles.parameters.double_dissociation_behaviors,' and ')];
+        end
+        tmp{end+1} = double_dissociation_string;
+        set(handles.scorenamepopupmenu,'String',tmp);
+         if handles.parameters.run_double_dissociation
+            handles.parameters.score_name = double_dissociation_string;
+         end
+    else % v1 original way.
+        set([handles.scorenamepopupmenu handles.potentialcovariateslist],'String',tmp);
+    end
+    
+    %%
 
     desired_score_name_index = find(strcmp(handles.parameters.score_name,tmp));
 

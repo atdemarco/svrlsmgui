@@ -1,17 +1,11 @@
 function htmloutpath = SummarizeAnalysis(parmsfile)
-
-% Turn off this warning "Warning: Image is too big to fit on screen; displaying at 33% "
-% To set the warning state, you must first know the message identifier for the one warning you want to enable. 
-% Query the last warning to acquire the identifier.  For example: 
 warning('off', 'Images:initSize:adjustingMag');
 
 htmloutpath = [];
 parms=load(parmsfile);
 parms=parms.tosave;
 
-if isfield(parms,'do_make_summary') && ~parms.do_make_summary
-    return
-end
+if isfield(parms,'do_make_summary') && ~parms.do_make_summary, return; end
     
 parms.outdir = fullfile(parms.baseoutputdir,[parms.score_name ', ' lower(parms.tails)]); %  force lower
 
@@ -23,14 +17,10 @@ fprintf(parms.fileID,['<center><h1>SVR-LSMgui (v' num2str(parms.gui_version) ') 
 fprintf(parms.fileID,'<hr>'); %horizonal line and breaks
 
 % Note if the analysis does not appear to be completed...
-if ~parms.analysis_is_completed
-    fprintf(parms.fileID,'<p style="color:red;"><u>Note</u>: This analysis did not finish running.</p><br><br>\n');
-end
+if ~parms.analysis_is_completed, fprintf(parms.fileID,'<p style="color:red;"><u>Note</u>: This analysis did not finish running.</p><br><br>\n'); end
 
 %% Write the top summary narrative...
-if parms.summary.narrative
-    WriteSummaryNarrative(parms);
-end
+if parms.summary.narrative, WriteSummaryNarrative(parms); end
 
 %% For our pictures...
 parms.picturedir = fullfile(parms.outdir,'images');
@@ -318,9 +308,7 @@ end
 
 % Determine what output to summary depending on whether CFWER was chosen.
 if parms.summary.cfwer_diagnostics 
-    if parms.DoPerformPermutationTesting && parms.do_CFWER
-        WriteCFWERReport(parms);
-    end
+    if parms.DoPerformPermutationTesting && parms.do_CFWER, WriteCFWERReport(parms); end
 end
 
 if parms.summary.clusterwise_thresholded
@@ -357,10 +345,8 @@ if parms.summary.clusterwise_thresholded
 
         imdata = [];
 
-        if last_significant_cluster == 1 
-            plural=' was ';
-        else
-            plural='s were ';
+        if last_significant_cluster == 1, plural=' was ';
+        else, plural='s were ';
         end
 
         fprintf(parms.fileID,[num2str(last_significant_cluster) ' cluster' plural 'significant at p < ' strrep(num2str(parms.clusterwise_p),'0.','.') ' based on ' num2str(parms.PermNumVoxelwise) ' permutations.']);
@@ -438,29 +424,19 @@ if parms.summary.clusterwise_thresholded
 end
 
 %% Variable correlation diagnostics from behavioral nuisance model
-if parms.summary.variable_diagnostics 
-    WriteCorrelationDiagnostics(parms);
-end
+if parms.summary.variable_diagnostics, WriteCorrelationDiagnostics(parms); end
 
 %% Cluster correction stability plot
-if parms.summary.cluster_stability 
-    WriteClusterCorrectionStabilityPlot(parms);
-end
+if parms.summary.cluster_stability, WriteClusterCorrectionStabilityPlot(parms); end
 
 %% This is a report on the measure of the quality of the parameter, and uses optimalParameterReport()
-if parms.summary.parameter_assessment  
-    WriteOptimalParameterReport(parms);
-end
+if parms.summary.parameter_assessment, WriteOptimalParameterReport(parms); end
 
 %% Write info about hyperparameter optimization record...
-if parms.summary.hyperparameter_optimization_record 
-    WriteHyperParamOptimReport(parms); % this is a record of the hyperparameter optimization process
-end
+if parms.summary.hyperparameter_optimization_record , WriteHyperParamOptimReport(parms); end % this is a record of the hyperparameter optimization process
 
 %% Write info about predicting behavior 
-if parms.summary.predictions
-    WritePredictBehaviorReport(parms);
-end
+if parms.summary.predictions, WritePredictBehaviorReport(parms); end
 
 % Finish the html document
 FinishDocument(parms);

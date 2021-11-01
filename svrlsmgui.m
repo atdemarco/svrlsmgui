@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 04-Nov-2019 12:48:03
+% Last Modified by GUIDE v2.5 25-Oct-2021 11:57:08
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -45,44 +45,13 @@ end
 % --- Executes just before svrlsmgui is made visible.
 function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     handles.output = hObject; % Choose default command line output for svrlsmgui
-    
-    % Do we need to add the functions subdirectory to the path?
-    pathCell = regexp(path, pathsep, 'split');
-    myPath = fileparts(mfilename('fullpath'));
-    if ~any(strcmp(myPath,pathCell))
-        addpath(myPath)
-    end
-    
-    functionsPath = fullfile(myPath,'functions');
-    if ~any(strcmp(functionsPath,pathCell))
-        addpath(functionsPath)
-    end
-    
 
+    addPathsAsNecessary; % Add paths as necessary...
+    
     handles = ConfigureSVRLSMGUIOptions(handles);
     handles.details = CheckIfNecessaryFilesAreInstalled(handles);
-    
-    if handles.details.stats_toolbox && handles.details.spm && handles.details.libsvm
-        handles = UpdateProgress(handles,'All necessary functions are available...',1);
-        handles.parameters = GetDefaultParameters(handles);
-        handles = PopulateGUIFromParameters(handles);
-    elseif ~handles.details.spm 
-        handles = UpdateProgress(handles,'SPM12 functions not available. Download and/or add SPM12 to the MATLAB path and relaunch the SVRLSMGUI.',1);
-        handles = DisableAll(handles);
-    elseif ~handles.details.stats_toolbox && ~handles.details.libsvm
-        handles = UpdateProgress(handles,'No SVR algorithm available. Install Statistics Toolbox in MATLAB or compile and install libSVM and relaunch the GUI.',1);
-        handles = DisableAll(handles);
-    elseif ~handles.details.stats_toolbox && handles.details.libsvm % yes stats toolbox, no libsvm
-        handles = UpdateProgress(handles,'Only libSVM is available to compute images. MATLAB''s SVM will not be available.',1);
-        handles.parameters = GetDefaultParameters(handles);
-        handles = PopulateGUIFromParameters(handles);
-    elseif handles.details.stats_toolbox && ~handles.details.libsvm % no stats toolbox, yes libsvm
-        handles = UpdateProgress(handles,'Only MATLAB''s Stats Toolbox is available to compute images. libSVM will not be available.',1);
-        handles.parameters = GetDefaultParameters(handles);
-        handles = PopulateGUIFromParameters(handles);
-    end
 
-    handles.parameters.parallelize = handles.details.can_parallelize; % override default
+    handles = populateGUI(handles);
 
     % 0.02 - trying to clean it up to run on a variety of systems - 4/24/17
     % 0.03 - first version to be used by other individuals officially - 5/1/17
@@ -96,9 +65,20 @@ function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     %        hyperplane
     % 0.10 - January 2018 - fixing reported bugs
     % 0.15 - massive code refactoring and implementation of CFWER
+    % 2.0 - revision at end of 2021
     
-    handles.parameters.gui_version = 0.15; % version of the the gui
+    handles.parameters.gui_version = 2; % 0.15; % version of the the gui
     guidata(hObject, handles); % Update handles structure
+
+function addPathsAsNecessary
+    % Do we need to add the functions subdirectory to the path?
+    pathCell = regexp(path, pathsep, 'split');
+    myPath = fileparts(mfilename('fullpath'));
+    if ~any(strcmp(myPath,pathCell)), addpath(myPath); end
+    
+    functionsPath = fullfile(myPath,'functions');
+    if ~any(strcmp(functionsPath,pathCell)), addpath(functionsPath); end
+    
 
 function handles = DisableAll(handles)
     set(get(handles.analysispreferencespanel,'children'),'enable','off')
@@ -108,6 +88,21 @@ function handles = DisableAll(handles)
     set(handles.optionsmenu,'enable','off') % since viewing this menu references parameters that may not be loaded.  
     msgbox('One or more necessary component is missing from MATLAB''s path. Address the message in the SVRLSMgui window and restart this gui.')
 
+function handles = populateGUI(handles)
+    if handles.details.stats_toolbox && handles.details.spm
+        handles = UpdateProgress(handles,'All necessary functions are available...',1);
+        handles.parameters = GetDefaultParameters(handles);
+        handles = PopulateGUIFromParameters(handles);
+    elseif ~handles.details.spm 
+        handles = UpdateProgress(handles,'SPM12 functions not available. Download and/or add SPM12 to the MATLAB path and relaunch the SVRLSMGUI.',1);
+        handles = DisableAll(handles);
+    elseif ~handles.details.stats_toolbox
+         handles = UpdateProgress(handles,'No SVR algorithm available. Install Statistics Toolbox in MATLAB and then relaunch the GUI.',1);
+         handles = DisableAll(handles);
+    end
+
+    handles.parameters.parallelize = handles.details.can_parallelize; % override default
+
 function handles = UpdateCurrentAnalysis(handles,hObject)
     changemade = true; % default
 
@@ -115,13 +110,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'no_map_crossvalidation' % turns off crossvalidation...
         handles.parameters.crossval.do_crossval = false;
     case 'kfold_map_crossvalidation'
-        if handles.parameters.useLibSVM
-            changemade=false;
-            msgbox('Map crossvalidation not currently supported for libSVM - please switch implementation to MATLAB and try again.')
-            return
-        end
-        answer = inputdlg(sprintf('Enter the numbers of folds for crossvalidation.'), ...
-             'Number of folds', 1,{num2str(handles.parameters.crossval.nfolds)});
+        answer = inputdlg(sprintf('Enter the numbers of folds for crossvalidation.'), 'Number of folds', 1,{num2str(handles.parameters.crossval.nfolds)});
          if isempty(answer), return; end % cancel pressed
          str = str2num(answer{1});
          if isempty(str) || str <= 0 || ~isint(str)
@@ -218,7 +207,7 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
             set(handles.svr_parent_menu,'enable','on')
         end
         
-        if handles.details.libsvm || handles.details.stats_toolbox
+        if handles.details.stats_toolbox
             set(handles.multivariate_lsm_option,'enable','on')
         else
             handles.parameters.method.mass_univariate = true; % at least...
@@ -316,23 +305,21 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         handles.parameters.optimization.params_to_optimize.cost = ~handles.parameters.optimization.params_to_optimize.cost;
     case 'do_optimize_gamma_menu'
         if ~handles.parameters.optimization.params_to_optimize.sigma % then enabling it will prompt for new values...
-            useLibSVM = handles.parameters.useLibSVM; % for convenience.
-            parmname = myif(useLibSVM,'Gamma','Sigma'); % depending on what algorithm the user is using.
             defaultmin = handles.parameters.optimization.params_to_optimize.sigma_range_default(1);
             defaultmax = handles.parameters.optimization.params_to_optimize.sigma_range_default(2);
-            minmsg = sprintf('Minimum (default = %0.3f):',myif(useLibSVM,sigma2gamma(defaultmin),defaultmin)); % convert to gamma if necessary
-            maxmsg = sprintf('Maximum (default = %0.2f):',myif(useLibSVM,sigma2gamma(defaultmax),defaultmax)); % convert to gamma if necessary
+            minmsg = sprintf('Minimum (default = %0.3f):',defaultmin); % convert to gamma if necessary
+            maxmsg = sprintf('Maximum (default = %0.2f):',defaultmax); % convert to gamma if necessary
             msg = {minmsg,maxmsg};
             oldmin = handles.parameters.optimization.params_to_optimize.sigma_range(1);
             oldmax = handles.parameters.optimization.params_to_optimize.sigma_range(2);
-            defaultans = {num2str(myif(useLibSVM,sigma2gamma(oldmin),oldmin)),num2str(myif(useLibSVM,sigma2gamma(oldmax),oldmax))}; % convert to gamma if necessary
-            answer = inputdlg(msg,[parmname ' Range'],1,defaultans);  % display as gamma if necessary
+            defaultans = {num2str(oldmin),num2str(oldmax)}; % convert to gamma if necessary
+            answer = inputdlg(msg,'Sigma Range',1,defaultans);  % display as gamma if necessary
             if isempty(answer), return; end % cancel pressed
-            if any(cellfun(@isempty,answer)), warndlg(['Invalid ' parmname ' range.']); return; end
+            if any(cellfun(@isempty,answer)), warndlg('Invalid sigma range.'); return; end
             minval = str2num(answer{1}); maxval = str2num(answer{2});
-            if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg([parmname ' range values must be numbers.']); return; end % display as gamma if necessary
-            if ~all([minval maxval] > 0), warndlg([parmname ' range values must be positive.']); return; end % display as gamma if necessary
-            handles.parameters.optimization.params_to_optimize.sigma_range = sort([myif(useLibSVM,sigma2gamma(minval),minval) myif(useLibSVM,sigma2gamma(maxval),maxval)]); % convert gamma back to sigma if necessary.
+            if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Sigma range values must be numbers.'); return; end % display as gamma if necessary
+            if ~all([minval maxval] > 0), warndlg('Sigma range values must be positive.'); return; end % display as gamma if necessary
+            handles.parameters.optimization.params_to_optimize.sigma_range = sort([minval maxval]); % convert gamma back to sigma if necessary.
         end
 
         handles.parameters.optimization.params_to_optimize.sigma = ~handles.parameters.optimization.params_to_optimize.sigma;
@@ -396,13 +383,6 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         handles.parameters.optimization.do_optimize = false;
     case 'current_optimization_menu_option'
         handles.parameters.optimization.do_optimize = true; % will use whatever setting is configured.
-    
-	% Which SVR algorithm to use
-    case 'use_lib_svm'
-        handles.parameters.useLibSVM = 1;
-        handles.parameters.crossval.do_crossval = false; % not currently supported for libsvm...
-    case 'use_matlab_svr'
-        handles.parameters.useLibSVM = 0;        
     case 'save_pre_thresh'
         handles.parameters.SavePreThresholdedPermutations = ~handles.parameters.SavePreThresholdedPermutations;
     case 'retain_big_binary_file'
@@ -496,6 +476,30 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
     case 'scorenamepopupmenu' % User has changed the one_score in question...
         contents = get(gcbo,'string');
         newval = contents{get(gcbo,'value')};
+        handles.parameters.run_double_dissociation = false; % by default...
+
+        changemade = true; % ?
+        if contains(newval,'Dissociation')
+            % ok now get the user defined dissociation...
+            othercontents = contents(1:end-1); % the last one is  Dissocation...
+            
+            % remove previously selected covariates
+            selected_covariates = get(handles.realcovariateslistbox,'string');
+            selected_covariates(get(handles.realcovariateslistbox,'value'));
+            othercontents = setdiff(othercontents,selected_covariates); 
+            
+            [indx1,tf1] = listdlg('PromptString',{'Select Behavior 1:'},'SelectionMode','single','ListString',othercontents);
+            if isempty(indx1), return; end % make sure this was filled out
+            behav1 = othercontents{indx1};
+            residualcontents = setdiff(othercontents,behav1);
+            [indx2,tf2] = listdlg('PromptString',{'Select Behavior 2:'},'SelectionMode','single','ListString',residualcontents);
+            if isempty(indx2), return; end % make sure both were filled out.
+            behav2 = residualcontents{indx2};
+            %['Dissocate: ' behav1 ' & ' behav2]
+            handles.parameters.double_dissociation_behaviors = {behav1,behav2};
+            handles.parameters.run_double_dissociation = true;
+        end
+        
         if any(strcmp(newval,handles.parameters.control_variable_names))
             warndlg('This variable is already chosen as a covariate. If you''d like to use it as the outcome of interest, remove it as a covariate.')
             changemade = false;
@@ -741,23 +745,15 @@ function save_perm_data_Callback(hObject, eventdata, handles) % update the subit
     set(handles.save_thresholded_pmaps_cfwer,'Checked',yn{1+handles.parameters.SaveNullPMapsPostThresholding})
 
 function svrmenu_Callback(hObject, eventdata, handles)
-if handles.parameters.useLibSVM
-    set(handles.use_lib_svm,'checked','on')
-    set(handles.use_matlab_svr,'checked','off')
-else
-    set(handles.use_lib_svm,'checked','off')
-    set(handles.use_matlab_svr,'checked','on')
-end
-if handles.details.stats_toolbox
-    set(handles.use_matlab_svr,'enable','on')
-else
-    set(handles.use_matlab_svr,'enable','off')
-end
-if handles.details.libsvm
-    set(handles.use_lib_svm,'enable','on')
-else
+        set(handles.use_lib_svm,'checked','off')
+        set(handles.use_matlab_svr,'checked','on')
+
+    if handles.details.stats_toolbox
+        set(handles.use_matlab_svr,'enable','on')
+    else
+        set(handles.use_matlab_svr,'enable','off')
+    end
     set(handles.use_lib_svm,'enable','off')
-end
 
 function cost_menu_Callback(hObject, eventdata, handles)
     msg = sprintf('Enter new parameter value for Cost/BoxConstraint (default = %0.1f)',handles.parameters.svr_defaults.cost);
@@ -772,16 +768,15 @@ function cost_menu_Callback(hObject, eventdata, handles)
     end
    
 function gamma_menu_Callback(hObject, eventdata, handles)
-    useLibSVM = handles.parameters.useLibSVM; % for convenience.
-    parmname = myif(useLibSVM,'Gamma','Sigma'); % depending on what algorithm the user is using.
+    % This function used to switch out the name Gamma and Sigma depending on SVR implementation (matlab vs libsvm) - but in v2 it does not support libsvm.
     defaultval = handles.parameters.svr_defaults.sigma; 
-    msg = sprintf('Enter new parameter value for %s (default = %0.1f)',parmname,myif(useLibSVM,sigma2gamma(defaultval),defaultval)); % convert to gamma if necessary
+    msg = sprintf('Enter new parameter value for %s (default = %0.1f)','Sigma',defaultval);
     oldval = handles.parameters.sigma;
-    answer = inputdlg(msg,[parmname ' Parameter'],1,{num2str(myif(useLibSVM,sigma2gamma(oldval),oldval))}); % convert to gamma if necessary
+    answer = inputdlg(msg,'Sigma Parameter',1,{num2str(oldval)}); 
     if isempty(answer), return; end % cancel pressed
     numval = str2num(answer{1});
     if isnumeric(numval) && ~isempty(numval)
-        handles.parameters.sigma = myif(useLibSVM,gamma2sigma(numval),numval); % store as sigma, so convert input gamma to sigma if necessary...
+        handles.parameters.sigma = numval;
         handles.parameters.is_saved = 0;
         guidata(hObject, handles);
         handles = PopulateGUIFromParameters(handles);
@@ -830,25 +825,18 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
     if IgnoreUnsavedChanges(handles), delete(hObject); end
 
 function checkforupdates_Callback(hObject, eventdata, handles)
-    update_available = check_for_updates;
-    if ~update_available
-        msgbox('There are no updates available.')
-        return
-    end
-    choice = questdlg('New updates are available, would you like to download them?','Update SVRLSMGUI','Not now','Update now','Update now');
-    if strcmp(choice,'Not now'), return, end
-    get_new_version(handles)
-
+    disp('Option no longer supported.')
+    
 %% callbacks -- replace these in the future.
 function controlvariablepopupmenu_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+    handles = UpdateCurrentAnalysis(handles,hObject);
 
 function computebetamapcheckbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+    handles = UpdateCurrentAnalysis(handles,hObject);
 function computesensitivitymapcheckbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+    handles = UpdateCurrentAnalysis(handles,hObject);
 function analysisnameeditbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+    handles = UpdateCurrentAnalysis(handles,hObject);
 
 function permutation_unthresholded_checkbox_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
@@ -927,17 +915,14 @@ function parameters_menu_Callback(hObject, eventdata, handles)
         set(handles.cost_menu,'label',['Cost: ' num2str(handles.parameters.cost) myif(handles.parameters.svr_defaults.cost == handles.parameters.cost,' (default)','')],'enable','on');
     end
 
-    useLibSVM = handles.parameters.useLibSVM; % for convenience.
-    parmname = myif(useLibSVM,'Gamma','Sigma'); % depending on what algorithm the user is using.
     if do_opt && handles.parameters.optimization.params_to_optimize.sigma
         oldmin = handles.parameters.optimization.params_to_optimize.sigma_range(1);
         oldmax = handles.parameters.optimization.params_to_optimize.sigma_range(2);
-        label = [parmname ': optimize (' num2str(myif(useLibSVM,sigma2gamma(oldmin),oldmin)) ' - ' num2str(myif(useLibSVM,sigma2gamma(oldmax),oldmax)) ')'];
+        label = ['Sigma: optimize (' num2str(oldmin) ' - ' num2str(oldmax) ')'];
         set(handles.gamma_menu,'label',label,'enable','off');
     else 
-        cursigma = handles.parameters.sigma; % Display as gamma if use libSVM
-        cursigma = myif(useLibSVM,sigma2gamma(cursigma),cursigma); % Display as gamma if use libSVM
-        set(handles.gamma_menu,'label',[parmname ': ' num2str(cursigma) myif(handles.parameters.svr_defaults.sigma == handles.parameters.sigma,' (default)','')],'enable','on'); % Display as gamma if use libSVM
+        cursigma = handles.parameters.sigma; 
+        set(handles.gamma_menu,'label',['Sigma : ' num2str(cursigma) myif(handles.parameters.svr_defaults.sigma == handles.parameters.sigma,' (default)','')],'enable','on');
     end
     
     if do_opt && handles.parameters.optimization.params_to_optimize.epsilon
@@ -996,11 +981,9 @@ function parameters_to_optimize_menu_Callback(hObject, eventdata, handles)
         set(handles.do_optimize_cost_menu,'label',label,'checked','on')
     end
     
-    useLibSVM = handles.parameters.useLibSVM; % for convenience.
-    parmname = myif(useLibSVM,'Gamma','Sigma'); % depending on what algorithm the user is using, show gamma vs sigma...
     curmin = handles.parameters.optimization.params_to_optimize.sigma_range(1); % convert to sigma if necessary...
     curmax = handles.parameters.optimization.params_to_optimize.sigma_range(2); % convert to sigma if necessary...
-    label = [parmname ' (' num2str(myif(useLibSVM,sigma2gamma(curmin),curmin)) ' - ' num2str(myif(useLibSVM,sigma2gamma(curmax),curmax)) ')'];  % convert to sigma if necessary...
+    label = ['Sigma (' num2str(curmin) ' - ' num2str(curmax) ')'];  % convert to sigma if necessary...
     set(handles.do_optimize_gamma_menu,'label',label,'checked',myif(handles.parameters.optimization.params_to_optimize.sigma,'on','off'))
     
     if handles.parameters.optimization.params_to_optimize.epsilon
@@ -1013,13 +996,6 @@ function parameters_to_optimize_menu_Callback(hObject, eventdata, handles)
         set(handles.do_optimize_standardize_menu,'label',label,'checked','on')
     end
     
-    %set(handles.do_optimize_epsilon_menu,'enable','on')
-     
-    %dev1
-    %set(handles.do_optimize_standardize_menu,'enable','on') % there's a problem passing 'Standardize' hyperopt range to bayesopt... so don't allow optimization of it.
-        
-    %set(get(hObject,'children'),'enable','on')
-
 function crossvalidation_parent_menu_Callback(hObject, eventdata, handles)
     set(get(hObject,'children'),'checked','off')
     set(handles.crossval_menu_option_kfold,'label',['K-Fold: ' num2str(handles.parameters.optimization.crossval.nfolds) ' folds' myif(handles.parameters.optimization.crossval.nfolds == handles.parameters.optimization.crossval.nfolds_default,' (default)','')])
@@ -1064,18 +1040,20 @@ function output_summary_menu_Callback(hObject, eventdata, handles)
         set(get(hObject,'children'),'enable','off')
         set(handles.summary_create_summary,'enable','on')
     end
-    disabled_objs = [handles.summary_paramoptimization handles.summary_prediction_menu];
-    set(disabled_objs,'checked','off','enable','off') % since this is disabled in this first release 
+
+% In second release now, enable these V
+
+%     disabled_objs = [handles.summary_paramoptimization handles.summary_prediction_menu];
+%     set(disabled_objs,'checked','off','enable','off') % since this is disabled in this first release 
     
 
 function requirements_menu_Callback(hObject, eventdata, handles)
-%set(get(handles.requirements_menu,'children'),'checked',false)
-set(handles.spm12_installed_menu,'checked',myif(handles.details.spm,'on','off')) % this will not specifically detect spm12 though!
-set(handles.libsvm_installed_menu,'checked',myif(handles.details.libsvm,'on','off'))
-set(handles.parcomp_toolbox_installed_menu,'checked',myif(handles.details.can_parallelize,'on','off'))
-set(handles.stats_toolbox_installed_menu,'checked',myif(handles.details.stats_toolbox,'on','off'))
-set(handles.matlab_version_installed_menu,'checked','on') % what's the requirement?
-set(get(handles.requirements_menu,'children'),'enable','off')
+    %set(get(handles.requirements_menu,'children'),'checked',false)
+    set(handles.spm12_installed_menu,'checked',myif(handles.details.spm,'on','off')) % this will not specifically detect spm12 though!
+    set(handles.parcomp_toolbox_installed_menu,'checked',myif(handles.details.can_parallelize,'on','off'))
+    set(handles.stats_toolbox_installed_menu,'checked',myif(handles.details.stats_toolbox,'on','off'))
+    set(handles.matlab_version_installed_menu,'checked','on') % what's the requirement?
+    set(get(handles.requirements_menu,'children'),'enable','off')
 
 function beta_options_menu_Callback(hObject, eventdata, handles)
 set(handles.ica_lesion_decompose_option,'checked',myif(handles.parameters.beta.do_ica_on_lesiondata,'on','off'))
