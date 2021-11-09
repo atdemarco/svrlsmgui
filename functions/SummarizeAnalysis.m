@@ -1,16 +1,16 @@
 function htmloutpath = SummarizeAnalysis(parmsfile)
-warning('off', 'Images:initSize:adjustingMag');
+    warning('off', 'Images:initSize:adjustingMag');
 
-htmloutpath = [];
-parms=load(parmsfile);
-parms=parms.tosave;
+    htmloutpath = [];
+    parms=load(parmsfile);
+    parms=parms.tosave;
 
-if isfield(parms,'do_make_summary') && ~parms.do_make_summary, return; end
+    if isfield(parms,'do_make_summary') && ~parms.do_make_summary, return; end
     
-parms.outdir = fullfile(parms.baseoutputdir,[parms.score_name ', ' lower(parms.tails)]); %  force lower
+    parms.outdir = fullfile(parms.baseoutputdir,[parms.score_name ', ' lower(parms.tails)]); %  force lower
 
-%% Start the html output file
-parms = StartDocument(parms);
+    %% Start the html output file
+    parms = StartDocument(parms);
 
 %% Heading describing the analysis
 fprintf(parms.fileID,['<center><h1>SVR-LSMgui (v' num2str(parms.gui_version) ') Output Overview\n</h1></center>']);
@@ -49,17 +49,33 @@ resliced_template_path = fullfile(fpath,['r' fname ext]);
 
 [template.hdr,template.img] = read_nifti(resliced_template_path); % read in resliced template...
 
+%% Resize images for better looking output if appropriate and possible
+targetSize = [79 95 79]; % this size gives us reasonable image output...
+needToResize = ~all(size(template.img) == targetSize);
+canImresize = ~isempty(which('imresize3'));
+if needToResize && canImresize
+    disp('Resizing template for output...')
+    template.img = imresize3(template.img,targetSize,'method','nearest');
+end
+
 % read lesion file
 [lesionoverlapimg.hdr,lesionoverlapimg.img]=read_nifti(lesionoverlapfile);
 nvoxels_any_lesion_val = nnz(lesionoverlapimg.img); % number of voxels with >0 lesions...
 [minlesionmask.hdr,minlesionmask.img]=read_nifti(parms.files_created.min_lesion_mask);
+nvox_meeting_lesion_minimum = nnz(minlesionmask.img(:)); % number of nonzero voxels in the mask...
+
+if needToResize && canImresize
+    disp('Resizing minimum lesion mask and lesion overlap mask for output...')
+    minlesionmask.img = imresize3(minlesionmask.img,targetSize,'method','nearest');
+    lesionoverlapimg.img = imresize3(lesionoverlapimg.img,targetSize,'method','nearest');
+end
 
 %% Config what we'll show in our images
 slice_bounds_percent = [.30 .80]; % highest and lowest percent over which to draw slices.
 nslices = 10; % n of slices to show
 
 %% Configure underlay image data
-maxtemplatecolor = max(template.img(:)) * .75; % scale it down to enhance brightness.
+maxtemplatecolor = max(template.img(:)) * .75; % scale it down to enhance contrast.
 template.img = template.img / maxtemplatecolor;
 template.img = template.img - min(template.img);
 template.img = (template.img ./ max(template.img(:)));
@@ -81,7 +97,7 @@ cmap = eval([cmapname '(255)']); % colormap for lesion overlay.
 for sl = 1 : numel(slices_to_show)
     % Anatomical, not RGB
     curanatomicalslice = rot90(template.img(:,:,slices_to_show(sl)));
-    curanatomicalslice=fliplr(curanatomicalslice);
+    curanatomicalslice = fliplr(curanatomicalslice);
 
     [R,G,B] = deal(curanatomicalslice); % tricky deal.
 
@@ -120,10 +136,8 @@ if parms.summary.lesion_overlap
     imwrite(imdata,fullfile(parms.picturedir,'lesion_overlap.png'));
 
     %% Label our output in the html file and put in the html tags to make it show up.
-
     fprintf(parms.fileID,'<hr>'); % horizonal line
     fprintf(parms.fileID,'<h2>Lesion overlaps</h2>');
-    nvox_meeting_lesion_minimum = nnz(minlesionmask.img(:)); % number of nonzero voxels in the mask...
     imstr = ['Overlap of lesions in the patient sample (N = ' num2str(nlesionstotal) '), a green outline indicates regions meeting the minimum lesion overlap criterion for the analysis (N = '  num2str(parms.lesion_thresh) ') totaling ' num2str(nvox_meeting_lesion_minimum) ' or approximately ' num2str(round(100*(nvox_meeting_lesion_minimum/nvoxels_any_lesion_val))) '% of the ' num2str(nvoxels_any_lesion_val) ' voxels with any lesions present.<br>'];
     fprintf(parms.fileID,'%s',['<p>' imstr '</p>']);
     cur_alttext = imstr;
@@ -140,6 +154,10 @@ cmapname='jet';
 cmap = eval([cmapname '(255)']);
 
 [unthreshbetamap.hdr,unthreshbetamap.img]=read_nifti(parms.files_created.unthresholded_betamap);
+if needToResize && canImresize
+    disp('Resizing unthresholded beta map for output...')
+    unthreshbetamap.img = imresize3(unthreshbetamap.img,targetSize,'method','nearest');
+end
 
 raw_unthreshbetamap_img = unthreshbetamap.img~=0;
 beta_scale_max = 10; % so the cmap values will fall within -10 to 10.
@@ -149,7 +167,6 @@ unthreshbetamap.img(unthreshbetamap.img==0) = 1; % this is a hack to avoid zeros
 imdata = [];
 
 if parms.summary.beta_map
-
     for sl = 1 : numel(slices_to_show)
         % Anatomical, not RGB
         curanatomicalslice = rot90(template.img(:,:,slices_to_show(sl)));
@@ -169,13 +186,13 @@ if parms.summary.beta_map
         end
 
         % Edge outline min lesion mask overlap slice in green now.
-        doOutline = false;
-        if doOutline
-            curminslice = rot90(minlesionmask.img(:,:,slices_to_show(sl))); %#ok<*UNRCH>
-            curminslice=fliplr(curminslice);
-            BW = edge(curminslice,'Canny'); % edge detect.
-            G(BW) = 1; % outline lesion min overlap region
-        end
+%         doOutline = false;
+%         if doOutline
+%             curminslice = rot90(minlesionmask.img(:,:,slices_to_show(sl))); %#ok<*UNRCH>
+%             curminslice=fliplr(curminslice);
+%             BW = edge(curminslice,'Canny'); % edge detect.
+%             G(BW) = 1; % outline lesion min overlap region
+%         end
 
         curRGB = cat(3,R,G,B); % combine into RGB
 
@@ -191,29 +208,15 @@ if parms.summary.beta_map
     imtxt = ['<img src="images/uncorr_beta_map.png" alt="' cur_alttext '" width="' image_widths '" height="' image_heights '">'];
     fprintf(parms.fileID,'%s\n',imtxt);
     fprintf(parms.fileID,'<br><br>\n');
-
 end
 
 %% Now vox thresholded pval map... (NOW we will write z maps from -3 to +3
-% normalize image to 255 to index out of color map (used to scale using JET from -10 to +10)
-% pmap = false;
-% if pmap
-%     cmapname = 'hot';
-%     cmap = eval([cmapname '(255)']);
-%     cmap=flipud(cmap); % new so small (extremely significant) values are hot.
-% else
-    cmapname='jet';% 'hot';%'jet';
-    cmap = eval([cmapname '(255)']);
-%end
-
+cmapname='jet';% 'hot';%'jet';
+cmap = eval([cmapname '(255)']);
     
 if parms.summary.voxelwise_thresholded 
     fprintf(parms.fileID,'<hr>');
- %   if pmap
- %       fprintf(parms.fileID,'<h2>Voxelwise thresholded P Values</h2>');
- %   else
-        fprintf(parms.fileID,'<h2>Voxelwise thresholded Z(P) Values </h2>');
- %   end
+    fprintf(parms.fileID,'<h2>Voxelwise thresholded Z(P) Values </h2>');
     
     if ~parms.DoPerformPermutationTesting % (voxelwisedir) % permutation testing wasn't conducted
         if ~parms.method.mass_univariate % then we are using svr-B maps...
@@ -224,7 +227,11 @@ if parms.summary.voxelwise_thresholded
     else % permutation was conducted so we have something to show >>
         %[threshpmap.hdr,threshpmap.img]=read_nifti(parms.files_created.thresholded_pmap);
         [threshzmap.hdr,threshzmap.img]=read_nifti(parms.files_created.thresholded_zmap);
-        
+        if needToResize && canImresize
+            disp('Resizing thresholded z map image for output...')
+            threshzmap.img = imresize3(threshzmap.img,targetSize,'method','nearest');
+        end
+
         %raw_threshpmap_img = threshpmap.img~=0; % a mask.
         raw_threshzmap_img = threshzmap.img~=0; % a mask.
         
@@ -235,14 +242,6 @@ if parms.summary.voxelwise_thresholded
         threshzmap.img = threshzmap.img + scalerange; % bring everything to zero.
         threshzmap.img = ceil(255 * (threshzmap.img ./ (2*scalerange)));
         threshzmap.img(threshzmap.img==0) = 1; % since we use these as indices into the cmap -- 0 gives error...
-        
-        % set color map range...
-    %    beta_scale_max = 10; % so the cmap values will fall within -10 to 10.
-    %     threshpmap.img = threshpmap.img + beta_scale_max;
-    %     threshpmap.img = ceil(255 * (threshpmap.img ./ (2*beta_scale_max)));
-
-        %threshpmap.img = ceil(255 * threshpmap.img); % since our values already range from 0 to 1.
-        %threshpmap.img(threshpmap.img==0) = 1; % this is a hack to avoid zeros because we can't index a zero out of the colormap...
 
         imdata = [];
 
@@ -254,10 +253,8 @@ if parms.summary.voxelwise_thresholded
             [R,G,B] = deal(curanatomicalslice); % tricky deal.
 
             % Uncorrected p map, will make RGB by indexing out of colormap
-            %corrpmap = fliplr(rot90(threshpmap.img(:,:,slices_to_show(sl))));
             corrpmap = fliplr(rot90(threshzmap.img(:,:,slices_to_show(sl))));
 
-            %relevant_pixels = find(fliplr(rot90(raw_threshpmap_img(:,:,slices_to_show(sl)))));
             relevant_pixels = find(fliplr(rot90(raw_threshzmap_img(:,:,slices_to_show(sl)))));
             if any(relevant_pixels(:))
                 R(relevant_pixels) = cmap(corrpmap(relevant_pixels),1);
@@ -281,17 +278,10 @@ if parms.summary.voxelwise_thresholded
         end
 
         if parms.do_CFWER
-            %imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-1,1,['CFWER p-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)']);
-            %imdata = PaintBarOnFrame(imdata,bar_location,cmapname,0,1,['CFWER p-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
-            %imstr = ['CFWER thresholded P values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations (v = XXX, FWE = XXX)'];
-            %imagename = 'cfwer_thresh_p_map.png';
             imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-1*scalerange,scalerange,['CFWER Z(p)-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
             imstr = ['CFWER thresholded Z(p) values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations (v = XXX, FWE = XXX)'];
             imagename = 'cfwer_thresh_z_of_p_map.png';
         else % showing the voxelwise thresholded result from the regular svr-beta thresholding
-%             imdata = PaintBarOnFrame(imdata,bar_location,cmapname,0,1,['p-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
-%             imstr = ['Voxelwise thresholded P values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations.'];
-%             imagename = 'vox_thresh_p_map.png';
             imdata = PaintBarOnFrame(imdata,bar_location,cmapname,-1*scalerange,scalerange,['Z(p)-value (p < ' num2str(parms.voxelwise_p) ', ' num2str(parms.PermNumVoxelwise) ' perms)'],-1);
             imstr = ['Voxelwise thresholded Z(P) values, p < ' num2str(parms.voxelwise_p) ' based on ' num2str(parms.PermNumVoxelwise) ' permutations.'];
             imagename = 'vox_thresh_z_of_p_map.png';
@@ -314,7 +304,6 @@ end
 if parms.summary.clusterwise_thresholded
     %% Now show cluster correction...
     fprintf(parms.fileID,'<hr>');
-    %fprintf(parms.fileID,'<h2>Clusterwise thresholded SVR-&beta; map</h2>');
     fprintf(parms.fileID,'<h2>Clusterwise thresholded P-map</h2>');
 
     if ~parms.DoPerformPermutationTesting
@@ -325,6 +314,12 @@ if parms.summary.clusterwise_thresholded
         fprintf(parms.fileID,'%s<br>',imstr);
     else % show clusters since we are just using regular null cluster distribution...
         [clusteridx.hdr,clusteridx.img]=read_nifti(parms.files_created.significant_cluster_indices);
+        
+        if needToResize && canImresize
+            disp('Resizing cluster index image for output...')
+            clusteridx.img = imresize3(clusteridx.img,targetSize,'method','nearest');
+        end
+
         clustertable = parms.files_created.clustertable;
         if exist(clustertable,'file')
             cluster_table = readtable(clustertable);
@@ -362,12 +357,8 @@ if parms.summary.clusterwise_thresholded
             clusteridxslice = fliplr(rot90(clusteridx.img(:,:,slices_to_show(sl))));
 
             % Uncorrected beta map, will make RGB by indexing out of colormap
-            %corrpmap = fliplr(rot90(threshpmap.img(:,:,slices_to_show(sl))));
             corrpmap = fliplr(rot90(threshzmap.img(:,:,slices_to_show(sl))));
-
-            %raw_relevant_pixels = fliplr(rot90(raw_threshpmap_img(:,:,slices_to_show(sl))));
             raw_relevant_pixels = fliplr(rot90(raw_threshzmap_img(:,:,slices_to_show(sl))));
-            
             relevant_pixels = corrpmap~=0 & raw_relevant_pixels~=0; % mask by both so we don't get 0--> 128's...
 
             if any(relevant_pixels(:))
@@ -385,7 +376,7 @@ if parms.summary.clusterwise_thresholded
             curRGB = cat(3,R,G,B); % combine into RGB
             rgbsize = size(curRGB);
 
-            f = figure('visible','off');
+            f = figure('visible','off');  % new in v 2 to make text look better ...?
             a=axes(f);
             imshow(curRGB,'Parent',a); %truesize; % one pixel per row/col
 
@@ -407,7 +398,6 @@ if parms.summary.clusterwise_thresholded
         end
 
         % we're still using jet for this plot...
-        %imdata = PaintBarOnFrame(imdata,bar_location,'jet',-10,10,['svr-\beta (clust p < ' strrep(num2str(parms.clusterwise_p),'0.','.') ', ' num2str(parms.PermNumVoxelwise) ' perms)'],1);
         imdata = PaintBarOnFrame(imdata,bar_location,'jet',-1*scalerange,scalerange,['Z(p)-value (p < ' strrep(num2str(parms.clusterwise_p),'0.','.') ', ' num2str(parms.PermNumVoxelwise) ' perms)'],0);
         imwrite(imdata,fullfile(parms.picturedir,'signif_cluster_slices.png'));
 

@@ -10,6 +10,7 @@ function [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variable
         Mdl = fitrsvm(variables.lesion_dat,variables.one_score,'ObservationsIn','rows', 'KernelFunction','rbf', 'KernelScale',sigma,'BoxConstraint',box,'Standardize',standardize,'Epsilon',epsilon);
         w = Mdl.Alpha.'*Mdl.SupportVectors;
         variables.beta_scale = 10 / max(abs(w)); 
+        w = w.'*variables.beta_scale;
         
         predAndLoss.resubPredict = Mdl.resubPredict;
         predAndLoss.resubLossMSE = Mdl.resubLoss('LossF','mse');
@@ -32,3 +33,7 @@ function [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variable
         predAndLoss.resubLossMSE = Mdl.kfoldLoss('LossF','mse');
         predAndLoss.resubLossEps = Mdl.kfoldLoss('LossF','eps');
     end
+    
+    predAndLoss.permData = variables.one_score; % really we want to be able to know what permutatoin was used here.
+    
+    

@@ -22,10 +22,7 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     
     %% Figure out what parameters we'll be using:
     % use matlab's -- note the cell array we're creating - it's fancy since later we'll parameters.step1.matlab_svr_parms{:}
-    parameters.step1.matlab_svr_parms = [{'BoxConstraint', hyperparms.cost, ...
-        'KernelScale', hyperparms.sigma, ...
-        'Standardize', hyperparms.standardize, ...
-        'Epsilon', hyperparms.epsilon} ...
+    parameters.step1.matlab_svr_parms = [{'BoxConstraint', hyperparms.cost, 'KernelScale', hyperparms.sigma, 'Standardize', hyperparms.standardize, 'Epsilon', hyperparms.epsilon} ...
         myif(parameters.crossval.do_crossval,{'KFold',parameters.crossval.nfolds},[])]; % this is for the crossvalidation option...
     tmp.matlab_svr_parms = parameters.step1.matlab_svr_parms;
     tmp.do_crossval = parameters.crossval.do_crossval; % also save this here too.
@@ -39,10 +36,6 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     tmp.dims = variables.vo.dim(1:3);
     tmp.lesiondata = sparse(variables.lesion_dat); % full() it on the other end - does that save time with transfer to worker overhead?!
     tmp.outpath = variables.output_folder.clusterwise;
-    
-    if ~parameters.method.mass_univariate % then we need to save beta_scale as well...
-        tmp.beta_scale = variables.beta_scale;
-    end
     
     tmp.m_idx = variables.m_idx;
     tmp.l_idx = variables.l_idx;
@@ -58,18 +51,22 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
         this_job_perm_indices = this_job_start_index:this_job_end_index;
         tmp.this_job_perm_indices = this_job_perm_indices; % update for each set of jobs...
         %f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,0,tmp);
-        f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,2,tmp);
+
+         f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,1,tmp); % 1 output...
     end
     
     %% Monitor job progress and allow user to bail, hopefully...
-    predAndLoss = cell(1,njobs); % reserve 
-
     for j = 1 : njobs
         check_for_interrupt(parameters) % allow user to interrupt
-        [idx,predAndLoss{j}] = fetchNext(f);
+        [idx,fetchedData] = fetchNext(f);
+        predAndLoss{idx} = fetchedData;
         svrlsm_waitbar(parameters.waitbar,j/njobs) % update waitbar progress...
     end
     
+    % assignin('base','predAndLoss',predAndLoss)
+    % error('look at predAndLoss results')
+    predAndLoss = [predAndLoss{:}];
+
     %% Now assemble all those individual files from each parfored permutation into one big file that we can memmap
     handles = UpdateProgress(handles,'Consolidating beta map permutation data...',1);
     svrlsm_waitbar(parameters.waitbar,0,'Consolidating beta map permutation data...');
@@ -91,7 +88,7 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
 function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
     tmp.lesiondata = full(tmp.lesiondata);  % we transfer it as sparse... so we need to full() it for all non-libSVM methods
 
-    allPredAndLoss = cell(1,numel(tmp.this_job_perm_indices)); % empty, in case we're using e.g. mass univariate
+    allPredAndLoss = {}; % cell(1,numel(tmp.this_job_perm_indices)); % empty, in case we're using e.g. mass univariate
     
     for PermIdx = tmp.this_job_perm_indices % each loop iteration will compute one whole-brain permutation result (regardless of LSM method)
         trial_score = tmp.permdata(:,PermIdx); % extract the row of permuted data.
@@ -103,15 +100,16 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
                  pmu_beta_map(vox) = R \ (Q' * y);  % equivalent to fitlm's output: lm.Coefficients.Estimate
             end
         else % use an SVR method
-            
             m = fitrsvm(tmp.lesiondata,trial_score,'KernelFunction','rbf', tmp.matlab_svr_parms{:});
             
             if ~tmp.do_crossval % then compute the beta map as usual...
-                pmu_beta_map = tmp.beta_scale * m.Alpha' * m.SupportVectors';
-%                 predAndLoss.resubPredict = m.resubPredict;
-%                 predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
-%                 predAndLoss.resubLossEps = m.resubLoss('LossF','eps');
-                
+                w = m.Alpha.'*m.SupportVectors;
+                beta_scale = 10/max(abs(w)); % no longer flexible beta_scale
+                pmu_beta_map = w.'*beta_scale;
+
+                predAndLoss.resubPredict = m.resubPredict;
+                predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
+                predAndLoss.resubLossEps = m.resubLoss('LossF','eps');
             else % we don't need to do any computations since w should already contain a scaled/averaged model
                 ws = []; % we'll accumulate in here
                 for mm = 1 : numel(m.Trained)
@@ -124,15 +122,14 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
                 w = mean(ws,2);
                 pmu_beta_map = w; % here contains an average of the crossvalidated fold models' beta values
                 
-%                 predAndLoss.resubPredict = m.kfoldPredict;
-%                 predAndLoss.resubLossMSE = m.kfoldLoss('LossF','mse');
-%                 predAndLoss.resubLossEps = m.kfoldLoss('LossF','eps');
-                
+                predAndLoss.resubPredict = m.kfoldPredict;
+                predAndLoss.resubLossMSE = m.kfoldLoss('LossF','mse');
+                predAndLoss.resubLossEps = m.kfoldLoss('LossF','eps');
             end
         end
-        predAndLoss= 'aaa'
-       
-        allPredAndLoss{PermIdx} = predAndLoss;
+        
+        predAndLoss.permData = trial_score; % so we can see if we're really using permutations...  
+        allPredAndLoss{end+1} = predAndLoss; %#ok<AGROW>
         
         tmp_map = zeros(tmp.dims); % make a zeros template....        
         tmp_map(tmp.l_idx) = pmu_beta_map; % return the lesion data to their lidx indices...

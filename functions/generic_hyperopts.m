@@ -1,6 +1,6 @@
 function results = generic_hyperopts(parameters,variables)
     % This attempts to optimize using matlab's default hyperparameter optimization options ... 
-    % because it doesn't use bayesopt, it cannot update the progress bar (not output function)
+    % because it doesn't use bayesopt, it cannot update the progress bar (no output function)
     
    % For clarity...
    lesiondata = variables.lesion_dat;
@@ -10,12 +10,10 @@ function results = generic_hyperopts(parameters,variables)
    params = hyperparameters('fitrsvm',lesiondata,behavdata); 
    
    % Turn optimize off for all hyperparams by default
-   for N = 1:numel(params)
-       params(N).Optimize = false;
-   end
+   for N = 1:numel(params), params(N).Optimize = false; end
    
    % Then turn them on as necessary, and set their ranges from the user analysis config
-   if parameters.optimization.params_to_optimize.sigma
+   if parameters.optimization.params_to_optimize.sigma % sigma = gamma = kernelscale
        params(strcmp({params.Name},'KernelScale')).Optimize = true;
        params(strcmp({params.Name},'KernelScale')).Range = [parameters.optimization.params_to_optimize.sigma_range];
    end
@@ -37,6 +35,7 @@ function results = generic_hyperopts(parameters,variables)
    optimizeropts = resolveoptimizeropts(parameters);
    
    hyperoptoptions = struct('AcquisitionFunctionName','expected-improvement-plus', optimizeropts{:});
+   
 %        'Optimizer', resolveoptimizer(parameters)
 %        'MaxObjectiveEvaluations',parameters.optimization.iterations, ...
 %        'UseParallel',parameters.parallelize, ...
@@ -45,36 +44,20 @@ function results = generic_hyperopts(parameters,variables)
 %        'Verbose',myif(parameters.optimization.verbose_during_optimization,2,0));
    
        % 'OutputFcn',@optim_outputfun); % verbose is either 0 or 2...
-   
-%         disp('OptimizeHyperparameters')
-%         params
-%         disp('HyperparameterOptimizationOptions')
-%         hyperoptoptions
    Mdl = fitrsvm(lesiondata,behavdata,'KernelFunction','rbf', 'OptimizeHyperparameters',params, 'HyperparameterOptimizationOptions', hyperoptoptions);
-
    results = Mdl.HyperparameterOptimizationResults;
-%    
-%     assignin('base','results',results)
-%     assignin('base','Mdl',Mdl)
-%    
-%    
-function optimizeropts = resolveoptimizeropts(parameters)
 
+function optimizeropts = resolveoptimizeropts(parameters)
     switch parameters.optimization.search_strategy 
-        case 'Bayes Optimization'
-            optimchoice = 'bayesopt';
-        case 'Grid Search' 
-            optimchoice = 'gridsearch';
-        case 'Random Search'
-            optimchoice = 'randomsearch';
+        case 'Bayes Optimization', optimchoice = 'bayesopt';
+        case 'Grid Search', optimchoice = 'gridsearch';
+        case 'Random Search', optimchoice = 'randomsearch';
     end
     
 %     parameters.optimization.crossval.do_crossval = true
 %     warning('forcing repartinioning on for testing')
     
-    repartitionopt = myif(parameters.optimization.crossval.do_crossval, ...
-        {'Repartition',parameters.optimization.crossval.repartition},{});
-    
+    repartitionopt = myif(parameters.optimization.crossval.do_crossval,{'Repartition',parameters.optimization.crossval.repartition},{});
     itersornumdivsstr = myif(strcmp(optimchoice,'gridsearch'),'NumGridDivisions','MaxObjectiveEvaluations'); % do we need grid divs or do we need max objective evaluations...?
     itersornumdivs = myif(strcmp(optimchoice,'gridsearch'),parameters.optimization.grid_divisions,parameters.optimization.iterations);
     parameters.optimization.crossval.do_crossval = true;
@@ -91,5 +74,3 @@ function optimizeropts = resolveoptimizeropts(parameters)
        'KFold', nfolds, ...
        'Verbose',myif(parameters.optimization.verbose_during_optimization,2,0), ...
        'ShowPlots',false};
-
-   %optimizeropts{:}

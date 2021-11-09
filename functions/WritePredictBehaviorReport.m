@@ -1,172 +1,114 @@
 function [] = WritePredictBehaviorReport(parms)
+    %% Write out the top of the section
     fprintf(parms.fileID,'<hr>');
     fprintf(parms.fileID,'<h2>Behavioral predictions</h2>');
 
-    %% Is there a record of saving this info?
-    if ~isfield(parms.files_created,'hyperparameter_quality')
-        fprintf(parms.fileID,'It appears that behavioral predictions were not computed.');
-        return
-    end
-
-    %% Load the fitted model
-    tmp = load(parms.files_created.hyperparameter_quality);
-    models = tmp.hyperparameter_quality.behavioral_predictions;
-    %nSVs = models.Mdl.IsSupportVector;
+    %% This will plot all 4 plots.
+    parms = plotModelPredictionAndLosses(parms); 
     
-    %XVMdl = models.XVMdl;
-    %try
-        behavior_name = parms.behavioralmodeldata.Properties.VariableNames{1};
+    %% Finish section
+    fprintf(parms.fileID,'<br><br>');
 
-        predicted_field = [behavior_name '_predicted'];
+function parms = plotModelPredictionAndLosses(parms)
+    fontopts={'FontSize',8};
+    predictions_narrative_text = 'Two types of model losses are calculated for the real data model, including mean square error and epsilon-insensitive loss.';
+    
+    %% Now plot 2 types of losses for real model vs the null models - print out the rank if permutations have been done
+    fields = {'MSE','Eps'};
+    fig=figure('visible','off','color','white'); % we'll plot a 2x2 set of results panes
+    for f = 1 : numel(fields)
+        sps(f) = subplot(2,2,f);
+        lossname = fields{f};
+        hold on;
+        xlabel(['Loss (' lossname ')'])
+        ylabel('Density over perms')
+        axis square
+        grid on
 
-        corrected_field = [behavior_name '_corrected']; % lesion vol corrected.
-        was_lesion_vol_corrected = any(strcmp(corrected_field,parms.behavioralmodeldata.Properties.VariableNames));
-
-        %% Build a new table we'll use to run out linear models on.
-        t.(behavior_name) = parms.behavioralmodeldata.(behavior_name); % original behavior...
-        t.lesion_vol = parms.behavioralmodeldata.LesionVolInternal; % this should always be calculated...?
-
-        %% calculate predicted behavior and transform it back into the original units...
-        %predicted_behavior= kfoldPredict(XVMdl);
-        predicted_behavior = models.XVMdl_predicted(:); % turn into column vector
-        t.(predicted_field) = (predicted_behavior / parms.original_behavior_transformation.maxmultiplier) - parms.original_behavior_transformation.minoffset;
-
-        %if was_lesion_vol_corrected % we can look at it with and without lesion volume correction...
-        %    t.(corrected_field) = parms.behavioralmodeldata.(corrected_field);
-        %end
-
-        t=struct2table(t);
-
-        lm_lesonly = fitlm(t,[behavior_name '~1+lesion_vol']); % lesion vol only
-        lm_predonly = fitlm(t,[behavior_name '~1+' predicted_field]); % pred behavior only
-        lm_both = fitlm(t,[behavior_name '~1+lesion_vol+' predicted_field]); % both
-
-        %assignin('base','lm_lesonly',lm_lesonly)
-
-        %T = evalc('disp(lm_lesonly)'); %evalc (c=capture)
-        %fprintf(parms.fileID,'<br>Model with lesion volume only<br>'); % break before next section
-
-        % style="text-align:right"
-
-        fprintf(parms.fileID,'<br>%s<br>',lm2table(lm_lesonly,'Behavioral Performance Predicted by Lesion Volume Only'));
-        fprintf(parms.fileID,'<br>%s<br>',lm2table(lm_predonly,'Behavioral Performance Predicted by SVR-Predicted Behavior Only'));
-        fprintf(parms.fileID,'<br>%s<br>',lm2table(lm_both,'Behavioral Performance Predicted Predicted by Lesion Volume and SVR-Predicted Behavior'));
-        fprintf(parms.fileID,'<br>');
-
-        [b,se,pval,inmodel,stats,nextstep,history] = stepwisefit([t.lesion_vol t.(predicted_field)],t.(behavior_name),'display','off');
-
-        if history.in(end) 
-            fprintf(parms.fileID,'A stepwise model (penter = .05, premove = .10) would include the predicted behavior.');
-        else
-            fprintf(parms.fileID,'A stepwise model (penter = .05, premove = .10) would exclude the predicted behavior.');
+        curfield = ['resubLoss' lossname];
+        realdata = parms.predAndLoss.(curfield);
+        
+        predictions_narrative_text = [predictions_narrative_text ' For ' lossname ' loss, the real model achieves a value of ' num2str(round(realdata,2)) ', ']; % append information  1/2
+        
+        if parms.DoPerformPermutationTesting
+            permdata = cell2mat(cellfun(@(x) x.(curfield),parms.predAndLoss_perms,'uni',false));
+            [n,edges] = histcounts(permdata,'binwidth',.1,'norm','pdf');
+            plot(edges(1:end-1),n,'k','linewidth',2);
+            p = plot([realdata realdata],get(gca,'ylim'),'r-','linewidth',2);
+            leg = legend({'Perm Mdls','Real Mdl'},fontopts{:});
+            % Low numbers are good, so we want to figure out the rank of the real data relative to the permutations
+            realdatarank = 1 + numel(permdata) - sum(realdata<permdata); % is this right?
+            predictions_narrative_text = [predictions_narrative_text ' which ranks ' num2str(realdatarank) '/' num2str(num2str(parms.PermNumVoxelwise)) ' relative to the randomly permuted models.'];
+        else % no permutations done
+            text(mean(get(gca,'xlim')),mean(get(gca,'ylim')),'No perms.','horiz','center','vert','mid','FontSize',8) % put label that no permutations have been done, so not putting anyhting in plot
+            predictions_narrative_text = [predictions_narrative_text 'but no permutation testing was performed so cannot calculate rank of real model loss, relative to random variability.'];
         end
-        fprintf(parms.fileID,'<br>');
-
-
-        %% Predicted behavior plot
-        f = figure('visible','off');
-        a=axes(f);
+        set(sps(f),'fontsize',7)
+    end
+    
+    %% Now plot correlation of real predictions vs null model predictions - print out the rank if permutations have been done.
+    sp = subplot(2,2,3);
+    
+    [realcorr,realcorrp] = corr(parms.one_score,parms.predAndLoss.resubPredict);
+    predictions_narrative_text = [predictions_narrative_text ' Predicted scores correlate with the real scores at r = ' num2str(round(realcorr,3)) ', p = ' num2str(round(realcorrp,3))];
+ 
+    if parms.DoPerformPermutationTesting % then we can plot and calculate everything.
+        permcorr = cell2mat(cellfun(@(x) corr(parms.one_score,x.resubPredict),parms.predAndLoss_perms,'uni',false));
+        
+        % Here, high numbers (high correlations) are good - figure out the rank of the real data relative to the permutations
+        realdatarank = 1 + numel(permcorr) - sum(realcorr>permcorr); % is this right?
+        predictions_narrative_text =[predictions_narrative_text ', which ranks ' num2str(realdatarank) '/' num2str(num2str(parms.PermNumVoxelwise)) ' relative to the randomly permuted models.'];
+       
+        [n,edges] = histcounts(permcorr,'binwidth',.05,'norm','pdf');
+        plot(edges(1:end-1),n,'k','linewidth',2);
         hold on;
+        plot([realcorr realcorr],get(gca,'ylim'),'r-','linewidth',2)
+        leg = legend({'Perm Mdls','Real Mdl'});
+        set(leg,fontopts{:})
+        set(gca,'xlim',[-1.01 1.01])
+    else % no permutations, so don't plot much...
+        text(mean(get(gca,'xlim')),mean(get(gca,'ylim')),'No perms.','horiz','center','vert','mid','FontSize',8) % put label that no permutations have been done, so not putting anyhting in plot
+        predictions_narrative_text =[predictions_narrative_text ', but no permutation testing performed so cannot rank the correlation relative to random variability.'];
+    end
+    
+    hold on;
+    xlabel('Score correl r(predicted,real)')
+    ylabel('Density over perms')
+    set(sp,'fontsize',7)
+    axis square
+    grid on
+    
+    %%  Plot real data vs. predicted plot - plot this no matter what, since we don't need permutations.
+    sp = subplot(2,2,4);
+    realdata = parms.one_score;
+    predicted = parms.predAndLoss.resubPredict;
+    scatter(realdata,predicted,10,'k') % ,'Parent',ax)
+    xlabel('Real')
+    if ~parms.crossval.do_crossval
+        crossvalstring = '(no crossval)';
+    else % e.g. "kfold  (folds=5)"
+        crossvalstring =  [parms.crossval.method ,' (folds=' num2str(parms.crossval.nfolds) ')'];
+    end
+    
+    ylabel(['Predicted ' crossvalstring])
+    axis square
+    grid on;
+    set(sp,'fontsize',7)
+    
+    set(fig,'Position',[0 0 800 400])
+    
+    %% Ok grab the resulting image, save it, and write the results to the output html overview file.
+    imdata = frame2im(getframe(fig));
+    close(fig)
+    thisfname = 'prediction_model_losses.png';
+    imwrite(imdata,fullfile(parms.picturedir,thisfname)); % save the image file
+    fprintf(parms.fileID,'<br><br>');
 
-        % plot(t.(behavior_name),'ko-','parent',a)
-        % hold on;
-        % plot(t.(predicted_field),'ro-','parent',a)
-        % xlabel(a,'Subject')
-        % ylabel(a,'Score')
-        % legend(a,{'Actual','Predicted'})
-        % title('Behavior predicted by SVR Model')
-        
-        % This was modified on 5/4/18 to be scatter-plot with 
-        % predicted score on the x and actual score on the y. and a best fit line.
-
-%         x = t.(predicted_field);
-%         y = t.(behavior_name);
-%         scatter(x,y,'ko');
-%         hold on;
-%         coef_fit = polyfit(x,y,1);
-%         y_fit = polyval(coef_fit,get(a,'xlim'));
-%         plot(xlim,y_fit,'r');
-%         
-%         xlabel('Predicted score')
-%         ylabel('Actual score')
-%         title('Predicted vs observed behavior and best fit line')
-%         pred_im = getframe(f); % capture whole figure.
-%         close(f); % close the fig
-% 
-%         predfname = 'predicted_behav_im.png';
-%         imwrite(pred_im.cdata,fullfile(parms.picturedir,predfname));
-%         imstr = 'Predicted behavior and observed behavior.';
-%         imtxt = ['<img src="images/' predfname '" alt="' imstr '">'];
-        
-        % This replaces the scatterplot code...
-        add_scatterplot(parms,t.(predicted_field),'SVR Predicted score',t.(behavior_name), ...
-            'Raw Score (uncorr)','SVR Predicted vs Raw Score (uncorr)','predicted_behav_im.png')
-        
-        %% lesion vol vs. raw score (uncorrected) - ok
-        add_scatterplot(parms,t.lesion_vol,'Lesion Volume',t.(behavior_name), ...
-            'Raw Score (uncorr)','Lesion Volume vs Raw Score (uncorr)','lesion_vol_vs_raw_score.png')
-        
-        %% SVR prediction vs. lesion-vol regressed score - ?
-        if was_lesion_vol_corrected
-            add_scatterplot(parms,t.(predicted_field),'SVR Predicted score',parms.behavioralmodeldata.(corrected_field), ...
-            'Lesion Vol Corrected Score','SVR Predicted vs Lesion Vol Corrected Score','predicted_behav_lesvol_im.png')
-        end
-        
-        %% combined regression prediction (lesion vol + SVR prediction) vs. raw score
-        % What does this mean?
-%         add_scatterplot(t.(predicted_field),'SVR Predicted score',t.(corrected_field), ...
-%             'Lesion Vol Corrected Score','SVR Predicted vs Lesion Vol Corrected Score','predicted_behav_lesvol_im.png')
-
-% 
-%     catch
-%         imtxt = 'ERROR HERE - no lesion correction info stored (Cause it wasnt conducted)';
-%         fprintf(parms.fileID,'%s',imtxt);
-%         fprintf(parms.fileID,'<br><br>'); % break before next section
-%     end
-
-    function add_scatterplot(parms,x,xlab,y,ylab,plottitle,fname)
-        f = figure('visible','off');
-        a=axes(f);
-        hold on;
-        scatter(x,y,'ko');
-        hold on;
-        coef_fit = polyfit(x,y,1);
-        y_fit = polyval(coef_fit,get(a,'xlim'));
-        plot(xlim,y_fit,'r');
-        curtitle = [plottitle ' and best fit line'];
-        title(curtitle);
-        xlabel(xlab);
-        ylabel(ylab);
-        im = getframe(f); % capture whole figure.
-        close(f); % close the fig
-        imwrite(im.cdata,fullfile(parms.picturedir,fname));
-        imtxt = ['<img src="images/' fname '" alt="' curtitle '">'];
-        fprintf(parms.fileID,'%s<br><br>',imtxt);
-        
-%     subplot(2,1,2)
-%     for c = 1 : size(data,1)
-%         h1 = plot(1:size(data,1),data.(['holdOut_' num2str(c)]),['b-']); % last will overwrite handle
-%         hold on;
-%     end
-%    h2 = plot(1:size(t,1),t.(behavior_name),'ko-');
-%    h3 = plot(1:size(t,1),t.(predicted_field),'ro-');
-%     xlabel(a,'Subject')
-%     ylabel(a,'Behavior')
-%     title('Behaviors predicted by SVR Model')
-%     legend([h2 h3],{'Actual','Predicted'})
-
-    %% Write results
-%     analysistime = strrep(strrep(char(datetime),' ','_'),':','-');
-%     data.Properties.Description = ['CRL''s SVR predict (version ' script_version ') run using design file ' design_file ', lesion directory ' lesion_dir ' on ' char(datetime) ' with behavior called ' behavior_name ' using minimum overlap of ' num2str(lesion_min_mask) '. Optimization was set to ' num2str(doOptimize) '.'];
-%     outfname = ['svr_predict_out_' behavior_name '_' analysistime '.xls'];
-%     outfname = fullfile(output_dir,outfname);
-%     if exist(output_dir,'dir')
-%         writetable(data,outfname) % save output...
-%     else
-%         warning('The specified output directory does not exist, so no output was saved.')
-%     end
-
-% function prepped = prep4output(mdl)
-%     prepped = evalc('disp(mdl)'); %evalc (c=capture)
-%     prepped = strrep(prepped,newline,'<br>'); % == char(10)
-%     
+    imstr = [predictions_narrative_text ' The figures below show the plots related to the model predictions,' ...
+        ' including two model loss metrics, and the correlation between the predicted data and real data. If ' ...
+        'permutation testing has been conducted, then model loss metrics and correlatedness are ranked for the ' ... 
+        'real model results relative to randomly permuted models.'];
+    fprintf(parms.fileID,'%s<br>',imstr);
+    cur_alttext = 'Plots related to behavioral predictions.';
+    imtxt = ['<img src="images/' thisfname '" alt="' cur_alttext '" width="70%" height="70%">'];
+    fprintf(parms.fileID,'%s',imtxt);

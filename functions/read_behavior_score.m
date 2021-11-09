@@ -3,6 +3,16 @@ function variables = read_behavior_score(parameters)
     variables.scorefiledata = readtable(parameters.score_file,opts); 
     %variables.covariates=[]; % placeholder. - we now use covariatestable to support nominal variables
     data = variables.scorefiledata; % shorthand...
+    
+%     if contains(parameters.score_name,'Dissociation')
+%         if parameters.dissociation_component
+% %             error('nede ot choose the proper behavior to run')
+%             behavs_being_dissociated = strtrim(strsplit(parameters.score_name,'and'));
+%             %% Dynamically set the score_name based on 'parameters.dissociation_component' integer for dissociation analyses!
+%             parameters.score_name = behavs_being_dissociated{parameters.dissociation_component};
+%         end
+%     end
+%     
     varsToCheck = [parameters.score_name parameters.control_variable_names];
     for v = 1 : numel(varsToCheck)
         curVarName = varsToCheck{v};

@@ -22,7 +22,7 @@ function varargout = svrlsmgui(varargin)
 
 % Edit the above text to modify the response to help svrlsmgui
 
-% Last Modified by GUIDE v2.5 25-Oct-2021 11:57:08
+% Last Modified by GUIDE v2.5 02-Nov-2021 10:41:58
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -66,6 +66,8 @@ function svrlsmgui_OpeningFcn(hObject, eventdata, handles, varargin)
     % 0.10 - January 2018 - fixing reported bugs
     % 0.15 - massive code refactoring and implementation of CFWER
     % 2.0 - revision at end of 2021
+    %       -- no libsvm support
+    %       -- no sv scaling
     
     handles.parameters.gui_version = 2; % 0.15; % version of the the gui
     guidata(hObject, handles); % Update handles structure
@@ -194,7 +196,6 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         set(handles.optimization_iterations_menu_option,'Label',['Iterations: ' num2str(handles.parameters.optimization.iterations)])
         set(handles.griddivs_optimization_menu_option,'Label',['Grid Divs: ' num2str(handles.parameters.optimization.grid_divisions)])
         return
-
     case 'summary_prediction_menu'
         handles.parameters.summary.predictions = ~handles.parameters.summary.predictions;
     case 'lsm_method_parent_menu'
@@ -370,7 +371,6 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         handles.parameters.optimization.search_strategy = 'Bayes Optimization';
     case 'gridsearch_option'
         handles.parameters.optimization.search_strategy = 'Grid Search';        
-
     % Optimization objective function choice
     case 'predictbehavior_optimize_menu_choice' % bayes opt predict behavior
         handles.parameters.optimization.objective_function = 'Predict Behavior';
@@ -477,8 +477,8 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         contents = get(gcbo,'string');
         newval = contents{get(gcbo,'value')};
         handles.parameters.run_double_dissociation = false; % by default...
-
         changemade = true; % ?
+        %% Special handling for dissociations by detecting "Dissociation" in the name. This initiates a 
         if contains(newval,'Dissociation')
             % ok now get the user defined dissociation...
             othercontents = contents(1:end-1); % the last one is  Dissocation...
@@ -536,12 +536,6 @@ switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what fiel
         else % update the parameter value.
             handles.parameters.clusterwise_p = str;
         end
-    case 'sv_scaling_95th_percentile'
-        handles.parameters.svscaling = 95;
-    case 'sv_scaling_99th_percentile'
-        handles.parameters.svscaling = 99;
-    case 'maxsvscaling'
-        handles.parameters.svscaling = 100; % default
     case 'npermutationseditbox' % This is voxelwise permutations
         str = str2num(get(gcbo,'string'));
         if isempty(str) || str<=0 || ~isint(str)
@@ -663,9 +657,7 @@ function saveasmenu_Callback(hObject, eventdata, handles)
         defaultsavename = fullfile(pwd,'Unnamed.mat');
     end
     [file,path] = uiputfile('*.mat','Save SVRLSM GUI parameter file as...',defaultsavename);
-    if file == 0 % then cancel was pressed
-        return;
-    end
+    if file == 0, return; end % then cancel was pressed
 
     handles.parameters.parameter_file_name = fullfile(path,file);
     handles = SaveSVRLSMGUIFile(handles,hObject); % do the actual save.
@@ -674,7 +666,7 @@ function quitmenu_Callback(hObject, eventdata, handles)
     close(gcf) % to trigger close request fcn which handles unsaved changes...
     
 function onlinehelpmenu_Callback(hObject, eventdata, handles)
-web('https://github.com/atdemarco/svrlsmgui/wiki')
+    web('https://github.com/atdemarco/svrlsmgui/wiki')
 
 function figure1_CreateFcn(hObject, eventdata, handles)
 
@@ -721,19 +713,6 @@ function optionsmenu_Callback(hObject, eventdata, handles)
     yn = {'off','on'};
     set(handles.parallelizemenu,'Checked',yn{1+handles.parameters.parallelize}) % is parallelization selected by user?
     set(handles.parallelizemenu,'Enable',yn{1+handles.details.can_parallelize}) % can we parallelize on this platform?
-
-function SVscalingmenu_Callback(hObject, eventdata, handles)
-    children = get(handles.SVscalingmenu,'children');
-    set(children,'Checked','off')
-
-    switch handles.parameters.svscaling
-        case 100 % these are ordered "backward" seeming, so 3rd is top in list
-            set(children(3),'Checked','on')
-        case 99
-            set(children(2),'Checked','on')
-        case 95
-            set(children(1),'Checked','on')
-    end
 
 function save_perm_data_Callback(hObject, eventdata, handles) % update the subitems with checkboxes
     yn = {'off','on'};
@@ -840,32 +819,33 @@ function analysisnameeditbox_Callback(hObject, eventdata, handles)
 
 function permutation_unthresholded_checkbox_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
+
 function permutation_voxelwise_checkbox_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
+
 function permutation_largest_cluster_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
+
 function progresslistbox_Callback(hObject, eventdata, handles)
-function maxsvscaling_Callback(hObject, eventdata, handles)
-    handles = UpdateCurrentAnalysis(handles,hObject);
+
 function potentialcovariateslist_Callback(hObject, eventdata, handles)
 
 function viewresultsbutton_Callback(hObject, eventdata, handles)
     LaunchResultsDirectory(hObject,eventdata,handles);
+    
 function npermutationsclustereditbox_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+    handles = UpdateCurrentAnalysis(handles,hObject);
 
 function parallelizemenu_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-function sv_scaling_99th_percentile_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
-function sv_scaling_95th_percentile_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+    handles = UpdateCurrentAnalysis(handles,hObject);
+    
 function debug_menu_Callback(hObject, eventdata, handles)
 
-function use_lib_svm_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+% function use_lib_svm_Callback(hObject, eventdata, handles)
+%     handles = UpdateCurrentAnalysis(handles,hObject);
+
 function use_matlab_svr_Callback(hObject, eventdata, handles)
-handles = UpdateCurrentAnalysis(handles,hObject);
+    handles = UpdateCurrentAnalysis(handles,hObject);
 
 function interrupt_button_Callback(hObject, eventdata, handles) % attempt to interrupt an ongoing analysis
     set(hObject,'enable','off') % so user doesn't click a bunch...
@@ -1018,7 +998,6 @@ function parent_cache_menu_Callback(hObject, eventdata, handles)
     set(handles.do_use_cache_menu,'Checked',yn{1+handles.parameters.do_use_cache_when_available})
     set(handles.retain_big_binary_file,'Checked',yn{1+handles.parameters.SavePermutationData})
     set(handles.retain_big_binary_pval_file,'Checked',yn{1+handles.parameters.SavePermutationPData})
-
 
 function output_summary_menu_Callback(hObject, eventdata, handles)
     yn = {'off','on'};

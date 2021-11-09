@@ -16,9 +16,6 @@ function variables = run_beta_permutations(parameters, variables, beta_map,handl
 
     variables.predAndLoss_perms = predAndLoss; % store so we get them back in our original caller function
 
-    assignin('base','variables',variables)
-    error('a')
-    
     %% Calculate the thresholds (indices, whatnot) based on user settings.
     thresholds = calculate_thresholds(parameters,variables);
 
