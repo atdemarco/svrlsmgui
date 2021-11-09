@@ -5,8 +5,6 @@ function p_vec = betas2pvals(betavec,tail)
             [~,p] = sort(betavec,'descend');
         case 'neg' % smallest (beta) values has significant p values
             [~,p] = sort(betavec,'ascend'); % this is default sort() behavior.
-        case 'two'
-            error('not supported atm')
     end   
    
     r = 1:length(betavec);

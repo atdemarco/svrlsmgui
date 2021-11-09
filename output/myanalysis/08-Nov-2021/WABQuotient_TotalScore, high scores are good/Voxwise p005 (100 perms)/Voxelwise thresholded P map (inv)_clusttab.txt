@@ -1,1 +1,0 @@
-idx	nvox	vol	maxint	minx	miny	minz	maxx	maxy	maxz	peakx	peaky	peakz	cmx	cmy	cmz

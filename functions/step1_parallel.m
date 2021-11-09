@@ -32,7 +32,7 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     nperms = parameters.PermNumVoxelwise;
     njobs = ceil(nperms/batch_job_size); % gotta round up to capture all indices
 
-    %% to reduce overhead transfering data to workers...
+    %% To reduce overhead transfering data to workers
     tmp.dims = variables.vo.dim(1:3);
     tmp.lesiondata = sparse(variables.lesion_dat); % full() it on the other end - does that save time with transfer to worker overhead?!
     tmp.outpath = variables.output_folder.clusterwise;
@@ -43,28 +43,24 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     tmp.permdata = permdata;
     tmp.use_mass_univariate = parameters.method.mass_univariate;
 
-    %% Schedule the jobs...
+    %% Schedule the parallel jobs
     p = gcp(); % get current parallel pool
     for j = 1 : njobs
         this_job_start_index = ((j-1)*batch_job_size) + 1;
         this_job_end_index = min(this_job_start_index + batch_job_size-1,nperms); % need min so we don't go past valid indices
         this_job_perm_indices = this_job_start_index:this_job_end_index;
         tmp.this_job_perm_indices = this_job_perm_indices; % update for each set of jobs...
-        %f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,0,tmp);
-
-         f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,1,tmp); % 1 output...
+        f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,1,tmp); % 1 output now
     end
     
-    %% Monitor job progress and allow user to bail, hopefully...
+    %% Monitor job progress and allow user to bail if needed
     for j = 1 : njobs
         check_for_interrupt(parameters) % allow user to interrupt
         [idx,fetchedData] = fetchNext(f);
-        predAndLoss{idx} = fetchedData;
+        predAndLoss{idx} = fetchedData; %#ok<AGROW>
         svrlsm_waitbar(parameters.waitbar,j/njobs) % update waitbar progress...
     end
     
-    % assignin('base','predAndLoss',predAndLoss)
-    % error('look at predAndLoss results')
     predAndLoss = [predAndLoss{:}];
 
     %% Now assemble all those individual files from each parfored permutation into one big file that we can memmap
@@ -78,7 +74,7 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
         end 
         curpermfilepath = fullfile(outpath,['pmu_beta_map_' num2str(PermIdx) '_of_' num2str(totalperms) '.bin']);
         cur_perm_data = memmapfile(curpermfilepath,'Format','single');
-        fwrite(fileID, cur_perm_data.Data,'single');
+        fwrite(fileID, cur_perm_data.Data,'single'); % write to the big file
         clear cur_perm_data; % remove memmap from memory.
         delete(curpermfilepath); % delete it since we don't want the data hanging around...
     end
