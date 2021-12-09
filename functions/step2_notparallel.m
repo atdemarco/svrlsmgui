@@ -33,15 +33,7 @@ function [parameters,variables,thresholds] = step2_notparallel(handles,parameter
                 fclose(fileID); % close the cfwer permutation data output file
             end
         end
-
-%         assignin('base','parameters',parameters)
-%         assignin('base','observed_beta',observed_beta)
-%         assignin('base','col',col)
-%         assignin('base','thresholds',thresholds)
-%         assignin('base','curcol_sorted',curcol_sorted)
-%         assignin('base','curcol',curcol)
-%         error('a')
-
+        
         % Compute beta cutoff values and a pvalue map for the observed betas.
         switch parameters.tailshort
             case 'pos' % - high scores bad 

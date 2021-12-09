@@ -1,19 +1,8 @@
 function WriteSummaryNarrative(parms)
-    % What software was used for SVR?
-    if parms.useLibSVM, svmtype = 'libSVM';
-    else svmtype = 'MATLAB'; end 
-
-    % Was the analysis parallelized?
-    if parms.parallelize,  parall = ''; 
-    else parall = 'not '; end 
-
-    % Add whether hyperparameter optimization was used
-    if parms.optimization.do_optimize, optim= ''; 
-    else optim = 'not '; end 
-    
-    % Was the analysis run from the gui?
-    if parms.runfromgui, runfromgui = '';
-    else runfromgui = ' not '; end 
+    if parms.useLibSVM, svmtype = 'libSVM'; else svmtype = 'MATLAB'; end  % What software was used for SVR?
+    if parms.parallelize,  parall = ''; else parall = 'not '; end  % Was the analysis parallelized?
+    if parms.optimization.do_optimize, optim= ''; else optim = 'not '; end  % Add whether hyperparameter optimization was used
+    if parms.runfromgui, runfromgui = ''; else runfromgui = ' not '; end  % Was the analysis run from the gui?
 
     % parms.excluded_subjects - has three fields depending on why subject was excluded
     % added 4/18/18 - forced concatenation of excluded_names on cell array rows with (:)'
@@ -36,45 +25,26 @@ function WriteSummaryNarrative(parms)
     descr = [ descr ' ' num2str(nsubs) ' subjects were listed for inclusion, and ' num2str(nexcluded) ' were excluded due to missing behavioral data, lesion data, or for having no voxels inside the minimum lesion cutoff mask (' excluded_names ').'];
 
     % add note about data being binarized, resampled, etc, as necessary.
-    if parms.imagedata.do_binarize 
-        descr = [descr ' Each lesion volume was binarized prior to the analysis.'];
-    end
-
-    if parms.imagedata.do_resample 
-        descr = [descr ' Each lesion volume was resampled to ' num2str(parms.imagedata.resample_to) ' mm³ voxels prior to analysis.'];
-    end
-
+    if parms.imagedata.do_binarize, descr = [descr ' Each lesion volume was binarized prior to the analysis.']; end
+    if parms.imagedata.do_resample, descr = [descr ' Each lesion volume was resampled to ' num2str(parms.imagedata.resample_to) ' mm³ voxels prior to analysis.']; end
+    if parms.use_analysis_mask, descr = [descr ' This analysis was carried out within a specified inclusion mask.']; end % Dec 2021
     
     % define some convenient anonymous functions
     nice_p = @(pval) myif(pval < .001,'p < .001',strrep(sprintf('p = %.2f', pval),' 0.',' .')); % enforce no leading unnecessary 0 
     nice_r = @(rho) strrep(sprintf('r = %.2f', rho),' 0.',' .'); % enforce no leading unnecessary 0 
     
-%     if pval < 0.05
-%         descr = [ descr ' Prior to any correction, the behavior under investigation is significantly correlated with lesion volume across the patient group, (' nice_r(rho) ', ' nice_p(pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
-%     elseif pval < .1
-%         descr = [ descr ' Prior to any correction, the behavior under investigation is marginally correlated with lesion volume across the patient group, (' nice_r(rho) ', ' nice_p(pval) '), suggesting a lesion volume control may be necessary for the analysis.'];
-%     else
-%         descr = [ descr ' Prior to any correction, the behavior under investigation is not significantly correlated with lesion volume across the patient group, (' nice_r(rho) ', ' nice_p(pval) '), suggesting a lesion volume control may not be necessary for the analysis.'];
-%     end
-
-    % descr = [ descr ' Prior to any correction, the behavior under investigation relates to lesion volume at ' nice_r(rho) '.'];  % removed
-    
     % Was it corrected for lesion volume?
-    if strcmp(parms.lesionvolcorrection,'None')
-        descr = [descr ' Data was not corrected for lesion volume.'];
-    else
-        descr = [descr ' Data was corrected for lesion volume via ' parms.lesionvolcorrection '.'];
+    if strcmp(parms.lesionvolcorrection,'None'), descr = [descr ' Data was not corrected for lesion volume.'];
+    else, descr = [descr ' Data was corrected for lesion volume via ' parms.lesionvolcorrection '.'];
     end
 
     % What were the covariates - were they used?
     n_behav_covariates = numel(parms.control_variable_names);
     if n_behav_covariates > 0
         if n_behav_covariates > 1
-            waswere = 'covariates were';
-            itthey = 'they';
+            waswere = 'covariates were'; itthey = 'they';
         else
-            waswere = 'covariate was';
-            itthey = 'it';
+            waswere = 'covariate was'; itthey = 'it';
         end
 
         % What text do we write for the covariate inclusion info...

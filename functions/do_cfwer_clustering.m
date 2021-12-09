@@ -60,8 +60,10 @@ function variables = do_cfwer_clustering(handles,parameters,variables,all_perm_d
     % All clusters, clusterwise thresholded with cluster p-values - not inverted
     variables.files_created.all_cluster_cluster_pvals = fullfile(variables.output_folder.cfwer,'All clusts clust pvals.nii');
     tmp = zeros(size(cimg));
-    for c = 1 : numel(T.clusterP) % i.e. all cluster indices...
-        tmp(cimg==c) = T.clusterP(c); 
+    if ~isempty(T)
+        for c = 1 : numel(T.clusterP) % i.e. all cluster indices...
+            tmp(cimg==c) = T.clusterP(c); 
+        end
     end
     variables.vo.fname = variables.files_created.all_cluster_cluster_pvals;
     svrlsmgui_write_vol(variables.vo, tmp);
@@ -69,8 +71,10 @@ function variables = do_cfwer_clustering(handles,parameters,variables,all_perm_d
     % All clusters, clusterwise thresholded with cluster p-values - inverted
     variables.files_created.all_cluster_cluster_pvals_inv = fullfile(variables.output_folder.cfwer,'All clusts clust pvals (inv).nii');
     tmp = zeros(size(cimg));
-    for c = 1 : numel(T.clusterP) % i.e. all cluster indices...
-        tmp(cimg==c) = 1-T.clusterP(c); % invert the p-value
+    if ~isempty(T)
+        for c = 1 : numel(T.clusterP) % i.e. all cluster indices...
+            tmp(cimg==c) = 1-T.clusterP(c); % invert the p-value
+        end
     end
     variables.vo.fname = variables.files_created.all_cluster_cluster_pvals_inv;
     svrlsmgui_write_vol(variables.vo, tmp);

@@ -107,493 +107,521 @@ function handles = populateGUI(handles)
 
 function handles = UpdateCurrentAnalysis(handles,hObject)
     changemade = true; % default
-
-switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what field it goes to -- and to validate
-    case 'no_map_crossvalidation' % turns off crossvalidation...
-        handles.parameters.crossval.do_crossval = false;
-    case 'kfold_map_crossvalidation'
-        answer = inputdlg(sprintf('Enter the numbers of folds for crossvalidation.'), 'Number of folds', 1,{num2str(handles.parameters.crossval.nfolds)});
-         if isempty(answer), return; end % cancel pressed
-         str = str2num(answer{1});
-         if isempty(str) || str <= 0 || ~isint(str)
-             changemade=false;
-             warndlg('Input must be a positive integer.');
-         else % update the parameter value.
-            handles.parameters.crossval.do_crossval = true;
-            handles.parameters.crossval.method = 'kfold';
-            handles.parameters.crossval.nfolds = str;
-         end
-    case 'hyperparm_quality_report_options'
-        set(handles.hyperparm_qual_n_folds,'Label',['Folds: ' num2str(handles.parameters.hyperparameter_quality.report.nfolds)])
-        set(handles.repro_index_subset_percentage,'Label',['Subset %: ' num2str(handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct)])
-        set(handles.hyperparm_qual_n_replications,'Label',['Replications: ' num2str(handles.parameters.hyperparameter_quality.report.n_replications)])
-    case 'hyperparm_qual_n_folds'
-        answer = inputdlg(sprintf('Enter the number of folds for hyperparameter quality testing:'), ...
-            'Number of folds', 1,{num2str(handles.parameters.hyperparameter_quality.report.nfolds)});
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 1 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer greater than 1.');
-        else % update the parameter value.
-            handles.parameters.hyperparameter_quality.report.nfolds = str;
-        end
-    case 'repro_index_subset_percentage'
-        answer = inputdlg('Enter the % of sample to use for computing w-map reproducibility index [0-1]:', ...
-            'Sample percent', 1,{num2str(handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct)});
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 0 || str >= 1 % ~isint(str)
-            changemade=false;
-            warndlg('Input must be a value between 0 and 1 (i.e. 0 and 100%).');
-        else % update the parameter value.
-            handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct = str;
-        end
-    case 'hyperparm_qual_n_replications'
-        answer = inputdlg(sprintf('Enter the number of replications for hyperparameter quality testing:'), ...
-            'Number of replications', 1,{num2str(handles.parameters.hyperparameter_quality.report.n_replications)});
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 1 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer greater than 1.');
-        else % update the parameter value.
-            handles.parameters.hyperparameter_quality.report.n_replications = str;
-        end
-    case 'image_data_options_parent_menu'
-        set(handles.do_binarize_data_menu_option,'Checked',myif(handles.parameters.imagedata.do_binarize,'on','off'))
-    case 'do_binarize_data_menu_option'
-        handles.parameters.imagedata.do_binarize = ~handles.parameters.imagedata.do_binarize;
-    case 'set_resolution_parent_menu_option'
-        set(handles.manual_analysis_resolution_menu,'Label',['Manual: ' num2str(handles.parameters.imagedata.resample_to) ' mm'], ...
-            'checked',myif(handles.parameters.imagedata.do_resample,'on','off'));
-        set(handles.do_not_resample_images_menu,'Checked',myif(handles.parameters.imagedata.do_resample,'off','on'));
-        %set(handles.manual_analysis_resolution_menu,'Enable','on') % Until we finish implementation.
-    case 'do_not_resample_images_menu'
-        handles.parameters.imagedata.do_resample = false; % turn resampling off.
-    case 'manual_analysis_resolution_menu'
-        answer = inputdlg(sprintf('Enter the size in mm for voxels to be resampled to.'), ...
-            'Resample size (mm)', 1,{num2str(handles.parameters.imagedata.resample_to)});
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 0 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer in millimeters.');
-        else % update the parameter value.
-            handles.parameters.imagedata.do_resample = true;
-            handles.parameters.imagedata.resample_to = str;
-        end
-    case 'open_lesion_folder_button'
-        OpenDirectoryInNativeWindow(handles.parameters.lesion_img_folder)
-    case 'open_score_file_button'
-        openFileInSystemViewer(handles.parameters.score_file)
-    case 'open_output_folder_button'
-        OpenDirectoryInNativeWindow(handles.parameters.analysis_out_path)
-    case 'ica_lesion_decompose_option'
-        handles.parameters.beta.do_ica_on_lesiondata = ~handles.parameters.beta.do_ica_on_lesiondata;
-    case 'requirements_menu'
-    case 'search_strategy_options'
-        set(handles.optimization_iterations_menu_option,'Label',['Iterations: ' num2str(handles.parameters.optimization.iterations)])
-        set(handles.griddivs_optimization_menu_option,'Label',['Grid Divs: ' num2str(handles.parameters.optimization.grid_divisions)])
-        return
-    case 'summary_prediction_menu'
-        handles.parameters.summary.predictions = ~handles.parameters.summary.predictions;
-    case 'lsm_method_parent_menu'
-        set(get(handles.lsm_method_parent_menu,'children'),'checked','off')
-        if handles.parameters.method.mass_univariate
-            set(handles.mass_univariate_menu_option,'checked','on')
-            set(handles.svr_parent_menu,'enable','off')
-        else
-            set(handles.multivariate_lsm_option,'checked','on')
-            set(handles.svr_parent_menu,'enable','on')
-        end
-        
-        if handles.details.stats_toolbox
-            set(handles.multivariate_lsm_option,'enable','on')
-        else
-            handles.parameters.method.mass_univariate = true; % at least...
-            set(handles.multivariate_lsm_option,'enable','off')            
-        end
-    case 'mass_univariate_menu_option'
-        handles.parameters.method.mass_univariate = true;
-    case 'multivariate_lsm_option'
-        handles.parameters.method.mass_univariate = false;
-    case 'svr_parent_menu'
-    case 'optimization_is_verbose_menu'
-        handles.parameters.optimization.verbose_during_optimization = ~handles.parameters.optimization.verbose_during_optimization;
-    case 'summary_lesionoverlap'
-        handles.parameters.summary.lesion_overlap = ~handles.parameters.summary.lesion_overlap;
-    case 'summary_paramoptimization'
-        handles.parameters.summary.hyperparameter_optimization_record = ~handles.parameters.summary.hyperparameter_optimization_record;
-    case 'summary_create_summary'
-        handles.parameters.do_make_summary = ~handles.parameters.do_make_summary;
-    case 'summary_narrative_summary'
-        handles.parameters.summary.narrative = ~handles.parameters.summary.narrative;
-    case 'summary_svrbetamap'
-        handles.parameters.summary.beta_map = ~handles.parameters.summary.beta_map;
-    case 'summary_voxelwise_thresholded'
-        handles.parameters.summary.voxelwise_thresholded = ~handles.parameters.summary.voxelwise_thresholded;
-    case 'summary_clusterwise_thresholded'
-        handles.parameters.summary.clusterwise_thresholded = ~handles.parameters.summary.clusterwise_thresholded;
-    case 'summary_cfwerdiagnostics'
-        handles.parameters.summary.cfwer_diagnostics = ~handles.parameters.summary.cfwer_diagnostics;
-    case 'model_variablediagnostics'
-        handles.parameters.summary.variable_diagnostics = ~handles.parameters.summary.variable_diagnostics;
-    case 'summary_clusterstability'
-        handles.parameters.summary.cluster_stability = ~handles.parameters.summary.cluster_stability;
-    case 'summary_parameterassessment'
-        handles.parameters.summary.parameter_assessment = ~handles.parameters.summary.parameter_assessment;
-    case 'do_use_cache_menu'
-        handles.parameters.do_use_cache_when_available = ~handles.parameters.do_use_cache_when_available;
-    case 'crossval_menu_option_none'
-        handles.parameters.optimization.crossval.do_crossval = false; % disable crossvalidation.
-    case 'crossval_menu_option_kfold'
-        msg = sprintf('Enter the number of folds for cross-validation (default = %d):',handles.parameters.optimization.crossval.nfolds_default);
-        answer = inputdlg(msg, ...
-            'Number of folds', 1,{num2str(handles.parameters.optimization.crossval.nfolds)});
-        warning('bug here - if you click cancel it causes an error - in future, embed the str<=0 and isint within the isempty... and do that with other str2num(answer{1})''s as well')
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 0 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer.');
-        else % update the parameter value.
-            handles.parameters.optimization.crossval.do_crossval = true; % enable crossvalidation.
-            handles.parameters.optimization.crossval.nfolds = str;
-        end
-        
-    case 'do_repartition_menu_option' % flip this choice.
-        handles.parameters.optimization.crossval.repartition = ~handles.parameters.optimization.crossval.repartition;
-    case 'standardize_menu' % set the value to use if not optimization
-        vals = {'true','false'};
-        msg = sprintf('Standardize value (default = %s):',myif(handles.parameters.svr_defaults.standardize,'true','false'));
-        s = listdlg('PromptString',msg,'SelectionMode','single', ...
-            'ListString',vals,'InitialValue',myif(handles.parameters.standardize,1,2), ...
-            'Name','Standardize Parameter','ListSize',[250 80]);
-       
-        if isempty(s)
-            changemade=false; % cancelled...
-        else
-            handles.parameters.standardize = str2num(vals{s}); % myif(v==1,true,false); % new value.
-        end
-        
-    case 'epsilon_menu' % set the value to use if not optimization
-        msg = sprintf('Enter new value for epsilon (default = %0.2f):',handles.parameters.svr_defaults.epsilon);
-        % add min and max range - dev1
-        answer = inputdlg(msg,'Epsilon Parameter',1,{num2str(handles.parameters.epsilon)});
-        if isempty(answer), return; end % cancel pressed
-        numval = str2num(answer{1});
-        if isnumeric(numval) && ~isempty(numval)
-            handles.parameters.epsilon = numval;
-        end
-
-    % Whether to allow optimization of given hyperparameter
-    case 'do_optimize_cost_menu'
-        if ~handles.parameters.optimization.params_to_optimize.cost % then enabling it will prompt for new values...
-            minmsg = sprintf('Minimum (default = %0.3f):',handles.parameters.optimization.params_to_optimize.cost_range_default(1));
-            maxmsg = sprintf('Maximum (default = %0.2f):',handles.parameters.optimization.params_to_optimize.cost_range_default(2));
-            msg = {minmsg,maxmsg};
-            defaultans = {num2str(handles.parameters.optimization.params_to_optimize.cost_range(1)),num2str(handles.parameters.optimization.params_to_optimize.cost_range(2))};
-            answer = inputdlg(msg,'Cost Range',1,defaultans);
+    
+    switch get(gcbo,'tag') % use gcbo to see what the cbo is and determine what field it goes to -- and to validate
+        case 'no_map_crossvalidation' % turns off crossvalidation...
+            handles.parameters.crossval.do_crossval = false;
+        case 'kfold_map_crossvalidation'
+            answer = inputdlg(sprintf('Enter the numbers of folds for crossvalidation.'), 'Number of folds', 1,{num2str(handles.parameters.crossval.nfolds)});
+             if isempty(answer), return; end % cancel pressed
+             str = str2num(answer{1});
+             if isempty(str) || str <= 0 || ~isint(str)
+                 changemade=false;
+                 warndlg('Input must be a positive integer.');
+             else % update the parameter value.
+                handles.parameters.crossval.do_crossval = true;
+                handles.parameters.crossval.method = 'kfold';
+                handles.parameters.crossval.nfolds = str;
+             end
+        case 'hyperparm_quality_report_options'
+            set(handles.hyperparm_qual_n_folds,'Label',['Folds: ' num2str(handles.parameters.hyperparameter_quality.report.nfolds)])
+            set(handles.repro_index_subset_percentage,'Label',['Subset %: ' num2str(handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct)])
+            set(handles.hyperparm_qual_n_replications,'Label',['Replications: ' num2str(handles.parameters.hyperparameter_quality.report.n_replications)])
+        case 'hyperparm_qual_n_folds'
+            answer = inputdlg(sprintf('Enter the number of folds for hyperparameter quality testing:'), ...
+                'Number of folds', 1,{num2str(handles.parameters.hyperparameter_quality.report.nfolds)});
             if isempty(answer), return; end % cancel pressed
-            if any(cellfun(@isempty,answer)), warndlg('Invalid Cost range.'); return; end
-            minval = str2num(answer{1}); maxval = str2num(answer{2});
-            if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Cost range values must be numbers.'); return; end
-            if ~all([minval maxval] > 0), warndlg('Cost range values must be positive.'); return; end
-            handles.parameters.optimization.params_to_optimize.cost_range = sort([minval maxval]);
-        end
-        
-        handles.parameters.optimization.params_to_optimize.cost = ~handles.parameters.optimization.params_to_optimize.cost;
-    case 'do_optimize_gamma_menu'
-        if ~handles.parameters.optimization.params_to_optimize.sigma % then enabling it will prompt for new values...
-            defaultmin = handles.parameters.optimization.params_to_optimize.sigma_range_default(1);
-            defaultmax = handles.parameters.optimization.params_to_optimize.sigma_range_default(2);
-            minmsg = sprintf('Minimum (default = %0.3f):',defaultmin); % convert to gamma if necessary
-            maxmsg = sprintf('Maximum (default = %0.2f):',defaultmax); % convert to gamma if necessary
-            msg = {minmsg,maxmsg};
-            oldmin = handles.parameters.optimization.params_to_optimize.sigma_range(1);
-            oldmax = handles.parameters.optimization.params_to_optimize.sigma_range(2);
-            defaultans = {num2str(oldmin),num2str(oldmax)}; % convert to gamma if necessary
-            answer = inputdlg(msg,'Sigma Range',1,defaultans);  % display as gamma if necessary
-            if isempty(answer), return; end % cancel pressed
-            if any(cellfun(@isempty,answer)), warndlg('Invalid sigma range.'); return; end
-            minval = str2num(answer{1}); maxval = str2num(answer{2});
-            if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Sigma range values must be numbers.'); return; end % display as gamma if necessary
-            if ~all([minval maxval] > 0), warndlg('Sigma range values must be positive.'); return; end % display as gamma if necessary
-            handles.parameters.optimization.params_to_optimize.sigma_range = sort([minval maxval]); % convert gamma back to sigma if necessary.
-        end
-
-        handles.parameters.optimization.params_to_optimize.sigma = ~handles.parameters.optimization.params_to_optimize.sigma;
-    case 'do_optimize_epsilon_menu'
-        if ~handles.parameters.optimization.params_to_optimize.epsilon % then enabling it will prompt for new values...
-            minmsg = sprintf('Minimum (default = %0.3f):',handles.parameters.optimization.params_to_optimize.epsilon_range_default(1));
-            maxmsg = sprintf('Maximum (default = %0.2f):',handles.parameters.optimization.params_to_optimize.epsilon_range_default(2));
-            msg = {minmsg,maxmsg};
-            defaultans = {num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(1)),num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(2))};
-            answer = inputdlg(msg,'Epsilon Range',1,defaultans);
-            if isempty(answer), return; end % cancel pressed
-            if any(cellfun(@isempty,answer)), warndlg('Invalid Epsilon range.'); return; end
-            minval = str2num(answer{1}); maxval = str2num(answer{2});
-            if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Epsilon range values must be numbers.'); return; end
-            if ~all([minval maxval] > 0), warndlg('Epsilon range values must be positive.'); return; end
-            handles.parameters.optimization.params_to_optimize.epsilon_range = sort([minval maxval]);
-        end
-        handles.parameters.optimization.params_to_optimize.epsilon = ~handles.parameters.optimization.params_to_optimize.epsilon;
-    case 'do_optimize_standardize_menu'
-        handles.parameters.optimization.params_to_optimize.standardize = ~handles.parameters.optimization.params_to_optimize.standardize;
-
-    % Optimization misc choices
-    case 'optimization_iterations_menu_option'
-        answer = inputdlg('Enter a new number of iterations:','Number of optimization iterations',1,{num2str(handles.parameters.optimization.iterations)});
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 0 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer.');
-        else % update the parameter value.
-            handles.parameters.optimization.iterations = str;
-        end
-    case 'griddivs_optimization_menu_option'
-        answer = inputdlg('Enter a new number of grid divisions:','Number of optimization grid divisions',1,{num2str(handles.parameters.optimization.grid_divisions)});
-        if isempty(answer), return; end % cancel pressed
-        str = str2num(answer{1});
-        if isempty(str) || str <= 0 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer.');
-        else % update the parameter value.
-            handles.parameters.optimization.grid_divisions = str;
-        end    
-        
-    % Optimization search strategy choice
-    case 'random_search_menu_option'
-        handles.parameters.optimization.search_strategy = 'Random Search';
-    case 'bayes_optimization_menu_choice'
-        handles.parameters.optimization.search_strategy = 'Bayes Optimization';
-    case 'gridsearch_option'
-        handles.parameters.optimization.search_strategy = 'Grid Search';        
-    % Optimization objective function choice
-    case 'predictbehavior_optimize_menu_choice' % bayes opt predict behavior
-        handles.parameters.optimization.objective_function = 'Predict Behavior';
-    case 'correlation_optimize_menu_choice' % maximum correlation w behavior
-        handles.parameters.optimization.objective_function = 'Maximum Correlation';
-    case 'resubloss_optimize_menu_choice'
-        handles.parameters.optimization.objective_function = 'Resubstitution Loss';
-    % Whether or not to optimize hyperparameters
-    case 'no_optimize_menu_choice'
-        handles.parameters.optimization.do_optimize = false;
-    case 'current_optimization_menu_option'
-        handles.parameters.optimization.do_optimize = true; % will use whatever setting is configured.
-    case 'save_pre_thresh'
-        handles.parameters.SavePreThresholdedPermutations = ~handles.parameters.SavePreThresholdedPermutations;
-    case 'retain_big_binary_file'
-        handles.parameters.SavePermutationData = ~handles.parameters.SavePermutationData;
-    case 'save_post_vox_thresh'
-        handles.parameters.SavePostVoxelwiseThresholdedPermutations = ~handles.parameters.SavePostVoxelwiseThresholdedPermutations;
-    case 'save_post_clusterwise_thresholded'
-        handles.parameters.SavePostClusterwiseThresholdedPermutations= ~handles.parameters.SavePostClusterwiseThresholdedPermutations;
-    case 'save_unthresholded_pmaps_cfwer'
-        handles.parameters.SaveNullPMapsPreThresholding = ~handles.parameters.SaveNullPMapsPreThresholding;
-    case 'save_thresholded_pmaps_cfwer'
-        handles.parameters.SaveNullPMapsPostThresholding = ~handles.parameters.SaveNullPMapsPostThresholding;
-    case 'retain_big_binary_pval_file'
-        handles.parameters.SavePermutationPData = ~handles.parameters.SavePermutationPData;
-    case 'parallelizemenu'
-        handles.parameters.parallelize = ~handles.parameters.parallelize;
-    case 'applycovariatestobehaviorcheckbox'
-        handles.parameters.apply_covariates_to_behavior = get(gcbo,'value');
-    case 'applycovariatestolesioncheckbox'
-        handles.parameters.apply_covariates_to_lesion = get(gcbo,'value');
-    case 'lesionvolumecorrectiondropdown'
-        contents = get(handles.lesionvolumecorrectiondropdown,'string');
-        newval = contents{get(handles.lesionvolumecorrectiondropdown,'value')};
-        handles.parameters.lesionvolcorrection = newval;
-    case 'hypodirectiondropdown'
-        contents = get(handles.hypodirectiondropdown,'string');
-        newval = contents{get(handles.hypodirectiondropdown,'value')};
-        if find(strcmp(newval,handles.options.hypodirection)) == 3 % Disable two-tails from the GUI
-            warndlg('Two-tailed hypothesis tests are not available in this version of SVRLSMGUI.')
-            changemade = false;
-        else
-            handles.parameters.tails = newval;
-        end
-    case 'addcovariate'
-        % first, what are we trying to add?
-        contents = get(handles.potentialcovariateslist,'String'); 
-        newcovariate = contents{get(handles.potentialcovariateslist,'Value')};
-        if strcmp(newcovariate,handles.parameters.score_name) % check if it's our main score name...
-            warndlg('This variable is already chosen as the main outcome in the analysis. If you''d like to add it as a covariate, remove it from "Score Name."')
-            changemade = false;
-        elseif any(strcmp(newcovariate,handles.parameters.control_variable_names)) % only if it's not on our list of covariates already.
-            warndlg('This variable is already on the list of covariates. You may not add it twice.')
-            changemade = false;
-        else % it's new
-            handles.parameters.control_variable_names{end+1} = newcovariate;
-        end
-    case 'removecovariate'
-       contents = get(handles.potentialcovariateslist,'String'); % what are we trying to remove? 
-       newcovariate = contents{get(handles.potentialcovariateslist,'Value')};
-       if any(strcmp(newcovariate,handles.parameters.control_variable_names)) % only if it IS on our list!
-           index_to_remove = strcmp(newcovariate,handles.parameters.control_variable_names);
-           handles.parameters.control_variable_names(index_to_remove) = [];
-       else
-            changemade = false;
-       end
-    case 'chooselesionfolderbutton'
-        folder_name = uigetdir(handles.parameters.lesion_img_folder,'Choose a folder containing lesion files for this analysis.');
-        if folder_name % if folder_name == 0 then cancel was clicked.
-            [~,attribs] = fileattrib(folder_name); % we need read access from here.
-            if attribs.UserRead
-                handles.parameters.lesion_img_folder = folder_name;
-            else
-                warndlg('You do not have read access to the directory you selected for the lesion files. Adjust the permissions and try again.')
-                changemade = false;                
+            str = str2num(answer{1});
+            if isempty(str) || str <= 1 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer greater than 1.');
+            else % update the parameter value.
+                handles.parameters.hyperparameter_quality.report.nfolds = str;
             end
-        else
-            changemade = false;
-        end
-    case 'choosescorefilebutton'
-        [FileName,PathName] = uigetfile(fullfile(fileparts(handles.parameters.score_file),'*.csv'),'Select a file with behavioral scores.');
-        if FileName
-            scorefile_name =  fullfile(PathName,FileName);
-            handles.parameters.score_file = scorefile_name;
-            handles.parameters.control_variable_names = {}; % also clear covariates...  
-        else % cancel was clicked.
-            changemade = false;
-        end
-    case 'chooseoutputfolderbutton'
-        folder_name = uigetdir(handles.parameters.analysis_out_path,'Choose a folder in which to save this analysis.');
-        if folder_name
-            [~,attribs] = fileattrib(folder_name); % we need read/write access from here.
-            if attribs.UserRead && attribs.UserWrite
-                handles.parameters.analysis_out_path = folder_name;
-            else
-                warndlg('You do not have read and write access to the directory you selected to save your output. Adjust the permissions and try again.')
-                changemade = false;                                
+        case 'repro_index_subset_percentage'
+            answer = inputdlg('Enter the % of sample to use for computing w-map reproducibility index [0-1]:', ...
+                'Sample percent', 1,{num2str(handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct)});
+            if isempty(answer), return; end % cancel pressed
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || str >= 1 % ~isint(str)
+                changemade=false;
+                warndlg('Input must be a value between 0 and 1 (i.e. 0 and 100%).');
+            else % update the parameter value.
+                handles.parameters.hyperparameter_quality.report.repro_ind_subset_pct = str;
             end
-        else
-            changemade = false;
-        end
-    case 'scorenamepopupmenu' % User has changed the one_score in question...
-        contents = get(gcbo,'string');
-        newval = contents{get(gcbo,'value')};
-        handles.parameters.run_double_dissociation = false; % by default...
-        changemade = true; % ?
-        %% Special handling for dissociations by detecting "Dissociation" in the name. This initiates a 
-        if contains(newval,'Dissociation')
-            % ok now get the user defined dissociation...
-            othercontents = contents(1:end-1); % the last one is  Dissocation...
+        case 'hyperparm_qual_n_replications'
+            answer = inputdlg(sprintf('Enter the number of replications for hyperparameter quality testing:'), ...
+                'Number of replications', 1,{num2str(handles.parameters.hyperparameter_quality.report.n_replications)});
+            if isempty(answer), return; end % cancel pressed
+            str = str2num(answer{1});
+            if isempty(str) || str <= 1 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer greater than 1.');
+            else % update the parameter value.
+                handles.parameters.hyperparameter_quality.report.n_replications = str;
+            end
+        case 'image_data_options_parent_menu'
+            set(handles.do_binarize_data_menu_option,'Checked',myif(handles.parameters.imagedata.do_binarize,'on','off'))
+        case 'do_binarize_data_menu_option'
+            handles.parameters.imagedata.do_binarize = ~handles.parameters.imagedata.do_binarize;
+        case 'set_resolution_parent_menu_option'
+            set(handles.manual_analysis_resolution_menu,'Label',['Manual: ' num2str(handles.parameters.imagedata.resample_to) ' mm'], ...
+                'checked',myif(handles.parameters.imagedata.do_resample,'on','off'));
+            set(handles.do_not_resample_images_menu,'Checked',myif(handles.parameters.imagedata.do_resample,'off','on'));
+            %set(handles.manual_analysis_resolution_menu,'Enable','on') % Until we finish implementation.
+        case 'do_not_resample_images_menu'
+            handles.parameters.imagedata.do_resample = false; % turn resampling off.
+        case 'manual_analysis_resolution_menu'
+            answer = inputdlg(sprintf('Enter the size in mm for voxels to be resampled to.'), ...
+                'Resample size (mm)', 1,{num2str(handles.parameters.imagedata.resample_to)});
+            if isempty(answer), return; end % cancel pressed
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer in millimeters.');
+            else % update the parameter value.
+                handles.parameters.imagedata.do_resample = true;
+                handles.parameters.imagedata.resample_to = str;
+            end
+        case 'open_lesion_folder_button'
+            OpenDirectoryInNativeWindow(handles.parameters.lesion_img_folder)
+        case 'open_score_file_button'
+            openFileInSystemViewer(handles.parameters.score_file)
+        case 'open_output_folder_button'
+            OpenDirectoryInNativeWindow(handles.parameters.analysis_out_path)
+        case 'ica_lesion_decompose_option'
+            handles.parameters.beta.do_ica_on_lesiondata = ~handles.parameters.beta.do_ica_on_lesiondata;
+        case 'requirements_menu'
+        case 'search_strategy_options'
+            set(handles.optimization_iterations_menu_option,'Label',['Iterations: ' num2str(handles.parameters.optimization.iterations)])
+            set(handles.griddivs_optimization_menu_option,'Label',['Grid Divs: ' num2str(handles.parameters.optimization.grid_divisions)])
+            return
+        case 'summary_prediction_menu'
+            handles.parameters.summary.predictions = ~handles.parameters.summary.predictions;
+        case 'lsm_method_parent_menu'
+            set(get(handles.lsm_method_parent_menu,'children'),'checked','off')
+            if handles.parameters.method.mass_univariate
+                set(handles.mass_univariate_menu_option,'checked','on')
+                set(handles.svr_parent_menu,'enable','off')
+            else
+                set(handles.multivariate_lsm_option,'checked','on')
+                set(handles.svr_parent_menu,'enable','on')
+            end
+
+            if handles.details.stats_toolbox
+                set(handles.multivariate_lsm_option,'enable','on')
+            else
+                handles.parameters.method.mass_univariate = true; % at least...
+                set(handles.multivariate_lsm_option,'enable','off')            
+            end
+        case 'mass_univariate_menu_option'
+            handles.parameters.method.mass_univariate = true;
+        case 'multivariate_lsm_option'
+            handles.parameters.method.mass_univariate = false;
+        case 'svr_parent_menu'
+        case 'optimization_is_verbose_menu'
+            handles.parameters.optimization.verbose_during_optimization = ~handles.parameters.optimization.verbose_during_optimization;
+        case 'summary_lesionoverlap'
+            handles.parameters.summary.lesion_overlap = ~handles.parameters.summary.lesion_overlap;
+        case 'summary_paramoptimization'
+            handles.parameters.summary.hyperparameter_optimization_record = ~handles.parameters.summary.hyperparameter_optimization_record;
+        case 'summary_create_summary'
+            handles.parameters.do_make_summary = ~handles.parameters.do_make_summary;
+        case 'summary_narrative_summary'
+            handles.parameters.summary.narrative = ~handles.parameters.summary.narrative;
+        case 'summary_svrbetamap'
+            handles.parameters.summary.beta_map = ~handles.parameters.summary.beta_map;
+        case 'summary_voxelwise_thresholded'
+            handles.parameters.summary.voxelwise_thresholded = ~handles.parameters.summary.voxelwise_thresholded;
+        case 'summary_clusterwise_thresholded'
+            handles.parameters.summary.clusterwise_thresholded = ~handles.parameters.summary.clusterwise_thresholded;
+        case 'summary_cfwerdiagnostics'
+            handles.parameters.summary.cfwer_diagnostics = ~handles.parameters.summary.cfwer_diagnostics;
+        case 'model_variablediagnostics'
+            handles.parameters.summary.variable_diagnostics = ~handles.parameters.summary.variable_diagnostics;
+        case 'summary_clusterstability'
+            handles.parameters.summary.cluster_stability = ~handles.parameters.summary.cluster_stability;
+        case 'summary_parameterassessment'
+            handles.parameters.summary.parameter_assessment = ~handles.parameters.summary.parameter_assessment;
+        case 'do_use_cache_menu'
+            handles.parameters.do_use_cache_when_available = ~handles.parameters.do_use_cache_when_available;
+        case 'crossval_menu_option_none'
+            handles.parameters.optimization.crossval.do_crossval = false; % disable crossvalidation.
+        case 'crossval_menu_option_kfold'
+            msg = sprintf('Enter the number of folds for cross-validation (default = %d):',handles.parameters.optimization.crossval.nfolds_default);
+            answer = inputdlg(msg, ...
+                'Number of folds', 1,{num2str(handles.parameters.optimization.crossval.nfolds)});
+            warning('bug here - if you click cancel it causes an error - in future, embed the str<=0 and isint within the isempty... and do that with other str2num(answer{1})''s as well')
+            if isempty(answer), return; end % cancel pressed
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.optimization.crossval.do_crossval = true; % enable crossvalidation.
+                handles.parameters.optimization.crossval.nfolds = str;
+            end
+
+        case 'do_repartition_menu_option' % flip this choice.
+            handles.parameters.optimization.crossval.repartition = ~handles.parameters.optimization.crossval.repartition;
+        case 'standardize_menu' % set the value to use if not optimization
+            vals = {'true','false'};
+            msg = sprintf('Standardize value (default = %s):',myif(handles.parameters.svr_defaults.standardize,'true','false'));
+            s = listdlg('PromptString',msg,'SelectionMode','single', ...
+                'ListString',vals,'InitialValue',myif(handles.parameters.standardize,1,2), ...
+                'Name','Standardize Parameter','ListSize',[250 80]);
+
+            if isempty(s)
+                changemade=false; % cancelled...
+            else
+                handles.parameters.standardize = str2num(vals{s}); % myif(v==1,true,false); % new value.
+            end
+
+        case 'epsilon_menu' % set the value to use if not optimization
+            msg = sprintf('Enter new value for epsilon (default = %0.2f):',handles.parameters.svr_defaults.epsilon);
+            % add min and max range - dev1
+            answer = inputdlg(msg,'Epsilon Parameter',1,{num2str(handles.parameters.epsilon)});
+            if isempty(answer), return; end % cancel pressed
+            numval = str2num(answer{1});
+            if isnumeric(numval) && ~isempty(numval)
+                handles.parameters.epsilon = numval;
+            end
+
+        % Whether to allow optimization of given hyperparameter
+        case 'do_optimize_cost_menu'
+            if ~handles.parameters.optimization.params_to_optimize.cost % then enabling it will prompt for new values...
+                minmsg = sprintf('Minimum (default = %0.3f):',handles.parameters.optimization.params_to_optimize.cost_range_default(1));
+                maxmsg = sprintf('Maximum (default = %0.2f):',handles.parameters.optimization.params_to_optimize.cost_range_default(2));
+                msg = {minmsg,maxmsg};
+                defaultans = {num2str(handles.parameters.optimization.params_to_optimize.cost_range(1)),num2str(handles.parameters.optimization.params_to_optimize.cost_range(2))};
+                answer = inputdlg(msg,'Cost Range',1,defaultans);
+                if isempty(answer), return; end % cancel pressed
+                if any(cellfun(@isempty,answer)), warndlg('Invalid Cost range.'); return; end
+                minval = str2num(answer{1}); maxval = str2num(answer{2});
+                if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Cost range values must be numbers.'); return; end
+                if ~all([minval maxval] > 0), warndlg('Cost range values must be positive.'); return; end
+                handles.parameters.optimization.params_to_optimize.cost_range = sort([minval maxval]);
+            end
+
+            handles.parameters.optimization.params_to_optimize.cost = ~handles.parameters.optimization.params_to_optimize.cost;
+        case 'do_optimize_gamma_menu'
+            if ~handles.parameters.optimization.params_to_optimize.sigma % then enabling it will prompt for new values...
+                defaultmin = handles.parameters.optimization.params_to_optimize.sigma_range_default(1);
+                defaultmax = handles.parameters.optimization.params_to_optimize.sigma_range_default(2);
+                minmsg = sprintf('Minimum (default = %0.3f):',defaultmin); % convert to gamma if necessary
+                maxmsg = sprintf('Maximum (default = %0.2f):',defaultmax); % convert to gamma if necessary
+                msg = {minmsg,maxmsg};
+                oldmin = handles.parameters.optimization.params_to_optimize.sigma_range(1);
+                oldmax = handles.parameters.optimization.params_to_optimize.sigma_range(2);
+                defaultans = {num2str(oldmin),num2str(oldmax)}; % convert to gamma if necessary
+                answer = inputdlg(msg,'Sigma Range',1,defaultans);  % display as gamma if necessary
+                if isempty(answer), return; end % cancel pressed
+                if any(cellfun(@isempty,answer)), warndlg('Invalid sigma range.'); return; end
+                minval = str2num(answer{1}); maxval = str2num(answer{2});
+                if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Sigma range values must be numbers.'); return; end % display as gamma if necessary
+                if ~all([minval maxval] > 0), warndlg('Sigma range values must be positive.'); return; end % display as gamma if necessary
+                handles.parameters.optimization.params_to_optimize.sigma_range = sort([minval maxval]); % convert gamma back to sigma if necessary.
+            end
+
+            handles.parameters.optimization.params_to_optimize.sigma = ~handles.parameters.optimization.params_to_optimize.sigma;
+        case 'do_optimize_epsilon_menu'
+            if ~handles.parameters.optimization.params_to_optimize.epsilon % then enabling it will prompt for new values...
+                minmsg = sprintf('Minimum (default = %0.3f):',handles.parameters.optimization.params_to_optimize.epsilon_range_default(1));
+                maxmsg = sprintf('Maximum (default = %0.2f):',handles.parameters.optimization.params_to_optimize.epsilon_range_default(2));
+                msg = {minmsg,maxmsg};
+                defaultans = {num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(1)),num2str(handles.parameters.optimization.params_to_optimize.epsilon_range(2))};
+                answer = inputdlg(msg,'Epsilon Range',1,defaultans);
+                if isempty(answer), return; end % cancel pressed
+                if any(cellfun(@isempty,answer)), warndlg('Invalid Epsilon range.'); return; end
+                minval = str2num(answer{1}); maxval = str2num(answer{2});
+                if ~all([isnumeric(minval) isnumeric(maxval)]), warndlg('Epsilon range values must be numbers.'); return; end
+                if ~all([minval maxval] > 0), warndlg('Epsilon range values must be positive.'); return; end
+                handles.parameters.optimization.params_to_optimize.epsilon_range = sort([minval maxval]);
+            end
+            handles.parameters.optimization.params_to_optimize.epsilon = ~handles.parameters.optimization.params_to_optimize.epsilon;
+        case 'do_optimize_standardize_menu'
+            handles.parameters.optimization.params_to_optimize.standardize = ~handles.parameters.optimization.params_to_optimize.standardize;
+
+        % Optimization misc choices
+        case 'optimization_iterations_menu_option'
+            answer = inputdlg('Enter a new number of iterations:','Number of optimization iterations',1,{num2str(handles.parameters.optimization.iterations)});
+            if isempty(answer), return; end % cancel pressed
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.optimization.iterations = str;
+            end
+        case 'griddivs_optimization_menu_option'
+            answer = inputdlg('Enter a new number of grid divisions:','Number of optimization grid divisions',1,{num2str(handles.parameters.optimization.grid_divisions)});
+            if isempty(answer), return; end % cancel pressed
+            str = str2num(answer{1});
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.optimization.grid_divisions = str;
+            end    
+
+        % Optimization search strategy choice
+        case 'random_search_menu_option'
+            handles.parameters.optimization.search_strategy = 'Random Search';
+        case 'bayes_optimization_menu_choice'
+            handles.parameters.optimization.search_strategy = 'Bayes Optimization';
+        case 'gridsearch_option'
+            handles.parameters.optimization.search_strategy = 'Grid Search';        
+        % Optimization objective function choice
+        case 'predictbehavior_optimize_menu_choice' % bayes opt predict behavior
+            handles.parameters.optimization.objective_function = 'Predict Behavior';
+        case 'correlation_optimize_menu_choice' % maximum correlation w behavior
+            handles.parameters.optimization.objective_function = 'Maximum Correlation';
+        case 'resubloss_optimize_menu_choice'
+            handles.parameters.optimization.objective_function = 'Resubstitution Loss';
+        % Whether or not to optimize hyperparameters
+        case 'no_optimize_menu_choice'
+            handles.parameters.optimization.do_optimize = false;
+        case 'current_optimization_menu_option'
+            handles.parameters.optimization.do_optimize = true; % will use whatever setting is configured.
+        case 'save_pre_thresh'
+            handles.parameters.SavePreThresholdedPermutations = ~handles.parameters.SavePreThresholdedPermutations;
+        case 'retain_big_binary_file'
+            handles.parameters.SavePermutationData = ~handles.parameters.SavePermutationData;
+        case 'save_post_vox_thresh'
+            handles.parameters.SavePostVoxelwiseThresholdedPermutations = ~handles.parameters.SavePostVoxelwiseThresholdedPermutations;
+        case 'save_post_clusterwise_thresholded'
+            handles.parameters.SavePostClusterwiseThresholdedPermutations= ~handles.parameters.SavePostClusterwiseThresholdedPermutations;
+        case 'save_unthresholded_pmaps_cfwer'
+            handles.parameters.SaveNullPMapsPreThresholding = ~handles.parameters.SaveNullPMapsPreThresholding;
+        case 'save_thresholded_pmaps_cfwer'
+            handles.parameters.SaveNullPMapsPostThresholding = ~handles.parameters.SaveNullPMapsPostThresholding;
+        case 'retain_big_binary_pval_file'
+            handles.parameters.SavePermutationPData = ~handles.parameters.SavePermutationPData;
+        case 'parallelizemenu'
+            handles.parameters.parallelize = ~handles.parameters.parallelize;
+        case 'applycovariatestobehaviorcheckbox'
+            handles.parameters.apply_covariates_to_behavior = get(gcbo,'value');
+        case 'applycovariatestolesioncheckbox'
+            handles.parameters.apply_covariates_to_lesion = get(gcbo,'value');
+        case 'lesionvolumecorrectiondropdown'
+            contents = get(handles.lesionvolumecorrectiondropdown,'string');
+            newval = contents{get(handles.lesionvolumecorrectiondropdown,'value')};
+            handles.parameters.lesionvolcorrection = newval;
+        case 'hypodirectiondropdown'
+            contents = get(handles.hypodirectiondropdown,'string');
+            newval = contents{get(handles.hypodirectiondropdown,'value')};
+            if find(strcmp(newval,handles.options.hypodirection)) == 3 % Disable two-tails from the GUI
+                warndlg('Two-tailed hypothesis tests are not available in this version of SVRLSMGUI.')
+                changemade = false;
+            else
+                handles.parameters.tails = newval;
+            end
+        case 'addcovariate'
+            % first, what are we trying to add?
+            contents = get(handles.potentialcovariateslist,'String'); 
+            newcovariate = contents{get(handles.potentialcovariateslist,'Value')};
+            if strcmp(newcovariate,handles.parameters.score_name) % check if it's our main score name...
+                warndlg('This variable is already chosen as the main outcome in the analysis. If you''d like to add it as a covariate, remove it from "Score Name."')
+                changemade = false;
+            elseif any(strcmp(newcovariate,handles.parameters.control_variable_names)) % only if it's not on our list of covariates already.
+                warndlg('This variable is already on the list of covariates. You may not add it twice.')
+                changemade = false;
+            else % it's new
+                handles.parameters.control_variable_names{end+1} = newcovariate;
+            end
+        case 'removecovariate'
+           contents = get(handles.potentialcovariateslist,'String'); % what are we trying to remove? 
+           newcovariate = contents{get(handles.potentialcovariateslist,'Value')};
+           if any(strcmp(newcovariate,handles.parameters.control_variable_names)) % only if it IS on our list!
+               index_to_remove = strcmp(newcovariate,handles.parameters.control_variable_names);
+               handles.parameters.control_variable_names(index_to_remove) = [];
+           else
+                changemade = false;
+           end
+        case 'chooselesionfolderbutton'
+            folder_name = uigetdir(handles.parameters.lesion_img_folder,'Choose a folder containing lesion files for this analysis.');
+            if folder_name % if folder_name == 0 then cancel was clicked.
+                [~,attribs] = fileattrib(folder_name); % we need read access from here.
+                if attribs.UserRead
+                    handles.parameters.lesion_img_folder = folder_name;
+                else
+                    warndlg('You do not have read access to the directory you selected for the lesion files. Adjust the permissions and try again.')
+                    changemade = false;                
+                end
+            else
+                changemade = false;
+            end
+        case 'choosescorefilebutton'
+            [FileName,PathName] = uigetfile(fullfile(fileparts(handles.parameters.score_file),'*.csv'),'Select a file with behavioral scores.');
+            if FileName
+                scorefile_name =  fullfile(PathName,FileName);
+                handles.parameters.score_file = scorefile_name;
+                handles.parameters.control_variable_names = {}; % also clear covariates...  
+            else % cancel was clicked.
+                changemade = false;
+            end
+        case 'chooseoutputfolderbutton'
+            folder_name = uigetdir(handles.parameters.analysis_out_path,'Choose a folder in which to save this analysis.');
+            if folder_name
+                [~,attribs] = fileattrib(folder_name); % we need read/write access from here.
+                if attribs.UserRead && attribs.UserWrite
+                    handles.parameters.analysis_out_path = folder_name;
+                else
+                    warndlg('You do not have read and write access to the directory you selected to save your output. Adjust the permissions and try again.')
+                    changemade = false;                                
+                end
+            else
+                changemade = false;
+            end
+        case 'scorenamepopupmenu' % User has changed the one_score in question...
+            contents = get(gcbo,'string');
+            newval = contents{get(gcbo,'value')};
+            handles.parameters.run_double_dissociation = false; % by default...
+            changemade = true; % ?
+            %% Special handling for dissociations by detecting "Dissociation" in the name. This initiates a 
+            if contains(newval,'Dissociation')
+                % ok now get the user defined dissociation...
+                othercontents = contents(1:end-1); % the last one is  Dissocation...
+
+                % remove previously selected covariates
+                selected_covariates = get(handles.realcovariateslistbox,'string');
+                selected_covariates(get(handles.realcovariateslistbox,'value'));
+                othercontents = setdiff(othercontents,selected_covariates); 
+
+                [indx1,tf1] = listdlg('PromptString',{'Select Behavior 1:'},'SelectionMode','single','ListString',othercontents);
+                if isempty(indx1), return; end % make sure this was filled out
+                behav1 = othercontents{indx1};
+                residualcontents = setdiff(othercontents,behav1);
+                [indx2,tf2] = listdlg('PromptString',{'Select Behavior 2:'},'SelectionMode','single','ListString',residualcontents);
+                if isempty(indx2), return; end % make sure both were filled out.
+                behav2 = residualcontents{indx2};
+                %['Dissocate: ' behav1 ' & ' behav2]
+                handles.parameters.double_dissociation_behaviors = {behav1,behav2};
+                handles.parameters.run_double_dissociation = true;
+            end
+
+            if any(strcmp(newval,handles.parameters.control_variable_names))
+                warndlg('This variable is already chosen as a covariate. If you''d like to use it as the outcome of interest, remove it as a covariate.')
+                changemade = false;
+            else
+                handles.parameters.score_name = newval;
+            end
+        case 'analysisnameeditbox'
+            handles.parameters.analysis_name = get(gcbo,'string');
+        case 'lesionthresholdeditbox'
+            str = str2num(get(gcbo,'string')); %TO ADD: also make sure this doesn''t exceed the number of lesions available in the data
+            if isempty(str) || ~isint(str) 
+                warndlg('Input must be a positive integer.');
+                changemade = false;
+            else % update the parameter value.
+                handles.parameters.lesion_thresh = str;
+            end
+        case 'computebetamapcheckbox'
+            handles.parameters.beta_map  = get(gcbo,'value');
+        case 'computesensitivitymapcheckbox'
+            handles.parameters.sensitivity_map = get(gcbo,'value');
+        case 'cluster_voxelwise_p_editbox' 
+            str = str2num(get(gcbo,'string'));
+            if isempty(str) || str <= 0 || str >= 1 
+                changemade = false;
+                warndlg('Input must be a number between 0 and 1.');
+            else % update the parameter value.
+                handles.parameters.voxelwise_p = str;
+            end
+        case 'clusterwisepeditbox'
+            str = str2num(get(gcbo,'string'));
+            if isempty(str) || str <= 0 || str >= 1
+                warndlg('Input must be a number between 0 and 1.');
+                changemade = false;
+            else % update the parameter value.
+                handles.parameters.clusterwise_p = str;
+            end
+        case 'npermutationseditbox' % This is voxelwise permutations
+            str = str2num(get(gcbo,'string'));
+            if isempty(str) || str<=0 || ~isint(str)
+                changemade = false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.PermNumVoxelwise = str;
+            end
+        case 'permutationtestingcheckbox' % enable/disable permutation testing.
+            handles.parameters.DoPerformPermutationTesting = get(gcbo,'value');
+        case 'do_cfwer_checkbox'
+            handles.parameters.do_CFWER = get(gcbo,'value');
+        case 'cfwer_v_value_editbox'
+            str = str2num(get(gcbo,'string'));
+            if isempty(str) || str <= 0 || ~isint(str)
+                changemade=false;
+                warndlg('Input must be a positive integer.');
+            else % update the parameter value.
+                handles.parameters.cfwer_v_value = str; % note that this is cubic millimeters and will later be converted into # voxels (in read_lesioned_images)
+            end
+        case 'cfwer_p_value_editbox'
+            str = str2num(get(gcbo,'string'));
+            if isempty(str) || str<=0 || str >= 1 % not a valid p value...
+                changemade=false;
+                warndlg('Input must be a positive number less than 1.');
+            else % update the parameter value.
+                handles.parameters.cfwer_p_value = str;
+            end
+         case 'atlasparcellation_menu_option_parent' % 2021 
+             if ~isfield(handles.parameters,'use_atlas_parcellation') % for earlier version compatibliity that didn't have this field
+                 handles.parameters.use_atlas_parcellation = false;
+                 handles.parameters.analysis_parcellation_file = '';
+             end
+
+            if strcmp(handles.parameters.analysis_parcellation_file,'')
+                maskstring = 'Select Parcellation...';
+            else
+                maskstring = handles.parameters.analysis_parcellation_file;
+            end
             
-            % remove previously selected covariates
-            selected_covariates = get(handles.realcovariateslistbox,'string');
-            selected_covariates(get(handles.realcovariateslistbox,'value'));
-            othercontents = setdiff(othercontents,selected_covariates); 
-            
-            [indx1,tf1] = listdlg('PromptString',{'Select Behavior 1:'},'SelectionMode','single','ListString',othercontents);
-            if isempty(indx1), return; end % make sure this was filled out
-            behav1 = othercontents{indx1};
-            residualcontents = setdiff(othercontents,behav1);
-            [indx2,tf2] = listdlg('PromptString',{'Select Behavior 2:'},'SelectionMode','single','ListString',residualcontents);
-            if isempty(indx2), return; end % make sure both were filled out.
-            behav2 = residualcontents{indx2};
-            %['Dissocate: ' behav1 ' & ' behav2]
-            handles.parameters.double_dissociation_behaviors = {behav1,behav2};
-            handles.parameters.run_double_dissociation = true;
-        end
-        
-        if any(strcmp(newval,handles.parameters.control_variable_names))
-            warndlg('This variable is already chosen as a covariate. If you''d like to use it as the outcome of interest, remove it as a covariate.')
-            changemade = false;
-        else
-            handles.parameters.score_name = newval;
-        end
-    case 'analysisnameeditbox'
-        handles.parameters.analysis_name = get(gcbo,'string');
-    case 'lesionthresholdeditbox'
-        str = str2num(get(gcbo,'string')); %TO ADD: also make sure this doesn''t exceed the number of lesions available in the data
-        if isempty(str) || ~isint(str) 
-            warndlg('Input must be a positive integer.');
-            changemade = false;
-        else % update the parameter value.
-            handles.parameters.lesion_thresh = str;
-        end
-    case 'computebetamapcheckbox'
-        handles.parameters.beta_map  = get(gcbo,'value');
-    case 'computesensitivitymapcheckbox'
-        handles.parameters.sensitivity_map = get(gcbo,'value');
-    case 'cluster_voxelwise_p_editbox' 
-        str = str2num(get(gcbo,'string'));
-        if isempty(str) || str <= 0 || str >= 1 
-            changemade = false;
-            warndlg('Input must be a number between 0 and 1.');
-        else % update the parameter value.
-            handles.parameters.voxelwise_p = str;
-        end
-    case 'clusterwisepeditbox'
-        str = str2num(get(gcbo,'string'));
-        if isempty(str) || str <= 0 || str >= 1
-            warndlg('Input must be a number between 0 and 1.');
-            changemade = false;
-        else % update the parameter value.
-            handles.parameters.clusterwise_p = str;
-        end
-    case 'npermutationseditbox' % This is voxelwise permutations
-        str = str2num(get(gcbo,'string'));
-        if isempty(str) || str<=0 || ~isint(str)
-            changemade = false;
-            warndlg('Input must be a positive integer.');
-        else % update the parameter value.
-            handles.parameters.PermNumVoxelwise = str;
-        end
-    case 'permutationtestingcheckbox' % enable/disable permutation testing.
-        handles.parameters.DoPerformPermutationTesting = get(gcbo,'value');
-    case 'do_cfwer_checkbox'
-        handles.parameters.do_CFWER = get(gcbo,'value');
-    case 'cfwer_v_value_editbox'
-        str = str2num(get(gcbo,'string'));
-        if isempty(str) || str <= 0 || ~isint(str)
-            changemade=false;
-            warndlg('Input must be a positive integer.');
-        else % update the parameter value.
-            handles.parameters.cfwer_v_value = str; % note that this is cubic millimeters and will later be converted into # voxels (in read_lesioned_images)
-        end
-    case 'cfwer_p_value_editbox'
-        str = str2num(get(gcbo,'string'));
-        if isempty(str) || str<=0 || str >= 1 % not a valid p value...
-            changemade=false;
-            warndlg('Input must be a positive number less than 1.');
-        else % update the parameter value.
-            handles.parameters.cfwer_p_value = str;
-        end
-     case 'analysismask_menu_option_parent'
-         if strcmp(handles.parameters.analysis_mask_file,'')
-             maskstring = 'Select mask...';
-         else
-             maskstring = handles.parameters.analysis_mask_file;
-         end
-         handles.datamask_to_use_menu_option.Text = maskstring;
-         
-         if handles.parameters.use_analysis_mask % then populate the menu item and set the checkbox...
-             handles.do_not_apply_datamask_menu_option.Checked = false;
-             handles.datamask_to_use_menu_option.Checked = true;
-         else % don't use mask.
-             handles.do_not_apply_datamask_menu_option.Checked = true;
-             handles.datamask_to_use_menu_option.Checked = false;
-         end
-         
-    case 'do_not_apply_datamask_menu_option'
-         handles.parameters.use_analysis_mask = false;
-         changemade = true;
-    case 'datamask_to_use_menu_option'
-        disp('a')
-        handles.parameters.use_analysis_mask = true;
-        [FileName,PathName] = uigetfile('*.nii','Select a mask file within which to run the analysis.');
-        filepath = fullfile(PathName,FileName);
-        if ~exist(filepath,'file'), return; end
-        handles.parameters.analysis_mask_file = filepath; 
-        changemade = true;
-    otherwise
-        warndlg(['Unknown callback object ' get(gcbo,'tag') ' - has someone modified the code?'])
-end
+            handles.dataparcellation_to_use_menu_option.Text = maskstring; % what mask are we using?
+            if handles.parameters.use_atlas_parcellation % then populate the menu item and set the checkbox...
+                handles.do_not_apply_parcellation_menu_option.Checked = false; % "Voxelwise"
+                handles.dataparcellation_to_use_menu_option.Checked = true;
+            else % don't use parcellation
+                handles.do_not_apply_parcellation_menu_option.Checked = true; % "Voxelwise"
+                handles.dataparcellation_to_use_menu_option.Checked = false;
+            end
+         case 'analysismask_menu_option_parent' % 2021
+             if strcmp(handles.parameters.analysis_mask_file,'')
+                 maskstring = 'Select mask...';
+             else
+                 maskstring = handles.parameters.analysis_mask_file;
+             end
+             handles.datamask_to_use_menu_option.Text = maskstring;
+
+             if handles.parameters.use_analysis_mask % then populate the menu item and set the checkbox...
+                 handles.do_not_apply_datamask_menu_option.Checked = false;
+                 handles.datamask_to_use_menu_option.Checked = true;
+             else % don't use mask.
+                 handles.do_not_apply_datamask_menu_option.Checked = true;
+                 handles.datamask_to_use_menu_option.Checked = false;
+             end
+        case 'do_not_apply_parcellation_menu_option'
+             handles.parameters.use_atlas_parcellation = false;
+             changemade = true;
+        case 'dataparcellation_to_use_menu_option'
+            handles.parameters.use_atlas_parcellation = true;
+            [FileName,PathName] = uigetfile('*.nii','Select an atlas parcellation file within which to run the analysis.');
+            filepath = fullfile(PathName,FileName);
+            if ~exist(filepath,'file'), return; end
+            handles.parameters.analysis_parcellation_file = filepath; 
+            changemade = true;
+        case 'do_not_apply_datamask_menu_option' 
+             handles.parameters.use_analysis_mask = false;
+             changemade = true;
+        case 'datamask_to_use_menu_option'
+            handles.parameters.use_analysis_mask = true;
+            [FileName,PathName] = uigetfile('*.nii','Select a mask file within which to run the analysis.');
+            filepath = fullfile(PathName,FileName);
+            if ~exist(filepath,'file'), return; end
+            handles.parameters.analysis_mask_file = filepath; 
+            changemade = true;
+        otherwise
+            warndlg(['Unknown callback object ' get(gcbo,'tag') ' - has someone modified the code?'])
+    end
 
     if changemade % then set to not saved...
         handles.parameters.is_saved = 0;
@@ -1035,7 +1063,7 @@ function requirements_menu_Callback(hObject, eventdata, handles)
     set(get(handles.requirements_menu,'children'),'enable','off')
 
 function beta_options_menu_Callback(hObject, eventdata, handles)
-set(handles.ica_lesion_decompose_option,'checked',myif(handles.parameters.beta.do_ica_on_lesiondata,'on','off'))
+    set(handles.ica_lesion_decompose_option,'checked',myif(handles.parameters.beta.do_ica_on_lesiondata,'on','off'))
 
 function crossvalidate_map_parent_menu_Callback(hObject, eventdata, handles)
     set(get(hObject,'children'),'checked','off')

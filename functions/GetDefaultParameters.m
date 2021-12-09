@@ -12,6 +12,10 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     parameters.use_analysis_mask = false;
     parameters.analysis_mask_file = ''; % empty
     
+    % Added 2021 for applying parcellation to data
+    parameters.use_atlas_parcellation = false;
+    parameters.analysis_parcellation_file = ''; % empty
+    
     parameters.method.mass_univariate = false; % if true, use mass univariate LSM, otherwise use SVR
     
     parameters.useLibSVM = 0; % now try to default to MATLAB ...

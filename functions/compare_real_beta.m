@@ -6,8 +6,6 @@ function [p_val,thresh_beta] = compare_real_beta(realbeta,nullvec,tail,cutoff_in
              [vals,p] = sort(betavec,'descend');
          case 'neg' % smallest (beta) values has significant p values
              [vals,p] = sort(betavec,'ascend'); % this is default sort() behavior.
-        case 'two'
-            error('not supported atm')
     end   
    
     r = 1:length(betavec);

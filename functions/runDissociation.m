@@ -3,201 +3,123 @@ function [success,handles] = runDissociation(hObject,eventdata,handles)
     %% First, run the two main analyses we'll draw on
     handles.dissociation = [];
     handles.dissociation.starttime = now;
-    handles = runMainAnalyses(hObject,eventdata,handles);
+    handles = runMainDissociationAnalyses(hObject,eventdata,handles);
+    
+    %% Construct some general info we'll use to do the analysis...
+    first_analysis = handles.dissociation.maineffects{1};
+    handles.dissociation.output_folder.base = fullfile(first_analysis.baseoutputdir,'dissociation');
+    handles.dissociation.voxp = first_analysis.voxelwise_p;
+    handles.dissociation.nperms = first_analysis.PermNumVoxelwise;
+    handles.dissociation.vo = first_analysis.vo; % we reuse this for a template
+    handles.dissociation.cfwer_p_value = first_analysis.cfwer_p_value;
+    handles.dissociation.cfwer_v_value = first_analysis.cfwer_v_value;
+    
+    %% Now compute the combined beta maps to compare against to determine conjunction/disjunction
     handles = createBetaDeltaMapForDissociation(handles); % create new beta map (deltas)
+    
+    %% Now convert those beta maps into p maps for all permutatoins
     handles = createPvalsForDissociation(handles); % convert those betas into p values
     
-function handles = runMainAnalyses(hObject,eventdata,handles)
-    % handles.parameters.orig_name = handles.parameters.analysis_name
-    for B = 1 : 2 % Run the full analysis for each main effect
-        handles.parameters.SavePermutationData = true; % we'll need this data...
-        curbehav = handles.parameters.double_dissociation_behaviors{B};
-        handles = UpdateProgress(handles,['Dissocation analysis ' num2str(B) ': ' curbehav],1);
-        handles.parameters.score_name = curbehav; % update score_name so we analyze the right behavior
-        % dissoclabel = ['dissociation_mainpart_' num2str(B) 'of2'];
-        % handles.parameters.analysis_name = dissoclabel; % dynamic directory field name - so we can reference from interaction module
-        [success,handles] = RunSingleAnalysis(hObject,eventdata,handles);
-        handles.dissociation.maineffects{B} = handles.parameters; % so we can figure out where we should read the data from for each main effect svrb map...
+    %% We run this once for disjunction and once for conjunction
+    dissoctype = {'conjunction','disjunction'};
+    for d = 1 : numel(dissoctype)
+        handles.dissociation.current_dissoctype = dissoctype{d};
+        disp(['Saving results for ' handles.dissociation.current_dissoctype])
+        handles = computeClusterResultsDissociation(handles);
+    end
+    
+function handles = computeClusterResultsDissociation(handles)
+    %% Run this for each tail - pos and neg...
+    tails = {'pos','neg'};
+    for T = 1 : numel(tails)
+        if strcmp(tails{T},'pos') && strcmp(handles.dissociation.current_dissoctype,'conjunction'), continue; end % skip the positive tail of the conjunction, since that would identify areas involved in *NEITHER* behavior...
+        handles.parameters.tailshort = tails{T};
+        handles = writeEachTailOut(handles);
     end
 
-function handles = createBetaDeltaMapForDissociation(handles)
-    handles = UpdateProgress(handles,'Dissocation analysis - computing difference of beta maps...',1);
-
-    dissociation = handles.dissociation; % for convenience.
-    %% Where we'll put the results of the dissocation ...
-    dissociation.output_folder = fullfile(dissociation.maineffects{1}.baseoutputdir,'dissocation');
-    dissociation.delta_svrb_file = fullfile(dissociation.output_folder,'svrb_deltas_allperms.bin');
+function handles = writeEachTailOut(handles)
+    %% Create and fill out the thresholds struct (we use this for applying thresholding and clustering
+    thresholds = calculate_thresholds(handles.parameters,handles.dissociation); % these should pass all the info we need to create the 'thresholds' struct
+    dissoctype = handles.dissociation.current_dissoctype;
     
-    %% What function will we use to derive the joint null distribution (and our real data)?
-    dissociation.joint_distribution_fcn = @(x,y) x-y; % simple difference
-    % dissociation.joint_distribution_fcn = @(x,y) min(x,y); %
-    % dissociation.joint_distribution_fcn = @(x,y) sqrt(x.^2 .* y.^2); %
-
-    %% Now create a svrb delta map form the two big base file beta map files
-    % files = dir(fullfile(dissociation.maineffects{1}.baseoutputdir,'*\Voxwise*\Clustwise*\pmu_beta_maps_N_*.bin')); % these are the potentially large null svrb files
-    for f = 1 : 2 % Grab a memmap handle to each
-        permfile = dir(fullfile(fileparts(dissociation.maineffects{f}.parmsfile),'Voxwise*','Clustwise*','pmu_beta_maps*.bin'));
-        cur_bigfname = fullfile(permfile.folder,permfile.name);
-        all_perm_data{f} = memmapfile(cur_bigfname,'Format','single'); %#ok<AGROW>
+    % Transfer this information from the dissociation struct in handles to the thresholds struct 
+    fnames = {'one_tail_pos_alphas','one_tail_neg_alphas','pos_beta_map_cutoff','neg_beta_map_cutoff'};
+    for f = 1 : numel(fnames) % set these all depending on the type of dissocation...
+        thresholds.(fnames{f}) = handles.dissociation.([fnames{f} '_' dissoctype]);
     end
 
-    idx_1_n = numel(dissociation.maineffects{1}.m_idx);
-    idx_2_n = numel(dissociation.maineffects{2}.m_idx);
-
-    [m_idx,ia,ib] = intersect(dissociation.maineffects{1}.m_idx,dissociation.maineffects{2}.m_idx);
-    dissociation.m_idx = m_idx; % these are out .m_idx for the dissocation
+    %% Conditionally set the output folders... by tail, and dissociation type.
+    % note here we suffix with the tail direction as in --- [folderstring '_' handles.parameters.tailshort]
+    add_dissoctype_embedding = true;
+    folderstring = sprintf('Voxwise p%s (%d perms)',strrep(num2str(handles.parameters.voxelwise_p),'0.',''),handles.parameters.PermNumVoxelwise);
+    if ~add_dissoctype_embedding
+        handles.dissociation.output_folder.voxelwise = fullfile(handles.dissociation.output_folder.base,[folderstring '_' handles.parameters.tailshort]);
+    else % Added in the dissoctype as a subfolder...
+        handles.dissociation.output_folder.voxelwise = fullfile(handles.dissociation.output_folder.base,dissoctype,[folderstring '_' handles.parameters.tailshort]);
+    end
     
-    dissociation.orig_betas_A = dissociation.maineffects{1}.ori_beta_vals(ia); % need to use ia so we only get indices overlapping between the 2 analyses
-    dissociation.orig_betas_B = dissociation.maineffects{2}.ori_beta_vals(ib); % need to use ib so we only get indices overlapping between the 2 analyses
-    dissociation.orig_betas_delta = feval(dissociation.joint_distribution_fcn,dissociation.orig_betas_A,dissociation.orig_betas_B); % apply the function we use to calculate the joint distribution...
+    folderstring = sprintf('Clustwise p%s (%d perms)',strrep(num2str(handles.parameters.clusterwise_p),'0.',''),handles.parameters.PermNumClusterwise);
+    handles.dissociation.output_folder.clusterwise = fullfile(handles.dissociation.output_folder.voxelwise,[folderstring '_' handles.parameters.tailshort]);
     
-    nperms = dissociation.maineffects{1}.PermNumVoxelwise; % for each permutation, pull the full relevant data frame from each .bin file -- then extract the relevant indices that overlap.
-
-    idx1_frame_inds = 1:idx_1_n; % we'll offset these by permutation count and reuse these indices.
-    idx2_frame_inds = 1:idx_2_n; % we'll offset these by permutation count and reuse these indices.
-
-    if ~exist(dissociation.output_folder,'dir'), mkdir(dissociation.output_folder); end
-
-    assignin('base','dissociation',dissociation)
-
-    %% Create and save the new permutation data
-    fileID = fopen(dissociation.delta_svrb_file,'w');
-    for p = 1 : nperms
-        thisperm_offset_1 = (p-1)*idx_1_n; % so for the first permutation our offset is 0.
-        thisperm_offset_2 =  (p-1)*idx_2_n; % so for the first permutation our offset is 0.
-
-        result1_thisperm_frame = all_perm_data{1}.Data(thisperm_offset_1 + idx1_frame_inds);
-        result2_thisperm_frame = all_perm_data{2}.Data(thisperm_offset_2 + idx2_frame_inds);
-        result1_thisperm_relvox = result1_thisperm_frame(ia); % extract overlapping voxel index data
-        result2_thisperm_relvox = result2_thisperm_frame(ib); % extract overlapping voxels index data
+    folderstring = sprintf('%s CFWER p%s at v%d (%d perms)',handles.dissociation.current_dissoctype,strrep(num2str(handles.parameters.cfwer_p_value),'0.',''),handles.parameters.cfwer_v_value,handles.parameters.PermNumClusterwise);
+    if ~add_dissoctype_embedding
+        handles.dissociation.output_folder.cfwer = fullfile(handles.dissociation.output_folder.base,[folderstring '_' handles.parameters.tailshort]);
+    else % Added in the dissoctype as a subfolder...
+        handles.dissociation.output_folder.cfwer = fullfile(handles.dissociation.output_folder.base,dissoctype,[folderstring '_' handles.parameters.tailshort]);
+    end
+    
+    %% Now apply the multiple comparisons correction (cfwer or, maybe, regular cluster extent)
+    if handles.parameters.do_CFWER
+        % Overwrite voxelwise and clusterwise directory names used for regular non-cfwer output
+        handles.dissociation.output_folder.voxelwise = handles.dissociation.output_folder.cfwer;
+        handles.dissociation.output_folder.clusterwise = handles.dissociation.output_folder.cfwer;
         
-        % calculate/combine/subtract these. this makes our new beta values. -- or perform whatever function we have specified
-        delta_thisperm_relvox = feval(dissociation.joint_distribution_fcn,result1_thisperm_relvox,result2_thisperm_relvox); 
-        fwrite(fileID, delta_thisperm_relvox,'single'); % append to the big file
+        % This function is equivalent to the single get_cfwer_dist() for dissociations
+        handles = makeCfwerDistributionForDissociation(handles); % Construct the info we'll need to do the cfwer thresholding using the regular machinery
+
+        %% set relevant files on the basis of the current dissociation type
+        handles.dissociation.cfwerinfo = handles.dissociation.(['cfwerinfo_' handles.dissociation.current_dissoctype]);
+        handles.dissociation.files_created.largest_clusters = handles.dissociation.files_created.(['largest_clusters_' handles.dissociation.current_dissoctype]);
+
+        % clustervals = load(variables.files_created.largest_clusters);
+
+        options = []; % not used..
+        [thresholded,variables] = build_and_write_pmaps(options,handles.parameters,handles.dissociation,thresholds);
+        variables = do_cfwer_clustering([],handles.parameters,variables,[],[]);
+    else
+        %% Do regular cluster extent thresholding...
+        mkdir(handles.dissociation.output_folder.clusterwise)
+        mkdir(handles.dissociation.output_folder.voxelwise)
+        %% Construct volumes of the solved p values and write them out - and write out beta cutoff maps, too
+        options = []; % not used..
+        [thresholded,variables] = build_and_write_pmaps(options,handles.parameters,handles.dissociation,thresholds);
+        [thresholded,variables] = build_and_write_beta_cutoffs(options,handles.parameters,variables,thresholds,thresholded);
+        
+        all_perm_data = memmapfile(handles.dissociation.([dissoctype '_svrb_file']),'Format','single'); % Get a handle to the file with all null svrb data
+        variables = do_cluster_thresholding_of_permutations(handles,handles.parameters,variables,all_perm_data,thresholded);
+       
+        if strcmp(dissoctype,'disjunction'), unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_conjunct_B_svrb.nii');
+        else, unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_disjunct_B_svrb.nii');
+        end
+        
+        variables.files_created.unthresholded_betamap = unthresholded_betamap;
+        
+        variables = evaluate_clustering_results(handles,variables,handles.parameters);
     end
-    fclose(fileID); % close big file
     
-    handles.dissociation = dissociation; % for convenience.
+    %% Save some of this info so we can inspect it later for our summary output
+    tosave = [];
+    tosave.variables = variables;
+    tosave.dissociation = handles.dissociation;
+    tosave.parmsfile = fullfile(handles.dissociation.output_folder.base,'Dissociation Parameters');% fullfile('Dissociation Parameters');
     
-    %% Save the real delta results before we return
-    tmp = dissociation.maineffects{1}.vo; % a template
+    handles.parameters.parmsfile = tosave.parmsfile;%fullfile(handles.dissociation.output_folder.base,'Analysis Parameters');
+    handles.parameters.output_folders = variables.output_folder;
 
-    %% Base A information - make sure we have indices all correct
-    tmp.fname = fullfile(dissociation.output_folder,'A_valid_svrbs.nii');
-    outimg = zeros(tmp.dim);
-    outimg(dissociation.m_idx) = dissociation.orig_betas_A;
-    svrlsmgui_write_vol(tmp, outimg);
+    save(tosave.parmsfile,'tosave')
 
-    tmp.fname = fullfile(dissociation.output_folder,'A_all_svrbs.nii');
-    outimg = zeros(tmp.dim);
-    outimg(dissociation.maineffects{1}.m_idx) = dissociation.maineffects{1}.ori_beta_vals; % all original analysis indices... - values shuld overlap with the intersect version
-    svrlsmgui_write_vol(tmp, outimg);
+%     assignin('base','handles',handles)
+%     WriteDissociationSummary(handles)
     
-    %% Base B information - make sure we have indices all correct
-    tmp.fname = fullfile(dissociation.output_folder,'B_valid_svrbs.nii');
-    outimg = zeros(tmp.dim);
-    outimg(dissociation.m_idx) = dissociation.orig_betas_B;
-    svrlsmgui_write_vol(tmp, outimg);
-    
-    tmp.fname = fullfile(dissociation.output_folder,'B_all_svrbs.nii');
-    outimg = zeros(tmp.dim);
-    outimg(dissociation.maineffects{2}.m_idx) = dissociation.maineffects{2}.ori_beta_vals; % all original analysis indices... - values shuld overlap with the intersect version
-    svrlsmgui_write_vol(tmp, outimg);
-    
-    %% Write out the lost-coverage volume (places where both analyses don't have valid indices)
-    lostinds = setxor(dissociation.maineffects{1}.m_idx,dissociation.maineffects{2}.m_idx);% indices that are only found in one map result (so not included in dissociation analysis)
-    tmp.fname = fullfile(dissociation.output_folder,'lost_coverage.nii');
-    outimg = zeros(tmp.dim);
-    if any(lostinds), outimg(lostinds) = 1; end % note these lost indices...
-    svrlsmgui_write_vol(tmp, outimg);
-    
-    %% Now the delta - make sure we have indices all correct
-    tmp.fname = fullfile(dissociation.output_folder,'A_minus_B_svrb.nii');
-    outimg = zeros(tmp.dim);
-    outimg(dissociation.m_idx) = dissociation.orig_betas_delta;
-    svrlsmgui_write_vol(tmp, outimg);
-    
-function handles = createPvalsForDissociation(handles)
-     handles = UpdateProgress(handles,'Dissocation analysis - computing pvals of delta-beta maps...',1);
-     parameters = handles.parameters; % for convenience - we can use the most recent waitbar, etc.
-    
-%      assignin('base','handles',handles)
-%      assignin('base','parameters',parameters)
-     
-     if handles.parameters.runfromgui
-         parameters.waitbar = [handles.progressaxes_rectangle handles.progressaxes_text];
-     end
-     
-     dissociation = handles.dissociation;
-    
-    %% Ok now read back in our delta svrb file to convert to p values
-    all_perm_data = memmapfile(dissociation.delta_svrb_file,'Format','single');
-
-    dataRef = all_perm_data.Data; % will this eliminate some overhead
-    L = length(dissociation.m_idx); % for each voxel feature  - this m_idx only refers to voxel features overlapping in both main effect analyses
-     for col = 1 : L % For each voxel feature (each svrb-delta)
-         if ~mod(col,50) % to reduce num of calls...
-             check_for_interrupt(parameters)
-             svrlsm_waitbar(parameters.waitbar,col/L)
-         end
-         
-         curcol = dataRef(col:L:end); % index out each voxel column using skips the length of the data ---> this returns curcol, which has the length of npermutations
-         observed_beta = dissociation.orig_betas_delta(col); % original observed beta value.
-         
-         if parameters.do_CFWER
-             if col == 1 % open where we'll put our p-value converted volumetric data...
-                 dissociation.outfname_big_p = fullfile(dissociation.output_folder,['pmu_p_maps_N_' num2str(length(variables.m_idx)) '.bin']);
-                 fileID = fopen(dissociation.outfname_big_p,'w');
-             end
-             
-             p_vec = betas2pvals(curcol,'pos'); %parameters.tailshort);
-             fwrite(fileID, p_vec,'single'); % add our results from this voxel to the same giant file....
-             
-             if col == L, fclose(fileID); end % then it's the last permutation, and our file is written - close the cfwer permutation data output file
-         end
-
-        % Compute beta cutoff values and a pvalue map for the real observed betas
-        voxp = dissociation.maineffects{1}.voxelwise_p;
-        nperms = dissociation.maineffects{1}.PermNumVoxelwise;
-        onetail_cutoff_index = median([1 round(voxp * nperms) nperms]);
-        [one_tail_pos_alphas(col), pos_beta_map_cutoff(col)] = compare_real_beta(observed_beta,curcol,'pos',onetail_cutoff_index); % try to preclude p values of 0
-     end
-     
-     dissociation.one_tail_pos_alphas = one_tail_pos_alphas;
-     dissociation.pos_beta_map_cutoff = pos_beta_map_cutoff;
-     
-     handles.dissociation = dissociation; % for convenience
-     
-      assignin('base','handles',handles)
-%      error('a')
-% 
-% 
-%     %% now for each permutation compute the p values???
-% 
-% %         %% step 2: sort the betas in the huge data file data and create cutoff values
-% %         % if desired, CFWER null p-maps are also created (nothing more) in this process
-% %         [parameters,variables,thresholds] = step2(handles,parameters,variables,thresholds,all_perm_data);
-% 
-%     % svrlsm_waitbar(parameters.waitbar,0,''); % reset.
-% 
-%     % allhandles{1}.vo
-%     % allhandles{1}.m_idx
-% 
-%     % files = dir('C:\Users\ad1470\Documents\GitHub\svrlsmgui\output\myanalysis\08-Nov-2021\*\Voxwise p005 (100 perms)\Clustwise p05 (100 perms)\pmu_beta_maps_N_100.bin')
-% 
-% 
-%     % RUN DISSOCIATION FIRST
-%     disp('run dissocation code...')
-%     % Dissociation results will show review of main effects
-%     % Overview of A results
-%     % Overview of B results 
-%     % Dissociation Results (A)
-%     % a montage of slices where it's A but not B
-% 
-%     % the Null distribution is obtained by this function:
-% 
-%     % dissociation.null_dist_fct = @(x,y) min([x y]);
-%     dissociation.null_dist_fct = @(x,y) x^2 + y^2;
-% 
-%     % a montage of slices where it's B but not A
-% 
+    %     %% cleanup
+    %     [handles,parameters,variables] = cleanup(handles,parameters,variables);

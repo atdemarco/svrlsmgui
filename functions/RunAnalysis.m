@@ -4,7 +4,7 @@ function [success,handles] = RunAnalysis(hObject,eventdata,handles)
     else
        handles.parameters.runfromgui = 1;
     end
-    
+    % Are we doing a single analysis, or a dissocation analysis?
     [success,handles] = singleOrDouble(hObject,eventdata,handles);
 
 function [success,handles] = singleOrDouble(hObject,eventdata,handles)

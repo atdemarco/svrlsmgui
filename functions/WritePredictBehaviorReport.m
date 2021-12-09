@@ -82,7 +82,7 @@ function parms = plotModelPredictionAndLosses(parms)
     sp = subplot(2,2,4);
     realdata = parms.one_score;
     predicted = parms.predAndLoss.resubPredict;
-    scatter(realdata,predicted,10,'k') % ,'Parent',ax)
+    scatter(realdata,predicted,5,'k') % ,'Parent',ax)
     xlabel('Real')
     if ~parms.crossval.do_crossval
         crossvalstring = '(no crossval)';

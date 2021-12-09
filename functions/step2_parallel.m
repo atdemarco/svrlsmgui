@@ -9,9 +9,9 @@ function [parameters,variables,thresholds] = step2_parallel(handles,parameters,v
     nperms = parameters.PermNumVoxelwise;
     outpath = variables.output_folder.clusterwise;
 
-     pos_thresh_index = thresholds.pos_thresh_index;
-     neg_thresh_index = thresholds.neg_thresh_index;
-     onetail_thresh_index = thresholds.onetail_cutoff_index; % for use with compare_real_beta() 
+    pos_thresh_index = thresholds.pos_thresh_index;
+    neg_thresh_index = thresholds.neg_thresh_index;
+    onetail_thresh_index = thresholds.onetail_cutoff_index; % for use with compare_real_beta() 
     
     % two_tailed_thresh_index = thresholds.two_tailed_thresh_index;
     % two_tailed_thresh_index_neg = thresholds.two_tailed_thresh_index_neg;

@@ -10,8 +10,7 @@ function largest_cur_cluster_size = get_cur_largest_cluster_size_cfwer(parameter
 
     if isempty(largest_cur_cluster_size)
         largest_cur_cluster_size = 0;
-    else % threshold the volume and write it out.
-        warning('add this save flag and save functionality')
+%     else % threshold the volume and write it out.
 %         if parameters.SavePostClusterwiseThresholdedPermutations % then save them...
 %             save_post_clusterwise_thresholded_permutation(variables,parameters,thresholded,largest_cur_cluster_size,permtype);
 %         end

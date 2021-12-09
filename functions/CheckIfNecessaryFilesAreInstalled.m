@@ -4,8 +4,6 @@ function details = CheckIfNecessaryFilesAreInstalled(handles)
     addpath(fullfile(mypath,'functions')) % when called 'private' this was unnecessary, but let's add it.
     % make sure nifti toolbox is on path.
     addpath(fullfile(mypath,'functions','nifti')) % nifti toolbox
-    addpath(fullfile(mypath,'functions','libsvm-3.18')) % libsvm...
-    addpath(fullfile(mypath,'functions','libsvm-3.18','matlab')) % libsvm's matlab directory...
     
     handles = UpdateProgress(handles,'Checking if necessary files are installed...',1);
 
@@ -24,25 +22,7 @@ function details = CheckIfNecessaryFilesAreInstalled(handles)
         %found_version = find(~cellfun(@isempty,cellfun(@(x) strfind(topofpath,x), versions,'uni',false)));
         %details.spmversion = versions{found_version};
     end
-    
-    svmtrain_found = which('svmtrain','-all'); % nb: svmtrain is also the name of a statistics toolbox function.
-    if isempty(svmtrain_found) % added this to support matlab R2019a, which doesn't have a svmtrain function built-in any more...
-        handles = UpdateProgress(handles,'libsvm is either not installed or not visible on MATLAB''s path.',1);
-        details.libsvm = 0;
-    else
-        correct_svmtrains = cellfun(@(x) strfind(x,'libsvm'),svmtrain_found,'Uni',false);
-        if ~isempty(correct_svmtrains{1})
-            handles = UpdateProgress(handles,'libsvm is installed and visible on MATLAB''s path.',1);
-            details.libsvm = 1;
-        elseif ~all(isempty(correct_svmtrains)) % one of the functions is right, but not at top of path
-            handles = UpdateProgress(handles,'libsvm may be installed but it appears to be overloaded MATLAB''s on path (svmtrain.m?).',1);
-            details.libsvm = 0;
-        else
-            handles = UpdateProgress(handles,'libsvm is either not installed or not visible on MATLAB''s path.',1);
-            details.libsvm = 0;
-        end
-    end
-    
+
     % Now for the MATLAB statistics svr functions
     matlab_stats_found = license('checkout','statistics_toolbox');
     if matlab_stats_found

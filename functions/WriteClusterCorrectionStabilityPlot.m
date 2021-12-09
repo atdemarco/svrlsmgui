@@ -12,8 +12,7 @@ function WriteClusterCorrectionStabilityPlot(parms)
             fprintf(parms.fileID,'%s','Although permutation testing was conducted, there were zero voxels that passed voxelwise thresolding, and thus no clusters of any size to plot.');
         else
             assess_interval=100;
-            clusters_to_show = 5; %clusters_to_show = min(last_significant_cluster,5); % if there's less than 5, then 
-            %cluster_stability_im = plotClusterPermStability(clusterwisedir,assess_interval,clusters_to_show);
+            clusters_to_show = 5;
             cluster_stability_im = plotClusterPermStability(parms,assess_interval,clusters_to_show);
 
             imwrite(cluster_stability_im,fullfile(parms.picturedir,'cluster_stabil.png'));

@@ -5,6 +5,7 @@ function [thresholded,variables] = build_and_write_pmaps(options,parameters,vari
     end
 
 function [thresholded,variables] = write_p_maps_pos_tail(parameters,variables,thresholds)
+    assignin('base','variables',variables)
     if parameters.do_CFWER % note that the parameters struct isn't returned by this function so nothing changes outside this function scope
         parameters.voxelwise_p = variables.cfwerinfo.cfwer_single_pval_answer;
     end

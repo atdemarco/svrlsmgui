@@ -17,10 +17,11 @@ function variables = get_cfwer_dist(handles,parameters,variables)
     cfwerinfo.v_value_in_mm3_actual_floor = cfwerinfo.each_voxel_volume_mm3 * cfwerinfo.vox_limited_v_val_floor; % the actual cubic millimeter of false positives we are admitting.
     cfwerinfo.cfwer_p_value = parameters.cfwer_p_value; % for ease of access in summary file.
 
-    switch parameters.tailshort % tail
-        case {'pos','neg'} % cfwerinfo.requested_v_index = nperms - cfwerinfo.vox_limited_v_val_floor;
-            cfwerinfo.requested_v_index = cfwerinfo.vox_limited_v_val_floor;
+    if cfwerinfo.vox_limited_v_val_floor == 0
+        error('Requested v value is less than the volume of a single voxel. The voxel resolution of the lesion image data should be be smaller, or the value of v should be increased.')
     end
+    
+    cfwerinfo.requested_v_index = cfwerinfo.vox_limited_v_val_floor;
 
     svrlsm_waitbar(parameters.waitbar,0,'Reconstructing null p-vols and calculating CFWER threshold.');
 
@@ -69,11 +70,9 @@ function variables = get_cfwer_dist(handles,parameters,variables)
     
     %% Brainwide CFWER cutoffs...
     % Note: prctile() can produce values that do not strictly exist in the data. this seems not to be the end of the world...
-    switch parameters.tailshort % tail
-        case {'pos','neg'}
-             cfwerinfo.cfwer_single_pval_answer = prctile(cfwerinfo.pval_null_dist.pval,100*parameters.cfwer_p_value); % this is the value that is used to threshold the data brain wide
-             cfwerinfo.cfwer_single_pval_answer_unadjusted = prctile(cfwerinfo.p_of_requested_v,100*parameters.cfwer_p_value); % this is based on the *requested* v value no matter what. 
-    end
+
+    cfwerinfo.cfwer_single_pval_answer = prctile(cfwerinfo.pval_null_dist.pval,100*parameters.cfwer_p_value); % this is the value that is used to threshold the data brain wide
+    cfwerinfo.cfwer_single_pval_answer_unadjusted = prctile(cfwerinfo.p_of_requested_v,100*parameters.cfwer_p_value); % this is based on the *requested* v value no matter what. 
     
     %% Now let's go back through the null distributions and determine the distribution of # of suprathreshold clusters voxels of our null distributions
     svrlsm_waitbar(parameters.waitbar,0,'Counting suprathresholde CFWER voxels in permutation data.');
@@ -85,18 +84,15 @@ function variables = get_cfwer_dist(handles,parameters,variables)
         
         cur_perm_image = dataRef(col:nperms:end);
         
-        switch parameters.tailshort % tail
-            case {'pos','neg'}
-                include_mask = cur_perm_image <= cfwerinfo.cfwer_single_pval_answer; % highlight voxels the number of voxels that exceed our critical value.
-                cfwerinfo.n_suprathreshold_vox_dist(col) = sum(include_mask(:)); 
-                cfwerinfo.n_suprathreshold_vox_dist_unadjusted(col) = sum(cur_perm_image <= cfwerinfo.cfwer_single_pval_answer_unadjusted); % not adjusted for tie's in p-value rankings...
-                
-                % get the biggest null cluster under the adjusted whole-brain cutoff...
-                cur_perm_image(~include_mask) = 0; % zero out voxels that didn't achieve our critical value...
-                zerosmap = zeros(variables.vo.dim(1:3)); % make a zeros template....
-                zerosmap(variables.m_idx) = cur_perm_image; % put it back into brain space so we can measure cluster extents...
-                cfwerinfo.largest_cluster(col) = get_cur_largest_cluster_size_cfwer(parameters,variables,zerosmap);
-        end
+        include_mask = cur_perm_image <= cfwerinfo.cfwer_single_pval_answer; % highlight voxels the number of voxels that exceed our critical value.
+        cfwerinfo.n_suprathreshold_vox_dist(col) = sum(include_mask(:)); 
+        cfwerinfo.n_suprathreshold_vox_dist_unadjusted(col) = sum(cur_perm_image <= cfwerinfo.cfwer_single_pval_answer_unadjusted); % not adjusted for tie's in p-value rankings...
+
+        % get the biggest null cluster under the adjusted whole-brain cutoff...
+        cur_perm_image(~include_mask) = 0; % zero out voxels that didn't achieve our critical value...
+        zerosmap = zeros(variables.vo.dim(1:3)); % make a zeros template....
+        zerosmap(variables.m_idx) = cur_perm_image; % put it back into brain space so we can measure cluster extents...
+        cfwerinfo.largest_cluster(col) = get_cur_largest_cluster_size_cfwer(parameters,variables,zerosmap);
         
         if parameters.SaveNullPMapsPostThresholding
             save_post_thresholded_pmap_permutation(parameters,variables,cur_perm_image,include_mask,col);

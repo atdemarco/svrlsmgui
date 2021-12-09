@@ -11,11 +11,11 @@ function WriteCorrelationDiagnostics(parms)
             rawdata=table2array(parms.behavioralmodeldata);
             [r,p] = corrcoef(rawdata);
 
-            corrplothandle = figure('visible','off');
+            corrplothandle = figure('visible','off','color','white','Position',[0 0 1200 1200]);
             for subp = 1:numel(p)
                 drawnow
                 [i,j] = ind2sub(size(p),subp);
-                curSP = subplot(size(p,1),size(p,2),subp,'parent',corrplothandle);
+                curSP = subplot(size(p,1),size(p,2),subp,'parent',corrplothandle,'fontsize',7); % 2021
                 currp = p(i,j);
                 currr = r(i,j);
                 if i == 1 % left column
@@ -27,18 +27,22 @@ function WriteCorrelationDiagnostics(parms)
                     hold on;
                 end
                 if i ~= j  % then we're off diagonal.
-                  scatter(rawdata(:,i),rawdata(:,j),'parent',curSP);
+                  scatter(rawdata(:,i),rawdata(:,j),5,'k','parent',curSP); % 2021
                   hold on;
+                  set(curSP,'fontsize',7); % 2021
+                  axis square; % 2021
                   if currp < .05 % alpha for highlighting the r value red.
                       color = 'r';
                   else
                       color = 'k';
                   end
-                   xoffset = max(get(curSP,'xlim')) - (.9*diff(get(curSP,'xlim'))); % 90% from the right
-                   yoffset = max(get(curSP,'ylim')) - (.15*diff(get(curSP,'ylim'))); % 15% down from the top
-                  text(xoffset,yoffset,sprintf('r=%0.2f',currr),'Color',color,'parent',curSP)
+                  xoffset = max(get(curSP,'xlim')) - (.9*diff(get(curSP,'xlim'))); % 90% from the right
+                  yoffset = max(get(curSP,'ylim')) - (.15*diff(get(curSP,'ylim'))); % 15% down from the top
+                  text(xoffset,yoffset,sprintf('r = %0.2f',currr),'Color',color,'parent',curSP)
                 else % we're on diagonal. show a histogram of this variable
-                    histogram(rawdata(:,i),'parent',curSP); % i == j so we'll just use i.
+                    histogram(rawdata(:,i),'facecolor','w','parent',curSP); % i == j so we'll just use i.
+                    set(curSP,'fontsize',7)
+                    axis square;
                     hold on;
                 end
             end        
@@ -49,7 +53,7 @@ function WriteCorrelationDiagnostics(parms)
             corrfname = 'behav_nuisance_correl_im.png';
             imwrite(correl_im.cdata,fullfile(parms.picturedir,corrfname));
             imstr = 'Correlation between variables in the behavioral nuisance model.';
-            imtxt = ['<img src="images/' corrfname '" alt="' imstr '">'];
+            imtxt = ['<img src="images/' corrfname '" alt="' imstr '" width="70%" height="70%">'];
             fprintf(parms.fileID,'%s',imtxt);
         end
         fprintf(parms.fileID,'<br><br>'); % break before next section

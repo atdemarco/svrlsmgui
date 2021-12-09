@@ -1,5 +1,5 @@
 function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
-    %For the dissociation functionality, we've extracted this out...
+    %For the dissociation functionality, we've extracted this out from RunAnalysis...
     try
         handles.parameters = ValidateSVRLSMParameters(handles.parameters);  % fill in any missing parms
 
@@ -13,7 +13,6 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
         tic; % this is what we'll use to time the execution of the analysis...
 
         handles.parameters.baseoutputdir = fullfile(handles.parameters.analysis_out_path,handles.parameters.analysis_name,handles.parameters.datetime_run);
-
         could_be_double_dissociation_output = handles.parameters.PERMIT_DOUBLE_DISSOCIATIONS && handles.parameters.run_double_dissociation;
 
         if OutputDirectoryAlreadyExists(handles) && ~could_be_double_dissociation_output
@@ -46,8 +45,8 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
             set(get(handles.covariatespanel,'children'),'enable','off')
         end
 
-        %% 
-
+        %%
+        
         parameters = handles.parameters; % Make a local copy of parameters struct for convenience.
 
         if handles.parameters.runfromgui, parameters.waitbar = [handles.progressaxes_rectangle handles.progressaxes_text];
@@ -91,7 +90,6 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
         success = CreateDirectory(variables.output_folder.base); %#ok<NASGU> % this is the date subdirectory.
 
         handles.parameters.parmsfile = fullfile(variables.output_folder.base,'Analysis Parameters');
-
         handles.parameters.output_folders = variables.output_folder;
 
         %% Read lesion images...
@@ -224,9 +222,6 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
                 handles = UpdateProgress(handles,sprintf('Skipping running an empty behavioral nuisance model.'),1);
             else
                 mdl = fitlm(t,modelspec,'intercept',true);
-                disp('add binomial distribution for lsm?')
-                % mdl = fitglm(dsa,modelspec,'Distribution','binomial')
-
 
                 variables.one_score = mdl.Residuals.Raw(:); % save raw residuals (residualized behavioral data) for analysis.
                 variables.one_score = variables.one_score + repmat(mdl.Coefficients.Estimate(1),size(variables.one_score)); % 8/7/17 -- add estimated intercept back in.
@@ -292,22 +287,18 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
 
             handles = UpdateProgress(handles,sprintf('Beginning lesion nuisance model with covariates: %s',strjoin(fieldnames(tmp)')),1);
             variables = continuize_lesions(variables,parameters); % will automatically use the field .lesion_nuisance_model
+        
             variables.lesion_dat = variables.lesion_dat2;
             handles = UpdateProgress(handles,sprintf('Lesion nuisance model complete.'),1);
 
-            % Save covariate maps 10/23/18
-            doSaveCovMaps = true;
-            if doSaveCovMaps
-                % handles = SaveCovariateMaps(variables); % added 10/23/18
-                mkdir(variables.output_folder.covariates)
-                for c = 2 : size(variables.lesion_nuisance_model_betas,1) % since the 1st is constant... 
-                    curcovname =  variables.lesionNuisanceModelFields{c-1}; % since we start counting from 2 (to exclude intercept)
-                    covfilename = [curcovname ' (betas).nii'];
-                    out_map = zeros(variables.vo.dim);
-                    out_map(variables.l_idx) = variables.lesion_nuisance_model_betas(c,:); % pull row of data.
-                    variables.vo.fname = fullfile(variables.output_folder.covariates,covfilename);
-                    svrlsmgui_write_vol(variables.vo, out_map);
-                end
+            %% Save covariate maps 10/23/18
+            mkdir(variables.output_folder.covariates)
+            for c = 2 : size(variables.lesion_nuisance_model_betas,1) % since the 1st is constant... 
+                curcovname =  variables.lesionNuisanceModelFields{c-1}; % since we start counting from 2 (to exclude intercept)
+                out_map = zeros(variables.vo.dim);
+                out_map(variables.l_idx) = variables.lesion_nuisance_model_betas(c,:); % pull row of data.
+                variables.vo.fname = fullfile(variables.output_folder.covariates,[curcovname ' (betas).nii']);
+                svrlsmgui_write_vol(variables.vo, out_map);
             end
         else
             handles = UpdateProgress(handles,sprintf('No lesion data nuisance model will be employed.'),1);
@@ -319,8 +310,7 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
 
         check_for_interrupt(parameters)
 
-        % Standardize the behavior to be predicted (Y) - this is different from
-        % 'Standardize' yes/no for the SVR, which affects the the *predictor* data
+        % Standardize the behavior to be predicted (Y) - this is different from 'Standardize' yes/no for the SVR, which affects the the *predictor* data
         do_this_part = true;
         if do_this_part
             handles = UpdateProgress(handles,'Standardizing behavioral to be predicted to 0-100 range.',1);
@@ -340,37 +330,6 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
         % We'll use these in summary output function WritePredictBehaviorReport()
         parameters.original_behavior_transformation.minoffset = minoffset;
         parameters.original_behavior_transformation.maxmultiplier = maxmultiplier;
-
-        %% Standardize behavior and lesion data if requested... the standardization only applies to both or neither at the moment.
-        % if 1 == 2 
-        %     %The software centers and scales each column of the predictor data (X) by the weighted column mean and standard deviation, 
-        %     % respectively (for details on weighted standardizing, see Algorithms). 
-        % 
-        %     if parameters.standardize % I believe this is the right thing to do here...
-        %         handles = UpdateProgress(handles,'Standardizing behavioral and lesion data to 0-100 range.',1);
-        %         % standardize the behavioral data if requested.
-        %         minoffset = min(variables.one_score(:)); % accommodate negative numbers...
-        %         variables.one_score = minoffset + variables.one_score; % bring all vals >=0
-        %         variables.one_score = variables.one_score*100/max(abs(variables.one_score)); 
-        %         %variables.one_score = variables.one_score*100/max(abs(variables.one_score)); % < this is the default behavior for the original SVRLSM (Zhang et al., 2014)
-        % 
-        %         % standardize the lesion data -- could have values that are < 0 and > 1 depending on what transform was applied ...
-        %     %     minoffset = min(variables.lesion_dat(:));
-        %     %     variables.lesion_dat = variables.lesion_dat + minoffset; % bring all vals >=0
-        %     %     variables.lesion_dat = variables.lesion_dat.*100./max(abs(variables.lesion_dat));
-        %     else
-        %         handles = UpdateProgress(handles,'Not standardizing behavioral and lesion data.',1);
-        %     end
-        % else
-        %     disp('** Regular normalize step disabled for testing..')
-        % end
-
-        % %% ICA Decompose Lesion data if requested - pre-alpha...
-        % if parameters.beta.do_ica_on_lesiondata
-        %     error('Not supported at the moment.')
-        %     handles = UpdateProgress(handles,'ICA decomposing lesion data... this is pre-alpha, do not use it.',1);    
-        %     [parameters,variables] = svrlsm_prepare_ica(parameters,variables);
-        % end
 
         %% Optimize hyperparameters if requested
         parameters.optimization.best.sigma = nan; % placeholders regardless of whether we are optimizing.
@@ -399,8 +358,6 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
              variables = optimalParameterReport(parameters,variables);
         end
 
-        %svrinteract(variables); % interactive hyperparm tuning...
-
         %% Compute the real, single beta map of the observed data.
         handles = UpdateProgress(handles,'Computing beta map...',1);
         [beta_map, variables] = get_beta_map(parameters, variables); % either mu or svr
@@ -415,14 +372,7 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
 
             [variables] = run_beta_permutations(parameters, variables, beta_map,handles);
 
-%              assignin('base','variables',variables)
-%              assignin('base','parameters',parameters)
-%              error('a')
-            
-            if parameters.do_CFWER
-                %variables = evaluate_clustering_results(handles,variables,parameters);
-            else    
-                % Evaluate clustering results
+            if ~parameters.do_CFWER % Evaluate clustering results - but this is traditional clustering, not the cfwer clustering.
                 variables = evaluate_clustering_results(handles,variables,parameters);
                 handles = UpdateProgress(handles,sprintf('Results of analysis:'),1);
                 handles = UpdateProgress(handles,sprintf('%d voxels survive voxelwise threshold (P < %g, %d perms).',variables.clusterresults.survivingbetavals,parameters.voxelwise_p,parameters.PermNumVoxelwise),1);
@@ -432,15 +382,16 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
 
         % transfer the loss and prediction information from the permutations into the output:
         handles.parameters.predAndLoss = variables.predAndLoss;
-        if ~isfield(variables,'predAndLoss_perms')
-            handles.parameters.predAndLoss_perms = {}; % empty.
-        else
-            handles.parameters.predAndLoss_perms = variables.predAndLoss_perms;
+        if ~isfield(variables,'predAndLoss_perms'), handles.parameters.predAndLoss_perms = {}; % empty.
+        else, handles.parameters.predAndLoss_perms = variables.predAndLoss_perms;
         end
 
         handles.parameters.m_idx = variables.m_idx; % for dissociations..
         handles.parameters.vo = variables.vo; % for dissociations..
-        handles.parameters.ori_beta_vals = variables.ori_beta_vals; % for dissociations
+        
+        if handles.parameters.DoPerformPermutationTesting
+            handles.parameters.ori_beta_vals = variables.ori_beta_vals; % for dissociations
+        end
 
         handles.parameters.original_behavior_transformation = parameters.original_behavior_transformation; 
         handles.parameters.optimization = parameters.optimization;

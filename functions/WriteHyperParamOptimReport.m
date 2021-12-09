@@ -86,7 +86,7 @@ function showGraphics(parms)
     results = parms.optimization.results; % here we assume grid search was done.
     
     bestrow = find(results.Rank==1);
-    ff=figure('Visible','off','Position',[0 0 1200 800],'Color','w');
+    ff=figure('Visible','off','Position',[0 0 1200 800],'Color','White');
     markersize = 25;
     jit = @(x) x .* (1 + randn(size(x)) ./ 5);
 

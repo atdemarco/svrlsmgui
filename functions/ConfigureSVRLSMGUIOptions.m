@@ -35,6 +35,7 @@ function handles = ConfigureSVRLSMGUIOptions(handles)
                      handles.hyperparm_quality_report_options;
                      get(handles.hyperparm_quality_report_options,'children')
                      get(handles.analysismask_menu_option_parent,'children')
+                     get(handles.atlasparcellation_menu_option_parent,'children')
                      ];
     
     % MenuSelectedFcn is not an available callback in older matlabs, so accomodate that

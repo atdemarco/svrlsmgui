@@ -1,5 +1,4 @@
 function parameters = svrlsm_optimizehyperparameters(parameters,variables)
-    % https://stackoverflow.com/questions/39636898/box-constraint-in-libsvm-package-compare-matlab-fitcsvm-and-libsvm-options
      svrlsm_waitbar(parameters.waitbar,0,['Hyperparameter optimization (' CurrentOptimString(parameters) ')'])
  
      %% configure and run the optimization
@@ -16,7 +15,7 @@ function parameters = svrlsm_optimizehyperparameters(parameters,variables)
                  if strcmp(curname,'Standardize'), parameters.optimization.best.standardize = curval == categorical(true); end % need it as a Boolean...
              end
          case {'Grid Search','Random Search'} % then we have a rank!
-             bestRow = find(results.Rank == 1);
+             bestRow = results.Rank == 1;
              tmpresults=removevars(results,{'Rank','Objective'});
              for f = tmpresults.Properties.VariableNames
                  curname = f{1};

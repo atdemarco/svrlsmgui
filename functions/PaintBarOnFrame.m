@@ -34,15 +34,16 @@ function im = PaintBarOnFrame(im,bar_xywh_percent,cmapname,colorminval,colormaxv
 
     im = imresize(im, resize_amount,'bilinear','Antialiasing',true); % here we upsample so we get good looking font, I hope
 
-    f = figure('visible','off');
+    f = figure('visible','off','Color','white');
     a = axes(f);
     imshow(im,'Parent',a);
     
     truesize(f); % one pixel per row/col
     
     % Draw the bar annotations
-    text(label_x_offset,label_y_offset,units,'Color','k','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a);
-    text(label_x_offset - (1.1*resize_amount*half_bar_width),label_y_offset,num2str(colorminval),'Color','w','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a); % min
-    text(label_x_offset + (1.1*resize_amount*half_bar_width),label_y_offset,num2str(colormaxval),'Color','w','FontSize',10,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a); % max
+    fontsize = 8;
+    text(label_x_offset,label_y_offset,units,'Color','k','FontSize',fontsize,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a);
+    text(label_x_offset - (1.1*resize_amount*half_bar_width),label_y_offset,num2str(colorminval),'Color','w','FontSize',fontsize,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a); % min
+    text(label_x_offset + (1.1*resize_amount*half_bar_width),label_y_offset,num2str(colormaxval),'Color','w','FontSize',fontsize,'HorizontalAlignment','center','VerticalAlignment','middle','FontSmoothing','off','Parent',a); % max
     im = frame2im(getframe(a)); % do we want getframe a or f?
     close(f);
