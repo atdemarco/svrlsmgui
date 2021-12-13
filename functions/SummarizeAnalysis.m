@@ -182,17 +182,7 @@ function htmloutpath = SummarizeAnalysis(parmsfile)
                 B(relevant_pixels) = cmap(uncorrbetamap(relevant_pixels),3);
             end
             
-            % Edge outline min lesion mask overlap slice in green now.
-            %         doOutline = false;
-            %         if doOutline
-            %             curminslice = rot90(minlesionmask.img(:,:,slices_to_show(sl))); %#ok<*UNRCH>
-            %             curminslice=fliplr(curminslice);
-            %             BW = edge(curminslice,'Canny'); % edge detect.
-            %             G(BW) = 1; % outline lesion min overlap region
-            %         end
-            
             curRGB = cat(3,R,G,B); % combine into RGB
-            
             sep = ones(size(curanatomicalslice,1),1,3); % add vertical separator...
             imdata = [imdata sep curRGB]; % concat slice RGBs on horizontal axis
         end

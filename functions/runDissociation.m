@@ -113,13 +113,11 @@ function handles = writeEachTailOut(handles)
     tosave.dissociation = handles.dissociation;
     tosave.parmsfile = fullfile(handles.dissociation.output_folder.base,'Dissociation Parameters');% fullfile('Dissociation Parameters');
     
-    handles.parameters.parmsfile = tosave.parmsfile;%fullfile(handles.dissociation.output_folder.base,'Analysis Parameters');
+    handles.parameters.parmsfile = tosave.parmsfile;
     handles.parameters.output_folders = variables.output_folder;
-
     save(tosave.parmsfile,'tosave')
-
-%     assignin('base','handles',handles)
-%     WriteDissociationSummary(handles)
+    
+    WriteDissociationSummary(tosave.parmsfile)
     
     %     %% cleanup
     %     [handles,parameters,variables] = cleanup(handles,parameters,variables);
