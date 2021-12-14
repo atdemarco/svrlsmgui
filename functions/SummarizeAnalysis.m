@@ -300,11 +300,7 @@ function htmloutpath = SummarizeAnalysis(parmsfile)
             fprintf(parms.fileID,'%s<br>',imstr);
         else % show clusters since we are just using regular null cluster distribution...
             [clusteridx.hdr,clusteridx.img]=read_nifti(parms.files_created.significant_cluster_indices);
-            
-            if needToResize && canImresize
-                disp('Resizing cluster index image for output...')
-                clusteridx.img = imresize3(clusteridx.img,targetSize,'method','nearest');
-            end
+            if needToResize && canImresize, clusteridx.img = imresize3(clusteridx.img,targetSize,'method','nearest'); end
             
             clustertable = parms.files_created.clustertable;
             if exist(clustertable,'file')

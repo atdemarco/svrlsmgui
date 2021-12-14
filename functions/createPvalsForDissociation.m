@@ -42,8 +42,8 @@ function handles = computeThisDissociationType(handles,dissoctype)
         
         % Compute beta cutoff values and a pvalue map for the real observed betas
         onetail_cutoff_index = median([1 round(dissociation.voxp * dissociation.nperms) dissociation.nperms]);
-        [one_tail_pos_alphas(col), pos_beta_map_cutoff(col)] = compare_real_beta(observed_beta,curcol,'pos',onetail_cutoff_index); % try to preclude p values of 0
-        [one_tail_neg_alphas(col), neg_beta_map_cutoff(col)] = compare_real_beta(observed_beta,curcol,'neg',onetail_cutoff_index); % try to preclude p values of 0
+        [one_tail_pos_alphas(col), pos_beta_map_cutoff(col)] = compare_real_beta(observed_beta,curcol,'pos',onetail_cutoff_index);
+        [one_tail_neg_alphas(col), neg_beta_map_cutoff(col)] = compare_real_beta(observed_beta,curcol,'neg',onetail_cutoff_index);
     end
     
     handles.dissociation = dissociation; % so we get the pval file names we created....

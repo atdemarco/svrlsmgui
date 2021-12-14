@@ -49,6 +49,51 @@ function WriteDissociationSummary(parmsfile)
     cmapname='jet'; % normalize image to 255 to index out of color map -- scale using JET from -10 to +10
     cmap = eval([cmapname '(255)']);
     
+    %% Show coverage map
+    files_to_show={'A_valid_svrbs','B_valid_svrbs','lost_coverage'};
+    filedescr = {['Valid voxels ' behavA],['Valid voxels ' behavB],'Lost coverage'};
+    for f = 1 : numel(files_to_show)
+        thisimg = files.(files_to_show{f}).img;
+        raw_thisimg = thisimg~=0;
+        beta_scale_max = 10; % so the cmap values will fall within -10 to 10.
+        thisimg = thisimg + beta_scale_max;
+        thisimg = ceil(255 * (thisimg ./ (2*beta_scale_max)));
+        thisimg(thisimg==0) = 1; % this is a hack to avoid zeros because we can't index a zero out of the colormap...
+        thisimg(thisimg>1) = 255;% so we get a binary map...
+
+        imdata = [];
+        for sl = 1 : numel(slices_to_show)
+            curanatomicalslice = rot90(template.img(:,:,slices_to_show(sl))); % Anatomical, not RGB
+            curanatomicalslice=fliplr(curanatomicalslice);
+            [R,G,B] = deal(curanatomicalslice); % tricky deal.
+            % Make RGB by indexing out of colormap
+            maptoshow = rot90(thisimg(:,:,slices_to_show(sl)));
+            maptoshow = fliplr(maptoshow);
+
+            relevant_pixels = fliplr(rot90(raw_thisimg(:,:,slices_to_show(sl))));
+            if any(relevant_pixels(:)) % any suprathreshold voxels on this slice?
+                R(relevant_pixels) = cmap(maptoshow(relevant_pixels),1);
+                G(relevant_pixels) = cmap(maptoshow(relevant_pixels),2);
+                B(relevant_pixels) = cmap(maptoshow(relevant_pixels),3);
+            end
+
+            curRGB = cat(3,R,G,B); % combine into RGB
+
+            sep = ones(size(curanatomicalslice,1),1,3); % add vertical separator...
+            imdata = [imdata sep curRGB]; % concat slice RGBs on horizontal axis
+        end
+        imdata = PaintBarOnFrame(imdata,bar_location,cmapname,0,1,'Coverage',0); % do not flip.
+        imwrite(imdata,fullfile(parms.picturedir,[files_to_show{f} '.png']));
+        fprintf(parms.fileID,'<hr>'); % break
+        imstr = ['Coverage map (' filedescr{f} ')'];
+        fprintf(parms.fileID,'<h2>%s</h2>',imstr);
+        cur_alttext = imstr;
+        imtxt = ['<img src="images/' files_to_show{f} '.png" alt="' cur_alttext '" width="' image_widths '" height="' image_heights '">'];
+        fprintf(parms.fileID,'%s\n',imtxt);
+        fprintf(parms.fileID,'<br><br>\n');
+    end
+    
+    
     %% Make slices for uncorrected beta threshold map - disjunction image, then conjunction image
     imdata = [];
     DISSOCIATION_TYPE = {'disjunction','conjunction'};
@@ -62,10 +107,8 @@ function WriteDissociationSummary(parmsfile)
         thisimg(thisimg==0) = 1; % this is a hack to avoid zeros because we can't index a zero out of the colormap...
         imdata = [];
 
-        %% Write unthresholded disjunction result
         for sl = 1 : numel(slices_to_show)
-            % Anatomical, not RGB
-            curanatomicalslice = rot90(template.img(:,:,slices_to_show(sl)));
+            curanatomicalslice = rot90(template.img(:,:,slices_to_show(sl))); % Anatomical, not RGB
             curanatomicalslice=fliplr(curanatomicalslice);
             [R,G,B] = deal(curanatomicalslice); % tricky deal.
             % Make RGB by indexing out of colormap

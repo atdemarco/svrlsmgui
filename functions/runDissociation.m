@@ -24,15 +24,32 @@ function [success,handles] = runDissociation(hObject,eventdata,handles)
     dissoctype = {'conjunction','disjunction'};
     for d = 1 : numel(dissoctype)
         handles.dissociation.current_dissoctype = dissoctype{d};
-        disp(['Saving results for ' handles.dissociation.current_dissoctype])
+%         disp(['Saving results for ' handles.dissociation.current_dissoctype])
         handles = computeClusterResultsDissociation(handles);
     end
+    
+    %% OK, make the summary output file
+    tosave = [];
+    tosave.variables = handles.variables;
+    tosave.dissociation = handles.dissociation;
+    tosave.parmsfile = fullfile(handles.dissociation.output_folder.base,'Dissociation Parameters');% fullfile('Dissociation Parameters');
+    
+    handles.parameters.parmsfile = tosave.parmsfile;
+    handles.parameters.output_folders = handles.variables.output_folder;
+    save(tosave.parmsfile,'tosave')
+    
+    WriteDissociationSummary(tosave.parmsfile)
+    
+    %     %% cleanup
+    %     [handles,parameters,variables] = cleanup(handles,parameters,variables);
     
 function handles = computeClusterResultsDissociation(handles)
     %% Run this for each tail - pos and neg...
     tails = {'pos','neg'};
     for T = 1 : numel(tails)
-        if strcmp(tails{T},'pos') && strcmp(handles.dissociation.current_dissoctype,'conjunction'), continue; end % skip the positive tail of the conjunction, since that would identify areas involved in *NEITHER* behavior...
+        if strcmp(tails{T},'pos') && strcmp(handles.dissociation.current_dissoctype,'conjunction')
+            continue; % skip the positive tail of the conjunction, since that would identify areas involved in *NEITHER* behavior...
+        end 
         handles.parameters.tailshort = tails{T};
         handles = writeEachTailOut(handles);
     end
@@ -50,23 +67,15 @@ function handles = writeEachTailOut(handles)
 
     %% Conditionally set the output folders... by tail, and dissociation type.
     % note here we suffix with the tail direction as in --- [folderstring '_' handles.parameters.tailshort]
-    add_dissoctype_embedding = true;
     folderstring = sprintf('Voxwise p%s (%d perms)',strrep(num2str(handles.parameters.voxelwise_p),'0.',''),handles.parameters.PermNumVoxelwise);
-    if ~add_dissoctype_embedding
-        handles.dissociation.output_folder.voxelwise = fullfile(handles.dissociation.output_folder.base,[folderstring '_' handles.parameters.tailshort]);
-    else % Added in the dissoctype as a subfolder...
-        handles.dissociation.output_folder.voxelwise = fullfile(handles.dissociation.output_folder.base,dissoctype,[folderstring '_' handles.parameters.tailshort]);
-    end
+    handles.dissociation.output_folder.voxelwise = fullfile(handles.dissociation.output_folder.base,dissoctype,[folderstring '_' handles.parameters.tailshort]);
     
     folderstring = sprintf('Clustwise p%s (%d perms)',strrep(num2str(handles.parameters.clusterwise_p),'0.',''),handles.parameters.PermNumClusterwise);
     handles.dissociation.output_folder.clusterwise = fullfile(handles.dissociation.output_folder.voxelwise,[folderstring '_' handles.parameters.tailshort]);
     
     folderstring = sprintf('%s CFWER p%s at v%d (%d perms)',handles.dissociation.current_dissoctype,strrep(num2str(handles.parameters.cfwer_p_value),'0.',''),handles.parameters.cfwer_v_value,handles.parameters.PermNumClusterwise);
-    if ~add_dissoctype_embedding
-        handles.dissociation.output_folder.cfwer = fullfile(handles.dissociation.output_folder.base,[folderstring '_' handles.parameters.tailshort]);
-    else % Added in the dissoctype as a subfolder...
-        handles.dissociation.output_folder.cfwer = fullfile(handles.dissociation.output_folder.base,dissoctype,[folderstring '_' handles.parameters.tailshort]);
-    end
+    handles.dissociation.output_folder.cfwer = fullfile(handles.dissociation.output_folder.base,dissoctype,[folderstring '_' handles.parameters.tailshort]);
+    
     
     %% Now apply the multiple comparisons correction (cfwer or, maybe, regular cluster extent)
     if handles.parameters.do_CFWER
@@ -81,15 +90,13 @@ function handles = writeEachTailOut(handles)
         handles.dissociation.cfwerinfo = handles.dissociation.(['cfwerinfo_' handles.dissociation.current_dissoctype]);
         handles.dissociation.files_created.largest_clusters = handles.dissociation.files_created.(['largest_clusters_' handles.dissociation.current_dissoctype]);
 
-        % clustervals = load(variables.files_created.largest_clusters);
-
         options = []; % not used..
         [thresholded,variables] = build_and_write_pmaps(options,handles.parameters,handles.dissociation,thresholds);
         variables = do_cfwer_clustering([],handles.parameters,variables,[],[]);
     else
         %% Do regular cluster extent thresholding...
-        mkdir(handles.dissociation.output_folder.clusterwise)
         mkdir(handles.dissociation.output_folder.voxelwise)
+        mkdir(handles.dissociation.output_folder.clusterwise)
         %% Construct volumes of the solved p values and write them out - and write out beta cutoff maps, too
         options = []; % not used..
         [thresholded,variables] = build_and_write_pmaps(options,handles.parameters,handles.dissociation,thresholds);
@@ -98,26 +105,12 @@ function handles = writeEachTailOut(handles)
         all_perm_data = memmapfile(handles.dissociation.([dissoctype '_svrb_file']),'Format','single'); % Get a handle to the file with all null svrb data
         variables = do_cluster_thresholding_of_permutations(handles,handles.parameters,variables,all_perm_data,thresholded);
        
-        if strcmp(dissoctype,'disjunction'), unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_conjunct_B_svrb.nii');
-        else, unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_disjunct_B_svrb.nii');
+        if strcmp(dissoctype,'disjunction'), unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_disjunct_B_svrb.nii');
+        else, unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_conjunct_B_svrb.nii');
         end
         
         variables.files_created.unthresholded_betamap = unthresholded_betamap;
         
         variables = evaluate_clustering_results(handles,variables,handles.parameters);
     end
-    
-    %% Save some of this info so we can inspect it later for our summary output
-    tosave = [];
-    tosave.variables = variables;
-    tosave.dissociation = handles.dissociation;
-    tosave.parmsfile = fullfile(handles.dissociation.output_folder.base,'Dissociation Parameters');% fullfile('Dissociation Parameters');
-    
-    handles.parameters.parmsfile = tosave.parmsfile;
-    handles.parameters.output_folders = variables.output_folder;
-    save(tosave.parmsfile,'tosave')
-    
-    WriteDissociationSummary(tosave.parmsfile)
-    
-    %     %% cleanup
-    %     [handles,parameters,variables] = cleanup(handles,parameters,variables);
+    handles.variables = variables; % so we can save in the output (we only need one version...)

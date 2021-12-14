@@ -869,9 +869,6 @@ function parallelizemenu_Callback(hObject, eventdata, handles)
     
 function debug_menu_Callback(hObject, eventdata, handles)
 
-% function use_lib_svm_Callback(hObject, eventdata, handles)
-%     handles = UpdateCurrentAnalysis(handles,hObject);
-
 function use_matlab_svr_Callback(hObject, eventdata, handles)
     handles = UpdateCurrentAnalysis(handles,hObject);
 
@@ -1048,14 +1045,7 @@ function output_summary_menu_Callback(hObject, eventdata, handles)
         set(handles.summary_create_summary,'enable','on')
     end
 
-% In second release now, enable these V
-
-%     disabled_objs = [handles.summary_paramoptimization handles.summary_prediction_menu];
-%     set(disabled_objs,'checked','off','enable','off') % since this is disabled in this first release 
-    
-
 function requirements_menu_Callback(hObject, eventdata, handles)
-    %set(get(handles.requirements_menu,'children'),'checked',false)
     set(handles.spm12_installed_menu,'checked',myif(handles.details.spm,'on','off')) % this will not specifically detect spm12 though!
     set(handles.parcomp_toolbox_installed_menu,'checked',myif(handles.details.can_parallelize,'on','off'))
     set(handles.stats_toolbox_installed_menu,'checked',myif(handles.details.stats_toolbox,'on','off'))
