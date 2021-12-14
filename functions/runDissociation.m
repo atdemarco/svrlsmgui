@@ -1,47 +1,52 @@
 function [success,handles] = runDissociation(hObject,eventdata,handles)
-    success = 1; % by default?
+    success = 1; % by default
     %% First, run the two main analyses we'll draw on
     handles.dissociation = [];
     handles.dissociation.starttime = now;
-    handles = runMainDissociationAnalyses(hObject,eventdata,handles);
-    
-    %% Construct some general info we'll use to do the analysis...
-    first_analysis = handles.dissociation.maineffects{1};
-    handles.dissociation.output_folder.base = fullfile(first_analysis.baseoutputdir,'dissociation');
-    handles.dissociation.voxp = first_analysis.voxelwise_p;
-    handles.dissociation.nperms = first_analysis.PermNumVoxelwise;
-    handles.dissociation.vo = first_analysis.vo; % we reuse this for a template
-    handles.dissociation.cfwer_p_value = first_analysis.cfwer_p_value;
-    handles.dissociation.cfwer_v_value = first_analysis.cfwer_v_value;
-    
-    %% Now compute the combined beta maps to compare against to determine conjunction/disjunction
-    handles = createBetaDeltaMapForDissociation(handles); % create new beta map (deltas)
-    
-    %% Now convert those beta maps into p maps for all permutatoins
-    handles = createPvalsForDissociation(handles); % convert those betas into p values
-    
-    %% We run this once for disjunction and once for conjunction
-    dissoctype = {'conjunction','disjunction'};
-    for d = 1 : numel(dissoctype)
-        handles.dissociation.current_dissoctype = dissoctype{d};
-        % disp(['Saving results for ' handles.dissociation.current_dissoctype])
-        handles = computeClusterResultsDissociation(handles);
+
+    try
+        handles = runMainDissociationAnalyses(hObject,eventdata,handles);
+
+        %% Construct some general info we'll use to do the analysis...
+        first_analysis = handles.dissociation.maineffects{1};
+        handles.dissociation.output_folder.base = fullfile(first_analysis.baseoutputdir,'dissociation');
+        handles.dissociation.voxp = first_analysis.voxelwise_p;
+        handles.dissociation.nperms = first_analysis.PermNumVoxelwise;
+        handles.dissociation.vo = first_analysis.vo; % we reuse this for a template
+        handles.dissociation.cfwer_p_value = first_analysis.cfwer_p_value;
+        handles.dissociation.cfwer_v_value = first_analysis.cfwer_v_value;
+
+        %% Now compute the combined beta maps to compare against to determine conjunction/disjunction
+        handles = createBetaDeltaMapForDissociation(handles); % create new beta map (deltas)
+
+        %% Now convert those beta maps into p maps for all permutatoins
+        handles = createPvalsForDissociation(handles); % convert those betas into p values
+
+        %% We run this once for disjunction and once for conjunction
+        dissoctype = {'conjunction','disjunction'};
+        for d = 1 : numel(dissoctype)
+            handles.dissociation.current_dissoctype = dissoctype{d};
+            % disp(['Saving results for ' handles.dissociation.current_dissoctype])
+            handles = computeClusterResultsDissociation(handles);
+        end
+
+        %% OK, make the summary output file
+        tosave = [];
+        tosave.variables = handles.variables;
+        tosave.dissociation = handles.dissociation;
+        tosave.parmsfile = fullfile(handles.dissociation.output_folder.base,'Dissociation Parameters');% fullfile('Dissociation Parameters');
+
+        handles.parameters.parmsfile = tosave.parmsfile;
+        handles.parameters.output_folders = handles.variables.output_folder;
+        save(tosave.parmsfile,'tosave')
+
+        WriteDissociationSummary(tosave.parmsfile)
+
+        %     %% cleanup
+        %     [handles,parameters,variables] = cleanup(handles,parameters,variables);
+    catch
+        success = 0;   
     end
-    
-    %% OK, make the summary output file
-    tosave = [];
-    tosave.variables = handles.variables;
-    tosave.dissociation = handles.dissociation;
-    tosave.parmsfile = fullfile(handles.dissociation.output_folder.base,'Dissociation Parameters');% fullfile('Dissociation Parameters');
-    
-    handles.parameters.parmsfile = tosave.parmsfile;
-    handles.parameters.output_folders = handles.variables.output_folder;
-    save(tosave.parmsfile,'tosave')
-    
-    WriteDissociationSummary(tosave.parmsfile)
-    
-    %     %% cleanup
-    %     [handles,parameters,variables] = cleanup(handles,parameters,variables);
     
 function handles = computeClusterResultsDissociation(handles)
     %% Run this for each tail - pos and neg...
