@@ -374,6 +374,9 @@ function files = getBasicFilesToShow(parms)
         curfilename = files_to_read{f};
         fullfilepath = fullfile(base_dissoc_dir,[curfilename '.nii']);
         [files.(curfilename).hdr,files.(curfilename).img]=read_nifti(fullfilepath);
+        % when doing conjunctions and disjunctions we can achieve svrb values < -10 and > +10 -- clip these for display.
+        files.(curfilename).img(files.(curfilename).img > 10) = 10; 
+        files.(curfilename).img(files.(curfilename).img < -10) = -10; 
         needToResize = ~all(size(files.(curfilename).img) == parms.targetSize);
         canImresize = ~isempty(which('imresize3'));
         if needToResize && canImresize, files.(curfilename).img = imresize3(files.(curfilename).img,parms.targetSize,'method','nearest'); end
