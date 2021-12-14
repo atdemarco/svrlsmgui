@@ -699,7 +699,7 @@ function onlinehelpmenu_Callback(hObject, eventdata, handles)
 function figure1_CreateFcn(hObject, eventdata, handles)
 
 function aboutmenu_Callback(hObject, eventdata, handles)
-    helpstr = ['SVRLSM GUI ' num2str(handles.parameters.gui_version) ', Andrew DeMarco 2017-2018, based on Zhang et al. (2014)'];
+    helpstr = ['SVRLSM GUI ' num2str(handles.parameters.gui_version) ', Andrew DeMarco 2017-2021, based on Zhang et al. (2014)'];
     helpdlg(helpstr,'About');
 
 function runanalysisbutton_Callback(hObject, eventdata, handles)
