@@ -24,7 +24,7 @@ function [success,handles] = runDissociation(hObject,eventdata,handles)
     dissoctype = {'conjunction','disjunction'};
     for d = 1 : numel(dissoctype)
         handles.dissociation.current_dissoctype = dissoctype{d};
-%         disp(['Saving results for ' handles.dissociation.current_dissoctype])
+        % disp(['Saving results for ' handles.dissociation.current_dissoctype])
         handles = computeClusterResultsDissociation(handles);
     end
     
@@ -91,7 +91,7 @@ function handles = writeEachTailOut(handles)
         handles.dissociation.files_created.largest_clusters = handles.dissociation.files_created.(['largest_clusters_' handles.dissociation.current_dissoctype]);
 
         options = []; % not used..
-        [thresholded,variables] = build_and_write_pmaps(options,handles.parameters,handles.dissociation,thresholds);
+        [thresholded,variables] = build_and_write_pmaps(options,handles.parameters,handles.dissociation,thresholds); %#ok<ASGLU>
         variables = do_cfwer_clustering([],handles.parameters,variables,[],[]);
     else
         %% Do regular cluster extent thresholding...

@@ -705,12 +705,12 @@ function aboutmenu_Callback(hObject, eventdata, handles)
 function runanalysisbutton_Callback(hObject, eventdata, handles)
     [success,handles] = RunAnalysis(hObject,eventdata,handles); % now returns handles 10/26/17
 
-    set(handles.runanalysisbutton,'Enable','on') %set(handles.cancelanalysisbutton,'visible','off')
+    set(handles.runanalysisbutton,'Enable','on'); %set(handles.cancelanalysisbutton,'visible','off')
 
     % Re-enable interface...
-    set(get(handles.permutationtestingpanel,'children'),'enable','on')
-    set(get(handles.analysispreferencespanel,'children'),'enable','on')
-    set(get(handles.covariatespanel,'children'),'enable','on')
+    set(get(handles.permutationtestingpanel,'children'),'enable','on');
+    set(get(handles.analysispreferencespanel,'children'),'enable','on');
+    set(get(handles.covariatespanel,'children'),'enable','on');
     
     switch success
         case 1 % success
