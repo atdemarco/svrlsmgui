@@ -495,9 +495,13 @@ function handles = UpdateCurrentAnalysis(handles,hObject)
                 [indx2,tf2] = listdlg('PromptString',{'Select Behavior 2:'},'SelectionMode','single','ListString',residualcontents);
                 if isempty(indx2), return; end % make sure both were filled out.
                 behav2 = residualcontents{indx2};
+                
                 %['Dissocate: ' behav1 ' & ' behav2]
                 handles.parameters.double_dissociation_behaviors = {behav1,behav2};
                 handles.parameters.run_double_dissociation = true;
+            else
+                % remove the Dissociation covariate "extra behavior" if the covariate is already selected - it's only valid for dissociations...
+                handles.parameters.control_variable_names(strcmp(handles.parameters.control_variable_names,'Dissociation: Opposite behavior')) = []; % femove
             end
 
             if any(strcmp(newval,handles.parameters.control_variable_names))

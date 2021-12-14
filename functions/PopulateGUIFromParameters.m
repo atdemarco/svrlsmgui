@@ -32,6 +32,9 @@ function handles = PopulateGUIFromParameters(handles)
 
     check_variables = [handles.parameters.score_name handles.parameters.control_variable_names];
 
+    % Don't check for the Dissociation covariate "extra behavior"
+    check_variables(strcmp(check_variables,'Dissociation: Opposite behavior')) = []; % remove from the check list, so it remains on our list of covariates.
+        
     for c = 1 : numel(check_variables)
         if ~any(strcmp(check_variables{c},handles.scorefiledata.Properties.VariableNames)) % then variable doesn't exist in file
             if c == 1
@@ -43,6 +46,10 @@ function handles = PopulateGUIFromParameters(handles)
     end
 
     check_variables = [handles.parameters.score_name handles.parameters.control_variable_names];
+    
+    % Don't check for the Dissociation covariate "extra behavior"
+    check_variables(strcmp(check_variables,'Dissociation: Opposite behavior')) = []; % remove from the check list, so it remains on our list of covariates.
+
     track_variables = zeros(handles.scorefile.nsubs_in_scorefile,numel(check_variables));
 
     for c = 1 : numel(check_variables)
@@ -84,7 +91,7 @@ function handles = PopulateGUIFromParameters(handles)
     %%
     
     if handles.parameters.PERMIT_DOUBLE_DISSOCIATIONS
-        set(handles.potentialcovariateslist,'String',tmp);
+        set(handles.potentialcovariateslist,'String',tmp,'Value',1)
         double_dissocation_is_undefined = any(cellfun(@numel,handles.parameters.double_dissociation_behaviors) == 0);
         if double_dissocation_is_undefined % parameters.run_double_dissociation
             double_dissociation_string = 'Dissociation: [define...]';
@@ -93,9 +100,12 @@ function handles = PopulateGUIFromParameters(handles)
         end
         tmp{end+1} = double_dissociation_string;
         set(handles.scorenamepopupmenu,'String',tmp);
-         if handles.parameters.run_double_dissociation
+        if handles.parameters.run_double_dissociation
             handles.parameters.score_name = double_dissociation_string;
-         end
+            tmp2 = tmp;
+            tmp2{end} = 'Dissociation: Opposite behavior'; % this overwrites the double_dissociation_string - that's ok. -- add opposite behavior as a dynamic option
+            set(handles.potentialcovariateslist,'String',tmp2); % add the opposite behavior as a dynamic covariate option
+        end
     else % v1 original way.
         set([handles.scorenamepopupmenu handles.potentialcovariateslist],'String',tmp);
     end
