@@ -4,7 +4,7 @@ function [success,handles] = runDissociation(hObject,eventdata,handles)
     handles.dissociation = [];
     handles.dissociation.starttime = now;
 
-    try
+%     try
         handles = runMainDissociationAnalyses(hObject,eventdata,handles);
 
         %% Construct some general info we'll use to do the analysis...
@@ -44,9 +44,9 @@ function [success,handles] = runDissociation(hObject,eventdata,handles)
 
         %     %% cleanup
         %     [handles,parameters,variables] = cleanup(handles,parameters,variables);
-    catch
-        success = 0;   
-    end
+%     catch
+%         success = 0;   
+%     end
     
 function handles = computeClusterResultsDissociation(handles)
     %% Run this for each tail - pos and neg...
