@@ -249,8 +249,6 @@ function WriteDissociationSummary(parmsfile)
 
                 nonsig_cluster_voxels = clusterimg > last_significant_cluster;
 
-                %
-                
                 curimg = voxelwisefiles.(curfieldname).img;
                 raw_threshzmap_img = curimg~=0; % a mask - we need to do this for the 3 different cluster outputs we're looping through...
                 scalerange = 3;
@@ -260,9 +258,6 @@ function WriteDissociationSummary(parmsfile)
                 curimg = curimg + scalerange; % bring everything to zero.
                 curimg = ceil(255 * (curimg ./ (2*scalerange)));
                 curimg(curimg==0) = 1; % since we use these as indices into the cmap -- 0 gives error...
-
-                %
-                
                 curimg(nonsig_cluster_voxels) = 0; % zero out voxels that aren't significant clusters...
 
                 imdata = [];
@@ -385,7 +380,7 @@ function files = getBasicFilesToShow(parms)
 function voxelwisefiles = getVoxelwiseFilesToShow(parms)
     unthresholded_betamap_file = parms.variables.files_created.unthresholded_betamap; 
     base_dissoc_dir = fileparts(unthresholded_betamap_file);
-    files_to_read = {'disjunction\*_pos\Voxelwise thresholded Z map.nii','disjunction\*_neg\Voxelwise thresholded Z map.nii','conjunction\*\Voxelwise thresholded Z map.nii'};
+    files_to_read = {fullfile('disjunction','*_pos','Voxelwise thresholded Z map.nii'),fullfile('disjunction','*_neg','Voxelwise thresholded Z map.nii'),fullfile('conjunction','*','Voxelwise thresholded Z map.nii')};
     field_names = {'disjunction_pos','disjunction_neg','conjunction'};
 
     for f = 1 : numel(files_to_read)
@@ -404,9 +399,13 @@ function clusterwisefiles = getClusterwiseFilesToShow(parms)
     base_dissoc_dir = fileparts(unthresholded_betamap_file);
     if parms.do_CFWER % only a single embedding
         error('finish the pathing for the cluster-corrected cfwer files')
-        files_to_read = {'disjunction\*_pos\Voxelwise thresholded Z map.nii','disjunction\*_neg\Voxelwise thresholded Z map.nii','conjunction\*\Voxelwise thresholded Z map.nii'};
+        files_to_read = {fullfile('disjunction','*_pos','Voxelwise thresholded Z map.nii'), ...
+            fullfile('disjunction','*_neg','Voxelwise thresholded Z map.nii'), ...
+            fullfile('conjunction','*','Voxelwise thresholded Z map.nii')};
     else % double embedding
-        files_to_read = {'disjunction\*_pos\Clust*\Significant clust indices.nii','disjunction\*_neg\Clust*\Significant clust indices.nii','conjunction\*\Clust*\Significant clust indices.nii'};
+        files_to_read = {fullfile('disjunction','*_pos','Clust*','Significant clust indices.nii'), ...
+            fullfile('disjunction','*_neg','Clust*','Significant clust indices.nii'), ...
+            fullfile('conjunction','*','Clust*','Significant clust indices.nii')};
     end
     field_names = {'disjunction_pos','disjunction_neg','conjunction'};
 
