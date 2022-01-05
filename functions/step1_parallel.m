@@ -36,7 +36,11 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     tmp.dims = variables.vo.dim(1:3);
     tmp.lesiondata = sparse(variables.lesion_dat); % full() it on the other end - does that save time with transfer to worker overhead?!
     tmp.outpath = variables.output_folder.clusterwise;
-    
+
+    if ~parameters.method.mass_univariate % then we need to save beta_scale as well...
+        tmp.beta_scale = variables.beta_scale;
+    end
+
     tmp.m_idx = variables.m_idx;
     tmp.l_idx = variables.l_idx;
     tmp.totalperms = totalperms;
@@ -99,9 +103,12 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
             m = fitrsvm(tmp.lesiondata,trial_score,'KernelFunction','rbf', tmp.matlab_svr_parms{:});
             
             if ~tmp.do_crossval % then compute the beta map as usual...
-                w = m.Alpha.'*m.SupportVectors;
-                beta_scale = 10/max(abs(w)); % no longer flexible beta_scale
-                pmu_beta_map = w.'*beta_scale;
+                %w = m.Alpha.'*m.SupportVectors;
+                %beta_scale = 10/max(abs(w)); % no longer flexible beta_scale
+                %pmu_beta_map = w.'*beta_scale;
+                
+                % *DO* use the beta from the first, real permutation!
+                pmu_beta_map = tmp.beta_scale * m.Alpha' * m.SupportVectors;
 
                 predAndLoss.resubPredict = m.resubPredict;
                 predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');

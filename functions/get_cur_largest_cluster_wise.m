@@ -1,4 +1,4 @@
-function largest_cur_cluster_size = get_cur_largest_cluster_wise(parameters,options,variables,thresholded)
+function largest_cur_cluster_size = get_cur_largest_cluster_wise(parameters,options,variables,thresholded,f)
     thresholdstr = [parameters.tailshort '_threshed'];
 %     switch parameters.tailshort
 %         case 'pos'
@@ -22,6 +22,6 @@ function largest_cur_cluster_size = get_cur_largest_cluster_wise(parameters,opti
         largest_cur_cluster_size = 0;
     else % threshold the volume and write it out.
         if parameters.SavePostClusterwiseThresholdedPermutations % then save them...
-            save_post_clusterwise_thresholded_permutation(variables,parameters,thresholded,largest_cur_cluster_size,parameters.tailshort); % permtype);
+            save_post_clusterwise_thresholded_permutation(variables,parameters,thresholded,largest_cur_cluster_size,parameters.tailshort,f); % permtype);
         end
     end

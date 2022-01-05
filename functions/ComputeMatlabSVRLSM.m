@@ -1,4 +1,5 @@
 function [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variables)
+
     % Decide whether we'll use optimized parameters or not...
     box = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.cost, parameters.optimization.best.cost, parameters.cost);
     sigma = myif(parameters.optimization.do_optimize & parameters.optimization.params_to_optimize.sigma, parameters.optimization.best.sigma, parameters.sigma); % no longer derive from sigma
@@ -9,6 +10,8 @@ function [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variable
     if ~parameters.crossval.do_crossval % then business as usual.
         Mdl = fitrsvm(variables.lesion_dat,variables.one_score,'ObservationsIn','rows', 'KernelFunction','rbf', 'KernelScale',sigma,'BoxConstraint',box,'Standardize',standardize,'Epsilon',epsilon);
         w = Mdl.Alpha.'*Mdl.SupportVectors;
+
+        % ok let's just make sure the beta scaling is calculated, and applied before returning w..
         variables.beta_scale = 10 / max(abs(w)); 
         w = w.'*variables.beta_scale;
         
@@ -27,6 +30,7 @@ function [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variable
         end
 
         w = mean(ws,2);
+
         variables.beta_scale = 1; % since we don't need to do additional scaling - we've already scaled... and this won't be used anyway...
 
         predAndLoss.resubPredict = Mdl.kfoldPredict;

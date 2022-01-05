@@ -1,4 +1,4 @@
-function save_post_voxelwise_thresholded_permutation(parameters,variables,thresholded)
+function save_post_voxelwise_thresholded_permutation(parameters,variables,thresholded,f)
     switch parameters.tailshort
         case 'pos' % high scores bad
             variables.vo.fname = fullfile(variables.output_folder.clusterwise,['pos_threshed_perm_' num2str(f) '_of_' num2str(parameters.PermNumVoxelwise) '.nii']);

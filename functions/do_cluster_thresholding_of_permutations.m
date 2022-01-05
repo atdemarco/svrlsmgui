@@ -21,16 +21,16 @@ function variables = do_cluster_thresholding_of_permutations(handles,parameters,
         templatevol(variables.m_idx) = relevant_data_frame; % put the beta values back in indices.
 
         % if requested, write out raw voxel NON-thresholded images for this permutation.
-        if parameters.SavePreThresholdedPermutations, save_pre_thresholded_permutation(variables,parameters,templatevol); end
+        if parameters.SavePreThresholdedPermutations, save_pre_thresholded_permutation(variables,parameters,templatevol,f); end
 
         % Always do this step - apply the threshold to this current permutation.
         thresholded = do_tail_thresholding(parameters,thresholded,templatevol);
 
         % If requested, save raw voxel thresholded image for this permutation
-        if parameters.SavePostVoxelwiseThresholdedPermutations, save_post_voxelwise_thresholded_permutation(parameters,variables,thresholded); end
+        if parameters.SavePostVoxelwiseThresholdedPermutations, save_post_voxelwise_thresholded_permutation(parameters,variables,thresholded,f); end
 
         % retrieve and store largest cluster from this permutation (inside, the volume is saved if requested)
-        all_max_cluster_sizes(f) = get_cur_largest_cluster_wise(parameters,handles.options,variables,thresholded);
+        all_max_cluster_sizes(f) = get_cur_largest_cluster_wise(parameters,handles.options,variables,thresholded,f);
     end
     
     svrlsm_waitbar(parameters.waitbar,0,''); % reset.

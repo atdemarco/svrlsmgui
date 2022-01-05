@@ -7,8 +7,8 @@ function [beta_map,variables] = get_beta_map_svr(parameters,variables)
     tmp = zeros(variables.vo.dim(1:3));
     beta_map = tmp;
 
-    % ok we already divided by beta scale, so don't do it again here...
-    tmp(variables.l_idx) = w; % '*variables.beta_scale; % return all lesion data to its l_idx indices.
+    % already rescaled so don't need to multipley by beta_scale here...
+    tmp(variables.l_idx) = w;% '*variables.beta_scale; % return all lesion data to its l_idx indices.
     beta_map(variables.m_idx) = tmp(variables.m_idx); % m_idx -> m_idx
 
     variables.vo.fname = fullfile(variables.output_folder.base,'Beta map (unthresholded, SVR).nii');

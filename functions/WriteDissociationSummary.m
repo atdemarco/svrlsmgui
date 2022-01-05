@@ -211,7 +211,6 @@ function WriteDissociationSummary(parmsfile)
         if parms.DoPerformPermutationTesting && parms.do_CFWER, WriteCFWERReport(parms); end
     end
     
-    %dev1
     if parms.summary.clusterwise_thresholded
         if parms.DoPerformPermutationTesting && ~parms.method.mass_univariate
             clusterwisefiles = getClusterwiseFilesToShow(parms); % this includes clusterwise thresholded files
