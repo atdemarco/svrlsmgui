@@ -79,17 +79,17 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     parameters.apply_covariates_to_lesion = 0;
 
     % output summary options
-    parameters.do_make_summary = 1; % handles.summary_create_summary
-    parameters.summary.narrative = true; % handles.summary_narrative_summary
-    parameters.summary.beta_map = true;  % handles.summary_svrbetamap
-    parameters.summary.voxelwise_thresholded = true; % handles.summary_thresholded_pmap
-    parameters.summary.clusterwise_thresholded = true; % handles.summary_clusterthresholded
-    parameters.summary.cfwer_diagnostics = true; % handles.summary_cfwerdiagnostics
-    parameters.summary.variable_diagnostics = true; % handles.model_variablediagnostics
-    parameters.summary.cluster_stability = true; % handles.summary_clusterstability
-    parameters.summary.hyperparameter_optimization_record = true; % false; % handles.summary_paramoptimization <<< Now true in 2.0
-    parameters.summary.parameter_assessment = true; % handles.summary_parameterassessment
-    parameters.summary.lesion_overlap = true; %handles.summary_lesionoverlap
+    parameters.do_make_summary = 1; 
+    parameters.summary.narrative = true; 
+    parameters.summary.beta_map = true;  
+    parameters.summary.voxelwise_thresholded = true; 
+    parameters.summary.clusterwise_thresholded = true; 
+    parameters.summary.cfwer_diagnostics = true; 
+    parameters.summary.variable_diagnostics = true; 
+    parameters.summary.cluster_stability = true; 
+    parameters.summary.hyperparameter_optimization_record = true; % false; <<< Now true in 2.0
+    parameters.summary.parameter_assessment = true; 
+    parameters.summary.lesion_overlap = true; 
     parameters.summary.predictions = true; % false; % write out predictions with r squared and whatnot <<< Now true in 2.0
 
     % debug save output options

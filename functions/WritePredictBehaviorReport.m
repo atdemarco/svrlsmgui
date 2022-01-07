@@ -4,7 +4,9 @@ function [] = WritePredictBehaviorReport(parms)
     fprintf(parms.fileID,'<h2>Behavioral predictions</h2>');
 
     %% This will plot all 4 plots.
-    parms = plotModelPredictionAndLosses(parms); 
+    parms = plotModelPredictionAndLosses(parms);
+    
+    disp('WritePredictBehaviorReport(): now write the comparison with lesion volume as a predictor in terms of MSE and r squared?')
     
     %% Finish section
     fprintf(parms.fileID,'<br><br>');

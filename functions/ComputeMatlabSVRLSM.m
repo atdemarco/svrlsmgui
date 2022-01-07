@@ -11,13 +11,20 @@ function [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variable
         Mdl = fitrsvm(variables.lesion_dat,variables.one_score,'ObservationsIn','rows', 'KernelFunction','rbf', 'KernelScale',sigma,'BoxConstraint',box,'Standardize',standardize,'Epsilon',epsilon);
         w = Mdl.Alpha.'*Mdl.SupportVectors;
 
-        % ok let's just make sure the beta scaling is calculated, and applied before returning w..
+        % ok let's just make sure the beta scaling is calculated, and applied before returning w...
         variables.beta_scale = 10 / max(abs(w)); 
         w = w.'*variables.beta_scale;
         
-        predAndLoss.resubPredict = Mdl.resubPredict;
-        predAndLoss.resubLossMSE = Mdl.resubLoss('LossF','mse');
-        predAndLoss.resubLossEps = Mdl.resubLoss('LossF','eps');
+        if parameters.summary.predictions % if requested...
+            predAndLoss.resubPredict = Mdl.resubPredict;
+            predAndLoss.resubLossMSE = Mdl.resubLoss('LossF','mse');
+            predAndLoss.resubLossEps = Mdl.resubLoss('LossF','eps');
+        else % not requested - don't do this, to save time
+            predAndLoss.resubPredict = [];
+            predAndLoss.resubLossMSE = [];
+            predAndLoss.resubLossEps = [];
+        end
+        
     else % estimate a crossvalidated model and average the resulting folds... this is new as of June 2019
         Mdl = fitrsvm(variables.lesion_dat,variables.one_score,'ObservationsIn','rows', 'KernelFunction','rbf', 'KernelScale',sigma,'BoxConstraint',box,'Standardize',standardize,'Epsilon',epsilon,'KFold',parameters.crossval.nfolds);
         ws = []; % we'll accumiulate in here.
@@ -33,9 +40,16 @@ function [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variable
 
         variables.beta_scale = 1; % since we don't need to do additional scaling - we've already scaled... and this won't be used anyway...
 
-        predAndLoss.resubPredict = Mdl.kfoldPredict;
-        predAndLoss.resubLossMSE = Mdl.kfoldLoss('LossF','mse');
-        predAndLoss.resubLossEps = Mdl.kfoldLoss('LossF','eps');
+        if parameters.summary.predictions % if requested...
+            predAndLoss.resubPredict = Mdl.kfoldPredict;
+            predAndLoss.resubLossMSE = Mdl.kfoldLoss('LossF','mse');
+            predAndLoss.resubLossEps = Mdl.kfoldLoss('LossF','eps');
+        else % not requested - don't do this, to save time
+            predAndLoss.resubPredict = [];
+            predAndLoss.resubLossMSE = [];
+            predAndLoss.resubLossEps = [];
+        end
+        
     end
     
     predAndLoss.permData = variables.one_score; % really we want to be able to know what permutatoin was used here.

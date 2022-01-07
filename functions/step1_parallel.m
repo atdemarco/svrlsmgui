@@ -26,6 +26,7 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
         myif(parameters.crossval.do_crossval,{'KFold',parameters.crossval.nfolds},[])]; % this is for the crossvalidation option...
     tmp.matlab_svr_parms = parameters.step1.matlab_svr_parms;
     tmp.do_crossval = parameters.crossval.do_crossval; % also save this here too.
+    tmp.do_predictions = parameters.summary.predictions; % so we don't waste time computing predictions if we don't need to
 
     %% parfeval code
     batch_job_size = 100; % this is going to be optimal for different systems/#cores/jobs - set this through gui?
@@ -88,8 +89,8 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
 function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
     tmp.lesiondata = full(tmp.lesiondata);  % we transfer it as sparse... so we need to full() it for all non-libSVM methods
 
-    allPredAndLoss = {}; % cell(1,numel(tmp.this_job_perm_indices)); % empty, in case we're using e.g. mass univariate
-    
+    allPredAndLoss = {}; % empty, in case we're using e.g. mass univariate
+
     for PermIdx = tmp.this_job_perm_indices % each loop iteration will compute one whole-brain permutation result (regardless of LSM method)
         trial_score = tmp.permdata(:,PermIdx); % extract the row of permuted data.
         if tmp.use_mass_univariate % solve whole-brain permutation PermIdx on a voxel-by-voxel basis.
@@ -110,9 +111,16 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
                 % *DO* use the beta from the first, real permutation!
                 pmu_beta_map = tmp.beta_scale * m.Alpha' * m.SupportVectors;
 
-                predAndLoss.resubPredict = m.resubPredict;
-                predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
-                predAndLoss.resubLossEps = m.resubLoss('LossF','eps');
+                if tmp.do_predictions
+                    predAndLoss.resubPredict = m.resubPredict;
+                    predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
+                    predAndLoss.resubLossEps = m.resubLoss('LossF','eps');
+                else % don't spend the time...
+                    predAndLoss.resubPredict = [];
+                    predAndLoss.resubLossMSE = [];
+                    predAndLoss.resubLossEps = [];
+                end
+                
             else % we don't need to do any computations since w should already contain a scaled/averaged model
                 ws = []; % we'll accumulate in here
                 for mm = 1 : numel(m.Trained)
@@ -125,9 +133,15 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
                 w = mean(ws,2);
                 pmu_beta_map = w; % here contains an average of the crossvalidated fold models' beta values
                 
-                predAndLoss.resubPredict = m.kfoldPredict;
-                predAndLoss.resubLossMSE = m.kfoldLoss('LossF','mse');
-                predAndLoss.resubLossEps = m.kfoldLoss('LossF','eps');
+                if tmp.do_predictions % if requested
+                    predAndLoss.resubPredict = m.kfoldPredict;
+                    predAndLoss.resubLossMSE = m.kfoldLoss('LossF','mse');
+                    predAndLoss.resubLossEps = m.kfoldLoss('LossF','eps');
+                else % don't spend the time...
+                    predAndLoss.resubPredict = [];
+                    predAndLoss.resubLossMSE = [];
+                    predAndLoss.resubLossEps = [];
+                end
             end
         end
         
