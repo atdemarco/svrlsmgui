@@ -222,7 +222,7 @@ function WriteDissociationSummary(parmsfile)
             curdescr = field_names_descr{f};
             %% Now show cluster correction...
             fprintf(parms.fileID,'<hr>');
-            fprintf(parms.fileID,['<h2>Clusterwise thresholded P(z)-map ' curdescr '</h2>']);
+            fprintf(parms.fileID,['<h2>Clusterwise thresholded Z(p)-map ' curdescr '</h2>']);
             if ~parms.DoPerformPermutationTesting
                 imstr = 'Permutation testing was not conducted so there is no cluster correction data to display.';
                 fprintf(parms.fileID,'%s<br>',imstr);
@@ -248,7 +248,7 @@ function WriteDissociationSummary(parmsfile)
 
                 nonsig_cluster_voxels = clusterimg > last_significant_cluster;
 
-                curimg = voxelwisefiles.(curfieldname).img;
+                curimg = voxelwisefiles.(curfield).img;
                 raw_threshzmap_img = curimg~=0; % a mask - we need to do this for the 3 different cluster outputs we're looping through...
                 scalerange = 3;
                 curimg(curimg > scalerange) = scalerange; % max scale at Z = 3.5..
@@ -391,6 +391,13 @@ function voxelwisefiles = getVoxelwiseFilesToShow(parms)
         needToResize = ~all(size(voxelwisefiles.(curfieldname).img) == parms.targetSize);
         canImresize = ~isempty(which('imresize3'));
         if needToResize && canImresize, voxelwisefiles.(curfieldname).img = imresize3(voxelwisefiles.(curfieldname).img,parms.targetSize,'method','nearest'); end
+
+%         curfieldname
+%         curfilename
+%         tt=voxelwisefiles.(curfieldname).img;
+%         median(tt(tt~=0))
+%         pause
+   
     end
 
 function clusterwisefiles = getClusterwiseFilesToShow(parms)
@@ -420,4 +427,11 @@ function clusterwisefiles = getClusterwiseFilesToShow(parms)
         needToResize = ~all(size(clusterwisefiles.(curfieldname).img) == parms.targetSize);
         canImresize = ~isempty(which('imresize3'));
         if needToResize && canImresize, clusterwisefiles.(curfieldname).img = imresize3(clusterwisefiles.(curfieldname).img,parms.targetSize,'method','nearest'); end
+        
+%         curfieldname
+%         curfilename
+%         tt=clusterwisefiles.(curfieldname).img;
+%         median(tt(tt~=0))
+%         pause
+%         
     end
