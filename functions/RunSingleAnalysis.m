@@ -385,7 +385,8 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
         if ~isfield(variables,'predAndLoss_perms'), handles.parameters.predAndLoss_perms = {}; % empty.
         else, handles.parameters.predAndLoss_perms = variables.predAndLoss_perms;
         end
-
+        
+        %% Store real data, prediction, mse, and eps loss (to compute e.g. R^2)
         handles.parameters.m_idx = variables.m_idx; % for dissociations..
         handles.parameters.vo = variables.vo; % for dissociations..
         
@@ -393,6 +394,8 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
             handles.parameters.ori_beta_vals = variables.ori_beta_vals; % for dissociations
         end
 
+        handles.parameters.predict = variables.predict; % Store the prediction information for the real data
+        
         handles.parameters.original_behavior_transformation = parameters.original_behavior_transformation; 
         handles.parameters.optimization = parameters.optimization;
         handles.parameters.files_created = variables.files_created;

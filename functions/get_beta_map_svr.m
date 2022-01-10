@@ -1,6 +1,6 @@
-function [beta_map,variables] = get_beta_map_svr(parameters,variables)
+function [beta_map,variables,Mdl] = get_beta_map_svr(parameters,variables)
     % potentially switch on other regression methods here.
-    [m,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variables);
+    [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variables);
 
     variables.predAndLoss = predAndLoss; % this is the real data....
     
