@@ -39,7 +39,10 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     tmp.outpath = variables.output_folder.clusterwise;
 
     if ~parameters.method.mass_univariate % then we need to save beta_scale as well...
-        tmp.beta_scale = variables.beta_scale;
+        tmp.beta_scale = variables.beta_scale; % (used for regular non-crossvalidated models - will be 1 in crossvalidated model context)
+        if parameters.crossval.do_crossval % then pass the vector of original fold beta-scales to the remote workers for scaling their preimage
+            tmp.k_fold_orig_beta_scales = variables.k_fold_orig_beta_scales; % esimated from our original real xvalidated models (H_a datasets)
+        end
     end
 
     tmp.m_idx = variables.m_idx;
@@ -126,7 +129,9 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
                 for mm = 1 : numel(m.Trained)
                     curMdl = m.Trained{mm};
                     w = curMdl.Alpha.'*curMdl.SupportVectors;
-                    beta_scale = 10/max(abs(w));
+                    % as of Jan 2021, we now support dynamic beta scale
+                    beta_scale = tmp.k_fold_orig_beta_scales(mm); % retrieve from original data analysis results
+                    % beta_scale = 10/max(abs(w));
                     w = w.'*beta_scale;
                     ws(1:numel(w),mm) = w; % accumulate here...
                 end
