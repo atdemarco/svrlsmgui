@@ -325,7 +325,11 @@ function WriteDissociationSummary(parmsfile)
     
     % Finish the html document
     FinishDocument(parms);
-    htmloutpath = parms.outhtmlfile;
+    
+    %% Finally, run the dissociation typing analysis:
+    plotSvrlsmDisjunctionConfiguration(parms)
+    
+    % htmloutpath = parms.outhtmlfile;
     
 function template = getReslicedTemplate(parms)
     unthresholded_betamap_file = parms.variables.files_created.unthresholded_betamap; 
@@ -391,13 +395,6 @@ function voxelwisefiles = getVoxelwiseFilesToShow(parms)
         needToResize = ~all(size(voxelwisefiles.(curfieldname).img) == parms.targetSize);
         canImresize = ~isempty(which('imresize3'));
         if needToResize && canImresize, voxelwisefiles.(curfieldname).img = imresize3(voxelwisefiles.(curfieldname).img,parms.targetSize,'method','nearest'); end
-
-%         curfieldname
-%         curfilename
-%         tt=voxelwisefiles.(curfieldname).img;
-%         median(tt(tt~=0))
-%         pause
-   
     end
 
 function clusterwisefiles = getClusterwiseFilesToShow(parms)
@@ -421,17 +418,8 @@ function clusterwisefiles = getClusterwiseFilesToShow(parms)
         curfilename = fullfile(curfilename(1).folder,curfilename(1).name);
         curfieldname = field_names{f};
         [clusterwisefiles.(curfieldname).hdr,clusterwisefiles.(curfieldname).img]=read_nifti(curfilename);
-
         clusterwisefiles.(curfieldname).clustertable = fullfile(fileparts(curfilename),'Table of clusters.txt');
-        
         needToResize = ~all(size(clusterwisefiles.(curfieldname).img) == parms.targetSize);
         canImresize = ~isempty(which('imresize3'));
         if needToResize && canImresize, clusterwisefiles.(curfieldname).img = imresize3(clusterwisefiles.(curfieldname).img,parms.targetSize,'method','nearest'); end
-        
-%         curfieldname
-%         curfilename
-%         tt=clusterwisefiles.(curfieldname).img;
-%         median(tt(tt~=0))
-%         pause
-%         
     end
