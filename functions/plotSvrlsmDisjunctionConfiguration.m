@@ -1,7 +1,5 @@
 function plotSvrlsmDisjunctionConfiguration(parms)
-    
-%     assignin('base','parms',parms)
-% 
+    %     assignin('base','parms',parms)
     % basedir = '~/Documents/svrlsmgui/output/yesno_prcnt_vs_fluency_prcnt_fullres_5k_moresubs/13-Jan-2022/';
     basedir = fileparts(parms.outdir);
     

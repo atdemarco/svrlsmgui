@@ -98,6 +98,12 @@ function handles = writeEachTailOut(handles)
         options = []; % not used..
         [thresholded,variables] = build_and_write_pmaps(options,handles.parameters,handles.dissociation,thresholds); %#ok<ASGLU>
         variables = do_cfwer_clustering([],handles.parameters,variables,[],[]);
+
+        %% Let's store files_created.unthresholded_betamap like when we do cluster-extent thresholding, so that we can refer to it in the output.
+        if strcmp(dissoctype,'disjunction'), unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_disjunct_B_svrb.nii');
+        else, unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_conjunct_B_svrb.nii');
+        end
+        variables.files_created.unthresholded_betamap = unthresholded_betamap;
     else
         %% Do regular cluster extent thresholding...
         mkdir(handles.dissociation.output_folder.voxelwise)
@@ -113,7 +119,6 @@ function handles = writeEachTailOut(handles)
         if strcmp(dissoctype,'disjunction'), unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_disjunct_B_svrb.nii');
         else, unthresholded_betamap = fullfile(handles.dissociation.output_folder.base,'A_conjunct_B_svrb.nii');
         end
-        
         variables.files_created.unthresholded_betamap = unthresholded_betamap;
         
         variables = evaluate_clustering_results(handles,variables,handles.parameters);
