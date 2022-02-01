@@ -26,7 +26,6 @@ function [success,handles] = runDissociation(hObject,eventdata,handles)
         dissoctype = {'conjunction','disjunction'};
         for d = 1 : numel(dissoctype)
             handles.dissociation.current_dissoctype = dissoctype{d};
-            % disp(['Saving results for ' handles.dissociation.current_dissoctype])
             handles = computeClusterResultsDissociation(handles);
         end
 
@@ -34,7 +33,7 @@ function [success,handles] = runDissociation(hObject,eventdata,handles)
         tosave = [];
         tosave.variables = handles.variables;
         tosave.dissociation = handles.dissociation;
-        tosave.parmsfile = fullfile(handles.dissociation.output_folder.base,'Dissociation Parameters');% fullfile('Dissociation Parameters');
+        tosave.parmsfile = fullfile(handles.dissociation.output_folder.base,'Dissociation Parameters');
 
         handles.parameters.parmsfile = tosave.parmsfile;
         handles.parameters.output_folders = handles.variables.output_folder;
@@ -42,8 +41,17 @@ function [success,handles] = runDissociation(hObject,eventdata,handles)
 
         WriteDissociationSummary(tosave.parmsfile)
 
-        %     %% cleanup
-        %     [handles,parameters,variables] = cleanup(handles,parameters,variables);
+        %% clean up the residual binary files
+        binfiles = dir(fullfile(fileparts(tosave.parmsfile),'*.bin'));        
+        for b = 1 : numel(binfiles)
+            thisfilepath = fullfile(binfiles(b).folder,binfiles(b).name);
+            try 
+                delete(thisfilepath); 
+            catch 
+                warning(['Could not delete potentially large binary file ' thisfilepath])
+            end
+        end
+        % [handles,parameters,variables] = cleanup(handles,parameters,variables);
 %     catch
 %         success = 0;   
 %     end
