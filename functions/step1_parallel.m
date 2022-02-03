@@ -48,7 +48,7 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     tmp.m_idx = variables.m_idx;
     tmp.l_idx = variables.l_idx;
     tmp.totalperms = totalperms;
-    tmp.permdata = permdata;
+    tmp.permdata = permdata; % if we manually slice then we overwrite this variable, but keep it here for now...
     tmp.use_mass_univariate = parameters.method.mass_univariate;
 
     %% Schedule the parallel jobs
@@ -58,6 +58,10 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
         this_job_end_index = min(this_job_start_index + batch_job_size-1,nperms); % need min so we don't go past valid indices
         this_job_perm_indices = this_job_start_index:this_job_end_index;
         tmp.this_job_perm_indices = this_job_perm_indices; % update for each set of jobs...
+        
+        % This line is new 
+        tmp.permdata = permdata(:,tmp.this_job_perm_indices); % manually slice this broadcast variable - only transmit data necessary to compute the job - Feb 2022
+        
         f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,1,tmp); % 1 output now
     end
     
@@ -90,12 +94,17 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     fclose(fileID); % close big file
 
 function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
-    tmp.lesiondata = full(tmp.lesiondata);  % we transfer it as sparse... so we need to full() it for all non-libSVM methods
+    tmp.lesiondata = full(tmp.lesiondata); % we transfer it as sparse... so we need to full() it for all non-libSVM methods
 
     allPredAndLoss = {}; % empty, in case we're using e.g. mass univariate
 
-    for PermIdx = tmp.this_job_perm_indices % each loop iteration will compute one whole-brain permutation result (regardless of LSM method)
-        trial_score = tmp.permdata(:,PermIdx); % extract the row of permuted data.
+    %     for PermIdx = tmp.this_job_perm_indices % each loop iteration will compute one whole-brain permutation result (regardless of LSM method)
+    %         trial_score = tmp.permdata(:,PermIdx); % extract the row of permuted data.
+
+    for ii = 1 : numel(tmp.this_job_perm_indices) % ii is now the local iterator, and we assign PermIdx to create the output file name
+        PermIdx = tmp.this_job_perm_indices(ii); % so our temp output file gets named correctly (we want to use global indices, not the local index value from this loop iteration)
+        trial_score = tmp.permdata(:,ii); % now pull the ii'th index rather than the PermIdx'th index, since we don't have access to the full permutation dataset any more
+        
         if tmp.use_mass_univariate % solve whole-brain permutation PermIdx on a voxel-by-voxel basis.
             pmu_beta_map = nan(size(tmp.lesiondata,2),1); % reserve space -- are these dims right?
             for vox = 1 : size(tmp.lesiondata,2)
@@ -107,13 +116,7 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
             m = fitrsvm(tmp.lesiondata,trial_score,'KernelFunction','rbf', tmp.matlab_svr_parms{:});
             
             if ~tmp.do_crossval % then compute the beta map as usual...
-                %w = m.Alpha.'*m.SupportVectors;
-                %beta_scale = 10/max(abs(w)); % no longer flexible beta_scale
-                %pmu_beta_map = w.'*beta_scale;
-                
-                % *DO* use the beta from the first, real permutation!
-                pmu_beta_map = tmp.beta_scale * m.Alpha' * m.SupportVectors;
-
+                pmu_beta_map = tmp.beta_scale * m.Alpha' * m.SupportVectors; % *DO* use the beta from the first, real permutation!
                 if tmp.do_predictions
                     predAndLoss.resubPredict = m.resubPredict;
                     predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
@@ -131,7 +134,6 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
                     w = curMdl.Alpha.'*curMdl.SupportVectors;
                     % as of Jan 2021, we now support dynamic beta scale
                     beta_scale = tmp.k_fold_orig_beta_scales(mm); % retrieve from original data analysis results
-                    % beta_scale = 10/max(abs(w));
                     w = w.'*beta_scale;
                     ws(1:numel(w),mm) = w; % accumulate here...
                 end
