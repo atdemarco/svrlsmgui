@@ -161,7 +161,11 @@ function handles = UpdateCurrentAnalysis(handles,hObject)
                 handles.parameters.hyperparameter_quality.report.n_replications = str;
             end
         case 'image_data_options_parent_menu'
+            if ~isfield(handles.parameters.imagedata,'exclude_disjoint_lesions_menu_option'), handles.parameters.imagedata.exclude_disjoint_lesions_menu_option = true; end % for compatiblity
             set(handles.do_binarize_data_menu_option,'Checked',myif(handles.parameters.imagedata.do_binarize,'on','off'))
+            set(handles.exclude_disjoint_lesions_menu_option,'Checked',myif(handles.parameters.imagedata.exclude_disjoint_lesions,'on','off'))
+        case 'exclude_disjoint_lesions_menu_option'
+            handles.parameters.imagedata.exclude_disjoint_lesions = ~handles.parameters.imagedata.exclude_disjoint_lesions;
         case 'do_binarize_data_menu_option'
             handles.parameters.imagedata.do_binarize = ~handles.parameters.imagedata.do_binarize;
         case 'set_resolution_parent_menu_option'

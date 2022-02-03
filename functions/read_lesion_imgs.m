@@ -1,11 +1,12 @@
 function variables = read_lesion_imgs(parameters, variables)
+    %% Get analysis mask if requested
     if parameters.use_analysis_mask % Then analysis will only be conducted within voxels falling within the specified mask.
         svrlsm_waitbar(parameters.waitbar,0,'Reading mask file...');
         if ~exist(parameters.analysis_mask_file,'file'), error('Cannot find analysis mask file: %s\n', parameters.analysis_mask_file); end
         vo = spm_vol(parameters.analysis_mask_file); % The true voxel intensities of the jth image are given by: val*V.pinfo(1,j) + V.pinfo(2,j)
         tmp = spm_read_vols(vo);
-        tmp(isnan(tmp)) = 0; % Denan 
-    	tmp = tmp > 0;  % Binarize
+        tmp(isnan(tmp)) = 0; % denan the mask image
+    	tmp = tmp > 0;  % binarize the mask
 
         if parameters.imagedata.do_resample, [tmp,vo] = makeResizedImgIfDesired(parameters.imagedata.resample_to,tmp,vo); end % tmp is the original volume, vo is its header
         variables.AnalysisMask = tmp; % store.
@@ -68,9 +69,9 @@ function variables = read_lesion_imgs(parameters, variables)
     %% Get a mask based on overlapping map and given mask image
     % June 25, 2021 updated this binarize behavior
     if parameters.imagedata.do_binarize  % we use ndims() to support the atlas stuff, which is 2D and not 4D as in voxelwise case
-        mask_map = sum(Ldat, ndims(Ldat));%4); % classic behavior
+        mask_map = sum(Ldat, ndims(Ldat)); % classic behavior
     else
-        mask_map = sum(Ldat~=0, ndims(Ldat)); %4); % now give a credit of "1" (i.e. true) for values at any voxel that isn't 0. this will prevent naughty masking behavior on continously valued (i.e. non-binarized) data - bug reported by Dr. Lorca puls - thanks Diego!
+        mask_map = sum(Ldat~=0, ndims(Ldat)); % now give a credit of "1" (i.e. true) for values at any voxel that isn't 0. this will prevent naughty masking behavior on continously valued (i.e. non-binarized) data - bug reported by Dr. Lorca puls - thanks Diego!
     end
 
     variables.l_idx = find(mask_map >= 1); % index of voxels with lesion on at least 1 subject
@@ -89,6 +90,11 @@ function variables = read_lesion_imgs(parameters, variables)
     % Check the thresholded lesion data, remove subjects who have no survival voxel within the mask.
     Ldat_tmp = double(Mdat(:,variables.m_idx)); % only voxel indices above our requested threshold
     exclude_sub_bool = sum(Ldat_tmp, 2) == 0;
+    
+    if ~parameters.imagedata.exclude_disjoint_lesions % then just force to NOT replace any subjects regardless of lesion distribution
+        exclude_sub_bool = zeros(size(exclude_sub_bool)); % Added Feb 2022 - thanks for the request Diego! 
+    end
+    
     sub_idx = find(exclude_sub_bool); % these indices have no voxels in our output mask, so remove them from the analysis
     variables.exclude_idx = sub_idx;
     variables.SubNum = variables.SubNum - length(sub_idx);

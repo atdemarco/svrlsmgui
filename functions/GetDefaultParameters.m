@@ -1,4 +1,4 @@
-function parameters = GetDefaultParameters(varargin) % (handles)
+function parameters = GetDefaultParameters(varargin)
     parameters.PERMIT_DOUBLE_DISSOCIATIONS = true; % new v 2. this will reveal code chunks that permit double dissociations or not
     parameters.run_double_dissociation = false; % this wlil be set to true when the
     parameters.double_dissociation_behaviors = {'',''}; % empty by default
@@ -145,6 +145,7 @@ function parameters = GetDefaultParameters(varargin) % (handles)
     %parameters.crossval.repartition = true; % repartition at each iteration?
     
     % What to do with the lesion data when we read it in.
+    parameters.imagedata.exclude_disjoint_lesions = true; % by default, exclude lesion data that has no overlap with the rest of the group. Diego asked for this option, so here it :) - Feb 2022
     parameters.imagedata.do_binarize = true; % binarize image data in read_lesion_imgs (should be off for vbmish things)
     parameters.imagedata.do_resample = false;
     parameters.imagedata.resample_to = 2; % 2mm iso if do_resample is true;
