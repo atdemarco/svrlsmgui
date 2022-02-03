@@ -16,7 +16,8 @@ function [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variable
         
         if parameters.summary.predictions % if requested...
             predAndLoss.resubPredict = Mdl.resubPredict;
-            predAndLoss.resubLossMSE = Mdl.resubLoss('LossF','mse');
+            % predAndLoss.resubLossMSE = Mdl.resubLoss('LossF','mse');
+            predAndLoss.resubLossMSE = mean((Mdl.Y - predAndLoss.resubPredict).^2); % to save time, manually calculate the MSE resub loss
             predAndLoss.resubLossEps = Mdl.resubLoss('LossF','eps');
         else % not requested - don't do this, to save time
             predAndLoss.resubPredict = [];
@@ -51,7 +52,8 @@ function [Mdl,w,variables,predAndLoss] = ComputeMatlabSVRLSM(parameters,variable
 
         if parameters.summary.predictions % if requested...
             predAndLoss.resubPredict = Mdl.kfoldPredict;
-            predAndLoss.resubLossMSE = Mdl.kfoldLoss('LossF','mse');
+            %predAndLoss.resubLossMSE = Mdl.kfoldLoss('LossF','mse');
+            predAndLoss.resubLossMSE = mean((Mdl.Y - predAndLoss.resubPredict).^2); % to save time, manually calculate the MSE resub loss
             predAndLoss.resubLossEps = Mdl.kfoldLoss('LossF','eps');
         else % not requested - don't do this, to save time
             predAndLoss.resubPredict = [];

@@ -119,7 +119,8 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
                 pmu_beta_map = tmp.beta_scale * m.Alpha' * m.SupportVectors; % *DO* use the beta from the first, real permutation!
                 if tmp.do_predictions
                     predAndLoss.resubPredict = m.resubPredict;
-                    predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
+                    % predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
+                    predAndLoss.resubLossMSE = mean((m.Y - predAndLoss.resubPredict).^2); % to save time, manually calculate the MSE resub loss
                     predAndLoss.resubLossEps = m.resubLoss('LossF','eps');
                 else % don't spend the time...
                     predAndLoss.resubPredict = [];
@@ -142,7 +143,9 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
                 
                 if tmp.do_predictions % if requested
                     predAndLoss.resubPredict = m.kfoldPredict;
-                    predAndLoss.resubLossMSE = m.kfoldLoss('LossF','mse');
+                    %predAndLoss.resubLossMSE = m.kfoldLoss('LossF','mse');
+                    predAndLoss.resubLossMSE = mean((m.Y - predAndLoss.resubPredict).^2); % to save time, manually calculate the MSE kFold loss
+
                     predAndLoss.resubLossEps = m.kfoldLoss('LossF','eps');
                 else % don't spend the time...
                     predAndLoss.resubPredict = [];
