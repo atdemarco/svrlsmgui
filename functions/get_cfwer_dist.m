@@ -112,3 +112,5 @@ function variables = get_cfwer_dist(handles,parameters,variables)
     variables.files_created.largest_clusters = fullfile(variables.output_folder.cfwer,'Largest null cluster list.mat');
     all_max_cluster_sizes = cfwerinfo.largest_cluster; % to keep it parallel with the regular non-cfwer clustering procedure.
     save(variables.files_created.largest_clusters,'all_max_cluster_sizes');
+    
+    all_perm_pmaps = []; % Feb 2022 - we must overwrite this variable so we can clean up the resulting null data file...

@@ -38,5 +38,7 @@ function variables = run_beta_permutations(parameters, variables, beta_map,handl
         variables = do_cluster_thresholding_of_permutations(handles,parameters,variables,all_perm_data,thresholded);
     end
     
+    all_perm_data = []; % we must overwrite the variable containing the memmapfile so we can delete the file during cleanup! - Feb 2022
+    
     %% cleanup
     [handles,parameters,variables] = cleanup(handles,parameters,variables);
