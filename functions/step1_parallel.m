@@ -35,7 +35,7 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
 
     %% To reduce overhead transfering data to workers
     tmp.dims = variables.vo.dim(1:3);
-    tmp.lesiondata = sparse(variables.lesion_dat); % full() it on the other end - does that save time with transfer to worker overhead?!
+    % tmp.lesiondata = sparse(variables.lesion_dat); % full() it on the other end - does that save time with transfer to worker overhead?!
     tmp.outpath = variables.output_folder.clusterwise;
 
     if ~parameters.method.mass_univariate % then we need to save beta_scale as well...
@@ -48,20 +48,21 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     tmp.m_idx = variables.m_idx;
     tmp.l_idx = variables.l_idx;
     tmp.totalperms = totalperms;
-    tmp.permdata = permdata; % if we manually slice then we overwrite this variable, but keep it here for now...
     tmp.use_mass_univariate = parameters.method.mass_univariate;
-
+    tmp.permdata = permdata; % if we manually slice then we overwrite this variable, but keep it here for now...
+    
     %% Schedule the parallel jobs
     p = gcp(); % get current parallel pool
+    
+    % Feb 2022 - don't need to transmit to each worker separately...
+    tmp.lesiondata = parallel.pool.Constant(variables.lesion_dat); % this will hopefully be available to all workers!
+    
     for j = 1 : njobs
         this_job_start_index = ((j-1)*batch_job_size) + 1;
         this_job_end_index = min(this_job_start_index + batch_job_size-1,nperms); % need min so we don't go past valid indices
         this_job_perm_indices = this_job_start_index:this_job_end_index;
         tmp.this_job_perm_indices = this_job_perm_indices; % update for each set of jobs...
-        
-        % This line is new 
         tmp.permdata = permdata(:,tmp.this_job_perm_indices); % manually slice this broadcast variable - only transmit data necessary to compute the job - Feb 2022
-        
         f(j) = parfeval(p,@parallel_step1_batch_fcn_lessoverhead,1,tmp); % 1 output now
     end
     
@@ -94,8 +95,7 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     fclose(fileID); % close big file
 
 function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
-    tmp.lesiondata = full(tmp.lesiondata); % we transfer it as sparse... so we need to full() it for all non-libSVM methods
-
+    % tmp.lesiondata = full(tmp.lesiondata); % we transfer it as sparse... so we need to full() it for all non-libSVM methods
     allPredAndLoss = {}; % empty, in case we're using e.g. mass univariate
 
     %     for PermIdx = tmp.this_job_perm_indices % each loop iteration will compute one whole-brain permutation result (regardless of LSM method)
@@ -106,28 +106,23 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
         trial_score = tmp.permdata(:,ii); % now pull the ii'th index rather than the PermIdx'th index, since we don't have access to the full permutation dataset any more
         
         if tmp.use_mass_univariate % solve whole-brain permutation PermIdx on a voxel-by-voxel basis.
-            pmu_beta_map = nan(size(tmp.lesiondata,2),1); % reserve space -- are these dims right?
-            for vox = 1 : size(tmp.lesiondata,2)
+            pmu_beta_map = nan(size(tmp.lesiondata.Value,2),1); % reserve space -- are these dims right?
+            for vox = 1 : size(tmp.lesiondata.Value,2)
                  [Q, R] = qr(trial_score, 0); % use the householder transformations to compute the qr factorization of an n by p matrix x.
-                 y = double(tmp.lesiondata(:,vox));% / 10000; % why divide by 10,000? %betas(vox) = R \ (Q' * y);  % equivalent to fitlm's output: lm.Coefficients.Estimate
+                 y = double(tmp.lesiondata.Value(:,vox));% / 10000; % why divide by 10,000? %betas(vox) = R \ (Q' * y);  % equivalent to fitlm's output: lm.Coefficients.Estimate
                  pmu_beta_map(vox) = R \ (Q' * y);  % equivalent to fitlm's output: lm.Coefficients.Estimate
             end
         else % use an SVR method
-            m = fitrsvm(tmp.lesiondata,trial_score,'KernelFunction','rbf', tmp.matlab_svr_parms{:});
-            
+            m = fitrsvm(tmp.lesiondata.Value,trial_score,'KernelFunction','rbf', tmp.matlab_svr_parms{:});
             if ~tmp.do_crossval % then compute the beta map as usual...
                 pmu_beta_map = tmp.beta_scale * m.Alpha' * m.SupportVectors; % *DO* use the beta from the first, real permutation!
                 if tmp.do_predictions
-                    predAndLoss.resubPredict = m.resubPredict;
-                    % predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
+                    predAndLoss.resubPredict = m.resubPredict; % predAndLoss.resubLossMSE = m.resubLoss('LossF','mse');
                     predAndLoss.resubLossMSE = mean((m.Y - predAndLoss.resubPredict).^2); % to save time, manually calculate the MSE resub loss
                     predAndLoss.resubLossEps = m.resubLoss('LossF','eps');
                 else % don't spend the time...
-                    predAndLoss.resubPredict = [];
-                    predAndLoss.resubLossMSE = [];
-                    predAndLoss.resubLossEps = [];
+                    predAndLoss.resubPredict = []; predAndLoss.resubLossMSE = []; predAndLoss.resubLossEps = [];
                 end
-                
             else % we don't need to do any computations since w should already contain a scaled/averaged model
                 ws = []; % we'll accumulate in here
                 for mm = 1 : numel(m.Trained)
@@ -142,15 +137,11 @@ function allPredAndLoss = parallel_step1_batch_fcn_lessoverhead(tmp)
                 pmu_beta_map = w; % here contains an average of the crossvalidated fold models' beta values
                 
                 if tmp.do_predictions % if requested
-                    predAndLoss.resubPredict = m.kfoldPredict;
-                    %predAndLoss.resubLossMSE = m.kfoldLoss('LossF','mse');
+                    predAndLoss.resubPredict = m.kfoldPredict; %predAndLoss.resubLossMSE = m.kfoldLoss('LossF','mse');
                     predAndLoss.resubLossMSE = mean((m.Y - predAndLoss.resubPredict).^2); % to save time, manually calculate the MSE kFold loss
-
                     predAndLoss.resubLossEps = m.kfoldLoss('LossF','eps');
                 else % don't spend the time...
-                    predAndLoss.resubPredict = [];
-                    predAndLoss.resubLossMSE = [];
-                    predAndLoss.resubLossEps = [];
+                    predAndLoss.resubPredict = []; predAndLoss.resubLossMSE = []; predAndLoss.resubLossEps = [];
                 end
             end
         end
