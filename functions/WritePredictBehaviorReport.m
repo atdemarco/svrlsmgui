@@ -1,4 +1,7 @@
 function [] = WritePredictBehaviorReport(parms)
+    % We can't do this if it's mass univariate, right?
+    if parms.method.mass_univariate, return; end 
+    
     %% Write out the top of the section
     fprintf(parms.fileID,'<hr>');
     fprintf(parms.fileID,'<h2>Behavioral predictions</h2>');

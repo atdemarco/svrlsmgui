@@ -381,6 +381,10 @@ function [success,handles] = RunSingleAnalysis(hObject,eventdata,handles)
         end
 
         % transfer the loss and prediction information from the permutations into the output:
+        if ~isfield(variables,'predAndLoss') % then mass univariate approach was probably used
+            variables.predAndLoss = []; % so assign an empty...
+        end
+        
         handles.parameters.predAndLoss = variables.predAndLoss;
         if ~isfield(variables,'predAndLoss_perms'), handles.parameters.predAndLoss_perms = {}; % empty.
         else, handles.parameters.predAndLoss_perms = variables.predAndLoss_perms;

@@ -29,6 +29,7 @@ function [handles,parameters,predAndLoss] = step1_parallel(handles,parameters,va
     tmp.do_predictions = parameters.summary.predictions; % so we don't waste time computing predictions if we don't need to
 
     %% parfeval code
+    % batch_job_size was set to 100 from 2017-2022.
     batch_job_size = 100; % this is going to be optimal for different systems/#cores/jobs - set this through gui?
     nperms = parameters.PermNumVoxelwise;
     njobs = ceil(nperms/batch_job_size); % gotta round up to capture all indices
