@@ -1,4 +1,4 @@
-function largest_cur_cluster_size = get_cur_largest_cluster_wise(parameters,options,variables,thresholded,f)
+function [largest_cur_cluster_size,clustervols] = get_cur_largest_cluster_wise(parameters,options,variables,thresholded,f)
     thresholdstr = [parameters.tailshort '_threshed'];
 %     switch parameters.tailshort
 %         case 'pos'
@@ -16,7 +16,9 @@ function largest_cur_cluster_size = get_cur_largest_cluster_wise(parameters,opti
 
     thresholded.testvol_thresholded = thresholded.thresholded_mask; % now evaluate the surviving voxels for clusters...
     CC = bwconncomp(thresholded.testvol_thresholded, 6);
-    largest_cur_cluster_size = max(cellfun(@numel,CC.PixelIdxList(1,:))); % max val for numels in each cluster object found
+
+    clustervols = sort(cellfun(@numel,CC.PixelIdxList(1,:)),'descend'); % added for experimental cfwer by cluster...
+    largest_cur_cluster_size = max(clustervols); % max val for numels in each cluster object found
 
     if isempty(largest_cur_cluster_size)
         largest_cur_cluster_size = 0;

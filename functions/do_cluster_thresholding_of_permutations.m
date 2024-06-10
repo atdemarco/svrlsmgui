@@ -30,7 +30,7 @@ function variables = do_cluster_thresholding_of_permutations(handles,parameters,
         if parameters.SavePostVoxelwiseThresholdedPermutations, save_post_voxelwise_thresholded_permutation(parameters,variables,thresholded,f); end
 
         % retrieve and store largest cluster from this permutation (inside, the volume is saved if requested)
-        all_max_cluster_sizes(f) = get_cur_largest_cluster_wise(parameters,handles.options,variables,thresholded,f);
+        [all_max_cluster_sizes(f),all_cluster_sizes{f}] = get_cur_largest_cluster_wise(parameters,handles.options,variables,thresholded,f);
     end
     
     svrlsm_waitbar(parameters.waitbar,0,''); % reset.
@@ -38,3 +38,8 @@ function variables = do_cluster_thresholding_of_permutations(handles,parameters,
     %% Save the resulting cluster lists
     variables.files_created.largest_clusters = fullfile(variables.output_folder.clusterwise,'Largest null cluster list.mat');
     save(variables.files_created.largest_clusters,'all_max_cluster_sizes');
+
+    %% And now save results for all clusters -- June 2024 for cfwer on clusters via meeting w Dan and Laurel and Aaron etc
+    variables.files_created.all_cluster_sizes = fullfile(variables.output_folder.clusterwise,'All clusters list.mat');
+    save(variables.files_created.all_cluster_sizes,'all_cluster_sizes');
+    
