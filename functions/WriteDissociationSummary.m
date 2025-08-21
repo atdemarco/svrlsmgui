@@ -5,7 +5,9 @@ function WriteDissociationSummary(parmsfile)
     parms = load(parmsfile);
     parms = parms.tosave;
     parms.outdir = parms.dissociation.output_folder.base;
-    fields_to_copy = {'summary','do_CFWER','clusterwise_p','PermNumVoxelwise','DoPerformPermutationTesting','voxelwise_p'}; % inherit from first main analysis
+    fields_to_copy = {'summary','do_CFWER','clusterwise_p','PermNumVoxelwise','DoPerformPermutationTesting','voxelwise_p', ...
+        'output_folders','files_created'}; % inherit from first main analysis
+    
     for f = 1 : numel(fields_to_copy)
         parms.(fields_to_copy{f}) = parms.dissociation.maineffects{1}.(fields_to_copy{f});
     end
