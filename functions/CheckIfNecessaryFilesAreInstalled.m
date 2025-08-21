@@ -9,13 +9,13 @@ function details = CheckIfNecessaryFilesAreInstalled(handles)
 
     spm_found = which('spm','-all');
     if isempty(spm_found)
-        handles = UpdateProgress(handles,'Warning: SPM12 is not installed and/or visible on MATLAB''s path.',1);
+        handles = UpdateProgress(handles,'Warning: SPM is not installed and/or visible on MATLAB''s path.',1);
         details.spm = 0;
-    elseif isempty(strfind(spm_found{1},'spm12'))
-        handles = UpdateProgress(handles,'Warning: SPM found, but version 12 is not installed and/or at the top of MATLAB''s path.',1);
-        details.spm = 0;
+    % elseif isempty(strfind(spm_found{1},'spm12'))
+    %     handles = UpdateProgress(handles,'Warning: SPM found, but version 12 is not installed and/or at the top of MATLAB''s path.',1);
+    %     details.spm = 0;
     else 
-        handles = UpdateProgress(handles,'SPM12 is installed and visible on MATLAB''s path.',1);
+        handles = UpdateProgress(handles,'SPM is installed and visible on MATLAB''s path.',1);
         details.spm = 1;
         %topofpath = spm_found{1};
         %versions = {'spm5','spm8','spm12'};
