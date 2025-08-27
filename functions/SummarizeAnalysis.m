@@ -76,6 +76,7 @@ template.img = (template.img ./ max(template.img(:)));
 
 %% Make slices for lesion overlap image
 % normalize lesion overlap map to 255 to index out of color map
+maxoverlap = max(lesionoverlapimg.img);
 lesionoverlapimg.img = lesionoverlapimg.img - min(lesionoverlapimg.img(:));
 lesionoverlapimg.img = ceil(255 * (lesionoverlapimg.img ./ max(lesionoverlapimg.img(:))));
 
@@ -126,7 +127,8 @@ nlesionstotal = str2num(fname(strfind(fname,'=')+1:end));  %#ok<ST2NM>
 bar_location = [.03 .84 .2 .1];
 
 if parms.summary.lesion_overlap
-    imdata = PaintBarOnFrame(imdata,bar_location,cmapname,1,nlesionstotal,'Overlap of lesions',0); % do not flip.
+    %imdata = PaintBarOnFrame(imdata,bar_location,cmapname,1,nlesionstotal,'Overlap of lesions',0); % do not flip.
+    imdata = PaintBarOnFrame(imdata,bar_location,cmapname,1,maxoverlap,['Lesion overlap (max=' num2str(maxoverlap) ')'],0); % do not flip. % fixed Aug 27, 2025
     imwrite(imdata,fullfile(parms.picturedir,'lesion_overlap.png'));
 
     %% Label our output in the html file and put in the html tags to make it show up.
