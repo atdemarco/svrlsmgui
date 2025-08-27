@@ -80,8 +80,8 @@ function htmloutpath = SummarizeAnalysis(parmsfile)
     
     %% Make slices for lesion overlap image
     % normalize lesion overlap map to 255 to index out of color map
-    lesionoverlapimg.img = lesionoverlapimg.img - min(lesionoverlapimg.img(:));
     maxoverlap = max(lesionoverlapimg.img(:)); % added aug 27, 2025
+    lesionoverlapimg.img = lesionoverlapimg.img - min(lesionoverlapimg.img(:));
     lesionoverlapimg.img = ceil(255 * (lesionoverlapimg.img ./ maxoverlap)); % modified for maxoverlap aug 27, 2025
     
     dimlen = size(template.img,3); % z axis
